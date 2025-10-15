@@ -9,19 +9,19 @@ const admin = require("firebase-admin");
 const axios = require("axios");
 const xml2js = require("xml2js");
 const crypto = require("crypto");
+const serviceAccount = require("../serviceAccountKey.json");
+// if (!process.env.SERVICE_ACCOUNT) {
+//   console.error(
+//     "Missing SERVICE_ACCOUNT env (set the service account JSON as a secret)."
+//   );
+//   process.exit(1);
+// }
+// if (!process.env.FIREBASE_PROJECT_ID) {
+//   console.error("Missing FIREBASE_PROJECT_ID env.");
+//   process.exit(1);
+// }
 
-if (!process.env.SERVICE_ACCOUNT) {
-  console.error(
-    "Missing SERVICE_ACCOUNT env (set the service account JSON as a secret)."
-  );
-  process.exit(1);
-}
-if (!process.env.FIREBASE_PROJECT_ID) {
-  console.error("Missing FIREBASE_PROJECT_ID env.");
-  process.exit(1);
-}
-
-const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT);
+// const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   projectId: process.env.FIREBASE_PROJECT_ID,
