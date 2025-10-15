@@ -9,7 +9,7 @@ const admin = require("firebase-admin");
 const axios = require("axios");
 const xml2js = require("xml2js");
 const crypto = require("crypto");
-const serviceAccount = require("./serviceAccountKey.json");
+const serviceAccount = require("../serviceAccountKey.json");
 // if (!process.env.SERVICE_ACCOUNT) {
 //   console.error(
 //     "Missing SERVICE_ACCOUNT env (set the service account JSON as a secret)."
