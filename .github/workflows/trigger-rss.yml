@@ -1,15 +1,39 @@
-name: Trigger RSS Fetch
+name: RSS fetch and write to Firestore
+
 on:
   schedule:
     - cron: "*/5 * * * *" # every 5 minutes
   workflow_dispatch:
 
 jobs:
-  call:
+  fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Call fetchNow
-        env:
-          RSS_SECRET: ${{ secrets.RSS_SECRET }}
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
         run: |
-          curl -s -o /dev/null -w "%{http_code}\n" -H "x-rss-secret: $RSS_SECRET" "https://us-central1-gaming-zone-ca485.cloudfunctions.net/fetchNow"
+          npm ci
+        working-directory: .
+
+      - name: Write service account to file
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$SA_JSON" > service-account.json
+          # optional: show a small check
+          echo "Service account written, size:" $(wc -c service-account.json)
+
+      - name: Run RSS fetch script
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          RSS_SECRET: ${{ secrets.RSS_SECRET }} # optional
+        run: |
+          node scripts/fetchRss.js

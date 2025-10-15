@@ -1,12 +1,33 @@
-// functions/index.js
-const functions = require("firebase-functions");
+// scripts/fetchRss.js
+// Node script to run on GitHub Actions (or any cron runner).
+// Expects env:
+// - SERVICE_ACCOUNT : the JSON content of a GCP service account key (string)
+// - FIREBASE_PROJECT_ID : your Firebase project id
+// - RSS_SECRET (optional) : secret used for any auth logic (not required here)
+
 const admin = require("firebase-admin");
 const axios = require("axios");
 const xml2js = require("xml2js");
 const crypto = require("crypto");
 
-admin.initializeApp();
+if (!process.env.SERVICE_ACCOUNT) {
+  console.error(
+    "Missing SERVICE_ACCOUNT env (set the service account JSON as a secret)."
+  );
+  process.exit(1);
+}
+if (!process.env.FIREBASE_PROJECT_ID) {
+  console.error("Missing FIREBASE_PROJECT_ID env.");
+  process.exit(1);
+}
+
+const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT);
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  projectId: process.env.FIREBASE_PROJECT_ID,
+});
 const db = admin.firestore();
+
 const parser = new xml2js.Parser({
   explicitArray: false,
   mergeAttrs: true,
@@ -100,7 +121,7 @@ function normalizeItems(parsed) {
   return items.filter((it) => it.link || it.guid);
 }
 
-// يدعم أشكال متعددة لبيانات المصادر: array of groups, object with arrays, or array of sources
+// extract grouped sources similar to your 'rss' docs support
 function extractSourcesFromDocData(data) {
   const result = [];
   if (Array.isArray(data)) {
@@ -120,7 +141,6 @@ function extractSourcesFromDocData(data) {
     }
     return result;
   }
-
   if (data && typeof data === "object") {
     if (Array.isArray(data.sources)) return data.sources.slice();
     if (Array.isArray(data.sites)) return data.sites.slice();
@@ -143,16 +163,10 @@ function extractSourcesFromDocData(data) {
   return result;
 }
 
-// ===================== runFetchAll =====================
-async function runFetchAll({ concurrency = 6, batchSize = 400 } = {}) {
-  const summary = {
-    sourcesProcessed: 0,
-    sourcesSkipped: 0,
-    articlesUpserted: 0,
-    errors: [],
-  };
-
+async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
+  const summary = { sourcesProcessed: 0, articlesUpserted: 0, errors: [] };
   const sources = [];
+
   try {
     const snap = await db.collection("rss").get();
     if (!snap.empty) {
@@ -163,7 +177,7 @@ async function runFetchAll({ concurrency = 6, batchSize = 400 } = {}) {
           const rssUrl = s.rssUrl || s.url || s.feed || s.link || null;
           if (!rssUrl) continue;
           sources.push({
-            docId: doc.id, // keep doc id to allow updates
+            docId: doc.id,
             id: s.id ? String(s.id) : sha1(rssUrl + (s.name || "")),
             name: s.name || s.title || null,
             rssUrl,
@@ -175,15 +189,15 @@ async function runFetchAll({ concurrency = 6, batchSize = 400 } = {}) {
       });
     }
   } catch (err) {
-    summary.errors.push({ type: "read_rss_collection", message: String(err) });
-    return summary;
-  }
-
-  if (sources.length === 0) {
-    return summary; // nothing to do
+    console.error("Error reading rss collection:", err);
+    process.exit(2);
   }
 
   summary.sourcesProcessed = sources.length;
+  if (!sources.length) {
+    console.log("No sources found. Exiting.");
+    return summary;
+  }
 
   let idx = 0;
   async function worker() {
@@ -194,9 +208,8 @@ async function runFetchAll({ concurrency = 6, batchSize = 400 } = {}) {
       try {
         const parsed = await fetchRss(site.rssUrl);
         const items = normalizeItems(parsed);
-        if (!items.length) {
-          continue;
-        }
+        if (!items.length) continue;
+
         for (let sindex = 0; sindex < items.length; sindex += batchSize) {
           const chunk = items.slice(sindex, sindex + batchSize);
           const batch = db.batch();
@@ -228,20 +241,19 @@ async function runFetchAll({ concurrency = 6, batchSize = 400 } = {}) {
           await batch.commit();
           summary.articlesUpserted += chunk.length;
         }
-        // update rss doc lastFetchedAt if possible
+
         if (site.docId) {
           try {
             await db.collection("rss").doc(site.docId).update({
               lastFetchedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-          } catch (e) {
-            /* ignore if docId mismatch */
-          }
+          } catch (e) {}
         }
       } catch (err) {
+        console.error(`Error for ${site.rssUrl}:`, err.message || err);
         summary.errors.push({
           site: site.rssUrl,
-          message: String(err).slice(0, 1000),
+          msg: String(err).slice(0, 1000),
         });
       }
     }
@@ -253,39 +265,14 @@ async function runFetchAll({ concurrency = 6, batchSize = 400 } = {}) {
   );
   await Promise.all(runners);
 
+  console.log("Summary:", summary);
   return summary;
 }
 
-// ===================== HTTP trigger =====================
-// Security: use functions.config().rss.secret or process.env.RSS_SECRET
-const SECRET =
-  process.env.RSS_SECRET ||
-  (functions.config &&
-    functions.config().rss &&
-    functions.config().rss.secret) ||
-  "change_me_local";
-
-exports.fetchNow = functions.https.onRequest(async (req, res) => {
-  try {
-    const token =
-      req.get("x-rss-secret") || req.query.secret || req.body?.secret;
-    if (!token || token !== SECRET) return res.status(401).send("Unauthorized");
-    const result = await runFetchAll();
-    return res.status(200).json({ ok: true, result });
-  } catch (e) {
-    console.error("fetchNow error:", e);
-    return res.status(500).json({ ok: false, error: String(e) });
-  }
-});
-
-// ===================== Scheduled (optional, works only if project on Blaze with scheduler enabled) =====================
-exports.scheduledFetchGroupedRss = functions.pubsub
-  .schedule("every 5 minutes")
-  .timeZone("Africa/Cairo")
-  .onRun(async (context) => {
-    await runFetchAll();
-    return null;
+// run immediately
+runFetchAll()
+  .then(() => process.exit(0))
+  .catch((e) => {
+    console.error("Fatal error:", e);
+    process.exit(1);
   });
-
-// Export runFetchAll for local invocation/tests if needed
-exports._runFetchAll = runFetchAll;
