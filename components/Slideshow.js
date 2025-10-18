@@ -2,10 +2,13 @@ import React from "react";
 import { Linking, Text, StyleSheet, Image, Pressable } from "react-native";
 import Swiper from "react-native-swiper";
 import { LinearGradient } from "expo-linear-gradient";
-import useFeed from "../api.js";
+import useFeed from "../hook/useFeed";
 
 function Slideshow() {
-  const { items, loading, error } = useFeed("https://www.vg247.com/feed/news");
+  const { items, loading, error, refreshing, onRefresh } = useFeed(
+    "news",
+    "games_mix"
+  );
 
   if (loading) return <Text>Loading...</Text>;
   if (error) return <Text>Error: {error.message}</Text>;
@@ -55,9 +58,7 @@ function Slideshow() {
               colors={["transparent", "#0c1a33"]} // From Black to Transparent
               style={styles.gradient}
             />
-            <Text style={styles.headline}>
-              {item.title?.[0].substring(0, 100)}
-            </Text>
+            <Text style={styles.headline}>{item.title.substring(0, 100)}</Text>
           </Pressable>
         ))}
       </Swiper>

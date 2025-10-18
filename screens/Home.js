@@ -1,31 +1,28 @@
 import { StatusBar } from "expo-status-bar";
-import { StyleSheet, FlatList } from "react-native";
+import { FlatList } from "react-native";
 import Slideshow from "../components/Slideshow";
 import LatestNews from "../components/LatestNews";
-import DataFile from "../data.json";
+// import DataFile from "../data.json";
 
 const sections = [
   <Slideshow />,
   <LatestNews
-    rssUrl={DataFile.news?.[4].url}
-    website={DataFile.news?.[4].name}
-    category="News"
+    website="ign"
+    category="news"
     // language={DataFile.news?.[4].language}
     limit={5}
     showDropdown={false}
   />,
   <LatestNews
-    rssUrl={DataFile.reviews?.[1].url}
-    website={DataFile.news?.[1].name}
-    category="Reviews"
+    website="true_gaming"
+    category="reviews"
     // language={DataFile.reviews?.[1].language}
     limit={5}
     showDropdown={false}
   />,
   <LatestNews
-    rssUrl={DataFile.hardware?.[0].url}
-    website={DataFile.news?.[0].name}
-    category="Hardware"
+    website="guru3d"
+    category="hardware"
     // language={DataFile.hardware?.[0].language}
     limit={5}
     showDropdown={false}
@@ -49,4 +46,4 @@ function Home() {
   );
 }
 export default Home;
-const styles = StyleSheet.create({});
+// const styles = StyleSheet.create({});

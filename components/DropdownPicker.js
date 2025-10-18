@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useRSS } from "../contexts/RSSContext";
 import {
   View,
   Text,
@@ -11,11 +10,35 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
+
+const docRef = collection(db, "rss");
+// console.log("Listening to Firestore document...");
+let rssFeeds = [];
+
+onSnapshot(
+  docRef,
+  (snap) => {
+    if (snap) {
+      rssFeeds = [];
+      snap.docs.forEach((doc) => {
+        const data = doc.data();
+        rssFeeds = { ...rssFeeds, ...data };
+      });
+      // console.log("✅ Current data: ", rssFeeds?.hardware);
+    } else {
+      console.log("❌ Document does not exist.");
+    }
+  },
+  (err) => {
+    console.error("🚨 Error while fetching Firestore document:", err);
+  }
+);
 
 const DropdownPicker = (props) => {
-  const { getFeedsByCategory } = useRSS();
   const category = props.category.toLowerCase();
-  const websites = getFeedsByCategory(category) || [];
+  const websites = rssFeeds[category] || [];
 
   // init safely (use websites[0] if موجود)
   const [selected, setSelected] = useState(() => {
@@ -29,7 +52,7 @@ const DropdownPicker = (props) => {
   // reset when category changes
   useEffect(() => {
     setSelected(props.value ?? websites[0] ?? null);
-  }, [props.category, websites]);
+  }, [props.category]);
 
   // keep in sync when parent controls the value
   useEffect(() => {

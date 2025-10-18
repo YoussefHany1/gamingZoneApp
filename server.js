@@ -10,8 +10,12 @@ onSnapshot(
   docRef,
   (snap) => {
     if (snap) {
-      rssFeeds.push(...snap.docs.map((d) => ({ ...d.data() })));
-      console.log("✅ Current data: ", rssFeeds);
+      rssFeeds = [];
+      snap.docs.forEach((doc) => {
+        const data = doc.data();
+        rssFeeds = { ...rssFeeds, ...data };
+      });
+      console.log("✅ Current data: ", rssFeeds?.[news]);
       // rssFeeds.find((item) => console.log(item.news));
     } else {
       console.log("❌ Document does not exist.");

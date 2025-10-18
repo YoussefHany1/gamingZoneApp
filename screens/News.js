@@ -1,27 +1,41 @@
 import * as React from "react";
 import { View, useWindowDimensions, StyleSheet } from "react-native";
 import { TabView, SceneMap, TabBar } from "react-native-tab-view";
-import { useRSS } from "../contexts/RSSContext";
+// import rssFeeds from "../data.json";
 import LatestNews from "../components/LatestNews";
 // import DropdownPicker from "../components/DropdownPicker";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
+
+const docRef = collection(db, "rss");
+// console.log("Listening to Firestore document...");
+let rssFeeds = [];
+
+onSnapshot(
+  docRef,
+  (snap) => {
+    if (snap) {
+      rssFeeds = [];
+      snap.docs.forEach((doc) => {
+        const data = doc.data();
+        rssFeeds = { ...rssFeeds, ...data };
+      });
+      // console.log("✅ Current data: ", rssFeeds?.hardware);
+    } else {
+      console.log("❌ Document does not exist.");
+    }
+  },
+  (err) => {
+    console.error("🚨 Error while fetching Firestore document:", err);
+  }
+);
 
 const NewsRoute = () => {
-  const { getFeedsByCategory } = useRSS();
-  const newsFeeds = getFeedsByCategory("news");
-
-  const [selected, setSelected] = React.useState(
-    newsFeeds.length > 0
-      ? {
-          ...newsFeeds[0],
-        }
-      : { url: undefined, name: undefined, image: undefined }
-  );
-
+  const [selected, setSelected] = React.useState(rssFeeds.news?.[0]);
   return (
     <View style={styles.scene}>
       {/* <DropdownPicker /> */}
       <LatestNews
-        rssUrl={selected.url}
         website={selected.name}
         category="News"
         selectedItem={selected}
@@ -33,21 +47,10 @@ const NewsRoute = () => {
 };
 
 const ReviewsRoute = () => {
-  const { getFeedsByCategory } = useRSS();
-  const reviewsFeeds = getFeedsByCategory("reviews");
-
-  const [selected, setSelected] = React.useState(
-    reviewsFeeds.length > 0
-      ? {
-          ...reviewsFeeds[0],
-        }
-      : { url: undefined, name: undefined, image: undefined }
-  );
-
+  const [selected, setSelected] = React.useState(rssFeeds.reviews?.[0]);
   return (
     <View style={styles.scene}>
       <LatestNews
-        rssUrl={selected.url}
         website={selected.name}
         category="Reviews"
         selectedItem={selected}
@@ -59,21 +62,10 @@ const ReviewsRoute = () => {
 };
 
 const HardwareRoute = () => {
-  const { getFeedsByCategory } = useRSS();
-  const hardwareFeeds = getFeedsByCategory("hardware");
-
-  const [selected, setSelected] = React.useState(
-    hardwareFeeds.length > 0
-      ? {
-          ...hardwareFeeds[0],
-        }
-      : { url: undefined, name: undefined, image: undefined }
-  );
-
+  const [selected, setSelected] = React.useState(rssFeeds.hardware?.[0]);
   return (
     <View style={styles.scene}>
       <LatestNews
-        rssUrl={selected.url}
         website={selected.name}
         category="Hardware"
         selectedItem={selected}

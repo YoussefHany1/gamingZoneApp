@@ -8,16 +8,21 @@ import {
   Linking,
   RefreshControl,
 } from "react-native";
-import useFeed from "../api.js";
+import useFeed from "../hook/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
 import striptags from "striptags";
 
 function LatestNews(props) {
-  const rssUrl = props.rssUrl;
+  // const rssUrl = props.rssUrl;
   const limit = props.limit;
   const language = props.language;
-  const { items, loading, error, refreshing, onRefresh } = useFeed(rssUrl);
-
+  const category = props.category;
+  const website = props.website;
+  const { items, loading, error, refreshing, onRefresh } = useFeed(
+    category,
+    website
+  );
+  // console.log(items);
   // Debug: Log the language value
   const listData = typeof limit === "number" ? items.slice(0, limit) : items;
   const renderItem = ({ item }) => {
@@ -42,9 +47,7 @@ function LatestNews(props) {
         }}
       >
         <View>
-          <Text style={styles.headline}>
-            {item.title?.[0].substring(0, 100)}
-          </Text>
+          <Text style={styles.headline}>{item.title.substring(0, 100)}</Text>
           <Text style={styles.par}>{cleanDescription.substring(0, 60)}..</Text>
         </View>
 

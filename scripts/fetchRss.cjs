@@ -1,7 +1,6 @@
-// scripts/fetchRss.js
 // Node script to run on GitHub Actions (or any cron runner).
 // Expects env:
-// - SERVICE_ACCOUNT : the JSON content of a GCP service account key (string)
+// - SERVICE_ACCOUNT : the JSON content of a GCP service account key (string)  [optional]
 // - FIREBASE_PROJECT_ID : your Firebase project id
 // - RSS_SECRET (optional) : secret used for any auth logic (not required here)
 
@@ -9,24 +8,32 @@ const admin = require("firebase-admin");
 const axios = require("axios");
 const xml2js = require("xml2js");
 const crypto = require("crypto");
-const serviceAccount = require("../serviceAccountKey.json");
-// if (!process.env.SERVICE_ACCOUNT) {
-//   console.error(
-//     "Missing SERVICE_ACCOUNT env (set the service account JSON as a secret)."
-//   );
-//   process.exit(1);
-// }
-// if (!process.env.FIREBASE_PROJECT_ID) {
-//   console.error("Missing FIREBASE_PROJECT_ID env.");
-//   process.exit(1);
-// }
+const fs = require("fs");
+const path = require("path");
 
-// const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT);
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  projectId: process.env.FIREBASE_PROJECT_ID,
-});
-const db = admin.firestore();
+// If you prefer to pass the service account JSON via env var SERVICE_ACCOUNT,
+// try to parse it, otherwise fallback to local file (as original).
+let serviceAccount = null;
+if (process.env.SERVICE_ACCOUNT) {
+  try {
+    serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT);
+  } catch (e) {
+    console.warn(
+      "Failed to parse SERVICE_ACCOUNT env var; falling back to serviceAccountKey.json if present."
+    );
+  }
+}
+if (!serviceAccount) {
+  try {
+    // adjust path if needed
+    serviceAccount = require("../serviceAccountKey.json");
+  } catch (e) {
+    // if not found, we will still init using application default credentials if available
+    console.warn(
+      "serviceAccountKey.json not found; relying on ADC if available."
+    );
+  }
+}
 
 const parser = new xml2js.Parser({
   explicitArray: false,
@@ -47,6 +54,109 @@ async function fetchRss(url) {
     headers: { "User-Agent": "RSS-Fetcher/1.0 (+your-email-or-site)" },
   });
   return parser.parseStringPromise(res.data);
+}
+
+function safeId(input) {
+  if (!input) return null;
+  return String(input)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_\-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^\_+|\_+$/g, "");
+}
+
+// helper: attempt to extract an image URL from a string of HTML
+function extractFirstImgFromHtml(html) {
+  if (!html || typeof html !== "string") return null;
+  const match = html.match(/<img[^>]+src=(?:'|")([^'"]+)(?:'|")/i);
+  return match ? match[1] : null;
+}
+
+// extract thumbnail candidate from an RSS/Atom item 'i'
+// handles various shapes: media:thumbnail, media:content, enclosure, link rel=enclosure, first img in description/content
+function extractThumbnailFromItem(i) {
+  if (!i) return null;
+
+  // 1) media:thumbnail or media:content (common with media RSS)
+  if (i["media:thumbnail"]) {
+    // could be { url: '...' } or array
+    const t = i["media:thumbnail"];
+    if (Array.isArray(t) && t.length) {
+      if (t[0].url) return t[0].url;
+      if (typeof t[0] === "string") return t[0];
+    } else if (t.url) return t.url;
+    else if (typeof t === "string") return t;
+  }
+  if (i["media:content"]) {
+    const t = i["media:content"];
+    if (Array.isArray(t) && t.length) {
+      if (t[0].url) return t[0].url;
+      if (typeof t[0] === "string") return t[0];
+    } else if (t.url) return t.url;
+    else if (typeof t === "string") return t;
+  }
+
+  // 2) enclosure (rss <enclosure url="..." type="image/...">)
+  if (i.enclosure) {
+    const enc = i.enclosure;
+    if (Array.isArray(enc)) {
+      for (const e of enc) {
+        if (e && e.url && (!e.type || e.type.startsWith("image/")))
+          return e.url;
+      }
+    } else {
+      if (enc.url && (!enc.type || enc.type.startsWith("image/")))
+        return enc.url;
+    }
+  }
+
+  // 3) atom-style link elements: i.link may be array or object. look for rel=enclosure or type image/*
+  if (i.link) {
+    if (Array.isArray(i.link)) {
+      for (const l of i.link) {
+        try {
+          if (
+            (l.rel && l.rel === "enclosure") ||
+            (l.type && l.type.startsWith && l.type.startsWith("image/"))
+          ) {
+            if (l.href) return l.href;
+            if (typeof l === "string") return l;
+          }
+        } catch (e) {}
+      }
+    } else {
+      // object or string
+      if (typeof i.link === "object") {
+        if (
+          (i.link.rel && i.link.rel === "enclosure") ||
+          (i.link.type &&
+            typeof i.link.type === "string" &&
+            i.link.type.startsWith("image/"))
+        ) {
+          if (i.link.href) return i.link.href;
+          if (i.link._) return i.link._;
+        }
+      } else if (typeof i.link === "string") {
+        // sometimes link is just a string -> not an image though
+      }
+    }
+  }
+
+  // 4) try known alternate fields in feed entries (e.g., 'image', 'thumbnail', 'logo')
+  if (i.thumbnail && typeof i.thumbnail === "string") return i.thumbnail;
+  if (i.image && typeof i.image === "string") return i.image;
+  if (i.logo && typeof i.logo === "string") return i.logo;
+
+  // 5) finally, parse html in description/summary/content to find first <img>
+  const possibleHtml =
+    i.description || i.content || i.summary || i["content:encoded"] || "";
+  const found = extractFirstImgFromHtml(possibleHtml);
+  if (found) return found;
+
+  // nothing found
+  return null;
 }
 
 function normalizeItems(parsed) {
@@ -70,6 +180,10 @@ function normalizeItems(parsed) {
         (i.guid &&
           (typeof i.guid === "string" ? i.guid : i.guid._ || i.guid)) ||
         link;
+
+      // extract thumbnail
+      const thumbnail = extractThumbnailFromItem(i);
+
       items.push({
         title,
         link,
@@ -79,6 +193,7 @@ function normalizeItems(parsed) {
             : description || "",
         pubDate: pubDate ? new Date(pubDate) : null,
         guid,
+        thumbnail,
         raw: i,
       });
     }
@@ -90,7 +205,10 @@ function normalizeItems(parsed) {
       if (i.link) {
         if (Array.isArray(i.link)) {
           const alt = i.link.find((l) => l.rel === "alternate") || i.link[0];
-          link = (alt && (alt.href || alt._)) || null;
+          link =
+            (alt &&
+              (alt.href || alt._ || (typeof alt === "string" ? alt : null))) ||
+            null;
         } else {
           link =
             i.link.href ||
@@ -105,6 +223,10 @@ function normalizeItems(parsed) {
       const description = i.summary || i.content || "";
       const pubDate = i.published || i.updated || null;
       const guid = i.id || link;
+
+      // extract thumbnail for atom entries too
+      const thumbnail = extractThumbnailFromItem(i);
+
       items.push({
         title,
         link,
@@ -114,6 +236,7 @@ function normalizeItems(parsed) {
             : description || "",
         pubDate: pubDate ? new Date(pubDate) : null,
         guid,
+        thumbnail,
         raw: i,
       });
     }
@@ -121,25 +244,11 @@ function normalizeItems(parsed) {
   return items.filter((it) => it.link || it.guid);
 }
 
-// --- helper: sanitize string to be firestore-safe id (lowercase, alnum, _ and -) ---
-function safeId(input) {
-  if (!input) return null;
-  return String(input)
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_\-]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^\_+|\_+$/g, "");
-}
-
-// extract grouped sources similar to your 'rss' docs support
-// Now returns array of objects: { source: <siteObj>, category: <key|null> }
+// --- helper: group/normalize sources from rss collection docs
 function extractSourcesFromDocData(data) {
   const result = [];
   if (Array.isArray(data)) {
     for (const entry of data) {
-      // array items: no category context available
       result.push({ source: entry, category: null });
     }
     return result;
@@ -168,6 +277,21 @@ function extractSourcesFromDocData(data) {
   return result;
 }
 
+// Initialize Firebase admin
+if (serviceAccount && serviceAccount.client_email) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: process.env.FIREBASE_PROJECT_ID,
+  });
+} else {
+  // fallback to default credentials (e.g., when running on GCP environment or CI with ADC)
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    projectId: process.env.FIREBASE_PROJECT_ID,
+  });
+}
+const db = admin.firestore();
+
 async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
   const summary = { sourcesProcessed: 0, articlesUpserted: 0, errors: [] };
   const sources = [];
@@ -191,7 +315,7 @@ async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
             language: s.language || null,
             image: s.image || null,
             raw: s,
-            category, // new
+            category,
           });
         }
       });
@@ -240,24 +364,25 @@ async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
               .doc(categorySanitized)
               .collection(siteNameSanitized)
               .doc(docId);
-            batch.set(
-              docRef,
-              {
-                title: it.title || "",
-                link: it.link || null,
-                description: it.description || "",
-                pubDate: it.pubDate
-                  ? admin.firestore.Timestamp.fromDate(it.pubDate)
-                  : null,
-                guid: it.guid || null,
-                fetchedAt: admin.firestore.FieldValue.serverTimestamp(),
-                siteName: site.name || null,
-                siteImage: site.image || null,
-                language: site.language || null,
-                category: rawCategory || null, // store original category if present
-              },
-              { merge: true }
-            );
+
+            // prepare doc payload
+            const payload = {
+              title: it.title || "",
+              link: it.link || null,
+              description: it.description || "",
+              pubDate: it.pubDate
+                ? admin.firestore.Timestamp.fromDate(it.pubDate)
+                : null,
+              guid: it.guid || null,
+              fetchedAt: admin.firestore.FieldValue.serverTimestamp(),
+              siteName: site.name || null,
+              siteImage: site.image || null,
+              language: site.language || null,
+              category: rawCategory || null, // store original category if present
+              thumbnail: it.thumbnail || null, // <-- new field
+            };
+
+            batch.set(docRef, payload, { merge: true });
           }
           await batch.commit();
           summary.articlesUpserted += chunk.length;
@@ -268,7 +393,9 @@ async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
             await db.collection("rss").doc(site.docId).update({
               lastFetchedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-          } catch (e) {}
+          } catch (e) {
+            // ignore update errors
+          }
         }
       } catch (err) {
         console.error(`Error for ${site.rssUrl}:`, err.message || err);
