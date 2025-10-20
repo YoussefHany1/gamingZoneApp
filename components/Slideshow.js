@@ -2,13 +2,10 @@ import React from "react";
 import { Linking, Text, StyleSheet, Image, Pressable } from "react-native";
 import Swiper from "react-native-swiper";
 import { LinearGradient } from "expo-linear-gradient";
-import useFeed from "../hook/useFeed";
+import useFeed from "../hooks/useFeed";
 
 function Slideshow() {
-  const { items, loading, error, refreshing, onRefresh } = useFeed(
-    "news",
-    "games_mix"
-  );
+  const { articles, loading, error } = useFeed("news", "games_mix");
 
   if (loading) return <Text>Loading...</Text>;
   if (error) return <Text>Error: {error.message}</Text>;
@@ -24,7 +21,7 @@ function Slideshow() {
         nextButton={<Text style={{ color: "#506996", fontSize: 70 }}>›</Text>}
         prevButton={<Text style={{ color: "#506996", fontSize: 70 }}>‹</Text>}
       >
-        {items.map((item, index) => (
+        {articles.map((item, index) => (
           <Pressable
             key={index}
             style={{ position: "relative", width: "100%" }}
@@ -33,23 +30,23 @@ function Slideshow() {
               Linking.openURL(item.link[0]);
             }}
           >
+            {console.log("Slideshow articles:", item.thumbnail)}
             <Image
               style={styles.thumbnail}
               source={
-                item.thumbnail ||
-                item.image ||
-                item.enclosure?.[0]?.["url"]?.[0] ||
-                item.enclosure?.[0]?.link ||
-                item["media:thumbnail"]?.[0] ||
-                item["media:content"]?.[0]?.["url"]?.[0]
-                  ? {
-                      uri:
-                        item.thumbnail ||
-                        item.image ||
-                        item.enclosure?.[0]?.["url"]?.[0] ||
-                        item.enclosure?.[0]?.link ||
-                        item["media:thumbnail"]?.[0] ||
-                        item["media:content"]?.[0]?.["url"]?.[0],
+                item.thumbnail
+                  ? // item.image ||
+                    // item.enclosure?.[0]?.["url"]?.[0] ||
+                    // item.enclosure?.[0]?.link ||
+                    // item["media:thumbnail"]?.[0] ||
+                    // item["media:content"]?.[0]?.["url"]?.[0]
+                    {
+                      uri: item.thumbnail,
+                      // item.image ||
+                      // item.enclosure?.[0]?.["url"]?.[0] ||
+                      // item.enclosure?.[0]?.link ||
+                      // item["media:thumbnail"]?.[0] ||
+                      // item["media:content"]?.[0]?.["url"]?.[0],
                     }
                   : require("../assets/image-not-found.webp")
               }

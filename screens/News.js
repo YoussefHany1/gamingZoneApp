@@ -5,7 +5,7 @@ import { TabView, SceneMap, TabBar } from "react-native-tab-view";
 import LatestNews from "../components/LatestNews";
 // import DropdownPicker from "../components/DropdownPicker";
 import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../firebase.js";
 
 const docRef = collection(db, "rss");
 // console.log("Listening to Firestore document...");
@@ -20,7 +20,7 @@ onSnapshot(
         const data = doc.data();
         rssFeeds = { ...rssFeeds, ...data };
       });
-      // console.log("✅ Current data: ", rssFeeds?.hardware);
+      // console.log("✅ Current data: ", rssFeeds);
     } else {
       console.log("❌ Document does not exist.");
     }
@@ -29,15 +29,22 @@ onSnapshot(
     console.error("🚨 Error while fetching Firestore document:", err);
   }
 );
-
+function normalized(input) {
+  return input
+    .replace(/[^\p{L}\p{N}]+/gu, " ") // أي شيء ليس حرف أو رقم -> مسافة
+    .trim() // إزالة المسافات من الأطراف
+    .replace(/\s+/g, "_") // كل مجموعة مسافات -> underscore
+    .toLowerCase();
+}
 const NewsRoute = () => {
   const [selected, setSelected] = React.useState(rssFeeds.news?.[0]);
+  console.log("NewsRoute selected:", selected);
   return (
     <View style={styles.scene}>
       {/* <DropdownPicker /> */}
       <LatestNews
-        website={selected.name}
-        category="News"
+        website={normalized(selected.name)}
+        category="news"
         selectedItem={selected}
         language={selected.language}
         onChangeFeed={(item) => setSelected(item)}
@@ -51,8 +58,8 @@ const ReviewsRoute = () => {
   return (
     <View style={styles.scene}>
       <LatestNews
-        website={selected.name}
-        category="Reviews"
+        website={normalized(selected.name)}
+        category="reviews"
         selectedItem={selected}
         language={selected.language}
         onChangeFeed={(item) => setSelected(item)}
@@ -66,8 +73,8 @@ const HardwareRoute = () => {
   return (
     <View style={styles.scene}>
       <LatestNews
-        website={selected.name}
-        category="Hardware"
+        website={normalized(selected.name)}
+        category="hardware"
         selectedItem={selected}
         language={selected.language}
         onChangeFeed={(item) => setSelected(item)}

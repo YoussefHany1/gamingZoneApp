@@ -8,9 +8,16 @@ import {
   Linking,
   RefreshControl,
 } from "react-native";
-import useFeed from "../hook/useFeed";
+import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
 import striptags from "striptags";
+
+function fromSnakeCase(input) {
+  return input
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 function LatestNews(props) {
   // const rssUrl = props.rssUrl;
@@ -18,17 +25,17 @@ function LatestNews(props) {
   const language = props.language;
   const category = props.category;
   const website = props.website;
-  const { items, loading, error, refreshing, onRefresh } = useFeed(
+  const { articles, loading, error, refreshing, onRefresh } = useFeed(
     category,
     website
   );
-  // console.log(items);
   // Debug: Log the language value
-  const listData = typeof limit === "number" ? items.slice(0, limit) : items;
+  const listData =
+    typeof limit === "number" ? articles.slice(0, limit) : articles;
   const renderItem = ({ item }) => {
     const description = String(item.description).match(
       /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
-    );
+    )?.[1];
     // String(item.content).match(
     //   /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
     // );
@@ -37,6 +44,7 @@ function LatestNews(props) {
     const cleanDescription = striptags(String(item.description))
       .replace(/\s+/g, " ")
       .trim();
+    console.log("cleanDescription:", description);
     return (
       <Pressable
         style={styles.NewsContainer}
@@ -46,7 +54,7 @@ function LatestNews(props) {
           Linking.openURL(item.link[0]);
         }}
       >
-        <View>
+        <View style={styles.textContainer}>
           <Text style={styles.headline}>{item.title.substring(0, 100)}</Text>
           <Text style={styles.par}>{cleanDescription.substring(0, 60)}..</Text>
         </View>
@@ -56,28 +64,27 @@ function LatestNews(props) {
             style={styles.thumbnail}
             source={
               item.thumbnail ||
-              item.thumbnail?.[0] ||
-              item.image ||
-              item.enclosure?.[0]?.["url"]?.[0] ||
-              item.enclosure?.[0]?.link ||
-              item["media:thumbnail"]?.[0] ||
-              item["media:content"]?.[0]?.["url"]?.[0] ||
+              // item.thumbnail?.[0] ||
+              // item.image ||
+              // item.enclosure?.[0]?.["url"]?.[0] ||
+              // item.enclosure?.[0]?.link ||
+              // item["media:thumbnail"]?.[0] ||
+              // item["media:content"]?.[0]?.["url"]?.[0] ||
               descriptionImage
                 ? {
-                    uri:
-                      item.thumbnail ||
-                      item.thumbnail?.[0] ||
-                      item.image ||
-                      item.enclosure?.[0]?.["url"]?.[0] ||
-                      item.enclosure?.[0]?.link ||
-                      item["media:thumbnail"]?.[0] ||
-                      item["media:content"]?.[0]?.["url"]?.[0] ||
-                      descriptionImage,
+                    uri: item.thumbnail,
+                    //     item.thumbnail?.[0] ||
+                    //     item.image ||
+                    //     item.enclosure?.[0]?.["url"]?.[0] ||
+                    //     item.enclosure?.[0]?.link ||
+                    //     item["media:thumbnail"]?.[0] ||
+                    //     item["media:content"]?.[0]?.["url"]?.[0] ||
+                    descriptionImage,
                   }
                 : require("../assets/image-not-found.webp")
             }
           />
-          <Text style={styles.website}>{props.website}</Text>
+          <Text style={styles.website}>{fromSnakeCase(props.website)}</Text>
         </View>
       </Pressable>
     );
@@ -134,9 +141,9 @@ export default LatestNews;
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    // flex: 1,
+    // alignItems: "center",
+    // justifyContent: "center",
     // backgroundColor: "#0c1a33",
     // marginBottom: 30,
   },
@@ -155,31 +162,41 @@ const styles = StyleSheet.create({
   NewsContainer: {
     alignItems: "center",
     // justifyContent: "center",
+    // alignContent: "center",
+    // alignSelf: "center",
     flexDirection: "row",
+    // width: 350,
+    // marginLeft: 80,
+    // marginRight: 80,
     borderRadius: 16,
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#4a5565",
+  },
+  textContainer: {
+    // flex: 1,
+    // marginRight: 15,
+    width: "65%",
   },
   headline: {
     fontSize: 15,
     fontWeight: "bold",
     marginBottom: 12,
     // marginLeft: 110,
-    Width: "5%",
+    // Width: "5%",
     color: "white",
   },
   par: {
     fontSize: 12,
     // maxWidth: 180,
-    marginLeft: 110,
+    // marginLeft: 110,
     color: "#b7becb",
   },
   thumbnail: {
     width: 135,
     height: 100,
     // marginLeft: 10,
-    marginRight: 200,
+    // marginRight: 70,
     borderRadius: 16,
   },
   website: {
@@ -192,12 +209,5 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     paddingHorizontal: 6,
     borderRadius: 6,
-  },
-  languageText: {
-    textAlign: "center",
-    fontSize: 14,
-    color: "#516996",
-    marginBottom: 10,
-    fontWeight: "bold",
   },
 });

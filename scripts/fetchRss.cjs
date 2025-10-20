@@ -10,7 +10,7 @@ const xml2js = require("xml2js");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-
+const striptags = require("striptags");
 // If you prefer to pass the service account JSON via env var SERVICE_ACCOUNT,
 // try to parse it, otherwise fallback to local file (as original).
 let serviceAccount = null;
@@ -174,25 +174,38 @@ function normalizeItems(parsed) {
         (i.title &&
           (typeof i.title === "object" ? i.title._ || i.title : i.title)) ||
         "";
-      const description = i.description || i.summary || i.content || "";
+      // const description = i.description || i.summary || i.content || "";
+      const description = striptags(String(i.description))
+        .replace(/\s+/g, " ")
+        .trim();
       const pubDate = i.pubDate || i.pubdate || i["dc:date"] || null;
-      const guid =
-        (i.guid &&
-          (typeof i.guid === "string" ? i.guid : i.guid._ || i.guid)) ||
-        link;
+      // const guid =
+      //   (i.guid &&
+      //     (typeof i.guid === "string" ? i.guid : i.guid._ || i.guid)) ||
+      //   link;
 
       // extract thumbnail
-      const thumbnail = extractThumbnailFromItem(i);
+      // const thumbnail = extractThumbnailFromItem(i);
+      const descriptionImage = String(i.description).match(
+        /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
+      )?.[1];
+      const thumbnail =
+        i.thumbnail ||
+        i.thumbnail?.[0] ||
+        i.image ||
+        i.enclosure?.[0]?.["url"]?.[0] ||
+        i.enclosure?.[0]?.link ||
+        i["media:thumbnail"]?.[0] ||
+        i["media:content"]?.[0]?.["url"]?.[0] ||
+        descriptionImage ||
+        null;
 
       items.push({
         title,
         link,
-        description:
-          typeof description === "object"
-            ? description._ || ""
-            : description || "",
+        description,
         pubDate: pubDate ? new Date(pubDate) : null,
-        guid,
+        // guid,
         thumbnail,
         raw: i,
       });
