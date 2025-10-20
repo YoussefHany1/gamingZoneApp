@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
-import striptags from "striptags";
+// import striptags from "striptags";
 
 function fromSnakeCase(input) {
   return input

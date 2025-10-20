@@ -10,6 +10,7 @@ const xml2js = require("xml2js");
 const crypto = require("crypto");
 const striptags = require("striptags");
 const he = require("he");
+const { db } = require("../firebase");
 // If you prefer to pass the service account JSON via env var SERVICE_ACCOUNT,
 // try to parse it, otherwise fallback to local file (as original).
 let serviceAccount = null;
@@ -79,17 +80,19 @@ function normalizeItems(parsed) {
           (typeof i.link === "string" ? i.link : i.link._ || i.link.href)) ||
         (i.guid && (i.guid._ || i.guid)) ||
         null;
-      const title =
-        (i.title &&
-          (typeof i.title === "object" ? i.title._ || i.title : i.title)) ||
-        "";
+      const title = i.title || "N/A";
+      // (i.title &&
+      //   (typeof i.title === "object" ? i.title._ || i.title : i.title)) ||
+      // "";
       const description =
         striptags(String(i.description)).replace(/\s+/g, " ").trim() ||
         i.content ||
         "";
       const pubDate = i.pubDate || i.pubdate || i["dc:date"] || null;
-      const descriptionImage = String(i.description).match(
-        /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
+      const descriptionImage = he.encode(
+        String(i.description).match(
+          /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
+        )
       )?.[1];
       const thumbnail =
         i.thumbnail ||
@@ -200,20 +203,20 @@ function extractSourcesFromDocData(data) {
   return result;
 }
 
-// Initialize Firebase admin
-if (serviceAccount && serviceAccount.client_email) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    projectId: process.env.FIREBASE_PROJECT_ID,
-  });
-} else {
-  // fallback to default credentials (e.g., when running on GCP environment or CI with ADC)
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    projectId: process.env.FIREBASE_PROJECT_ID,
-  });
-}
-const db = admin.firestore();
+// // Initialize Firebase admin
+// if (serviceAccount && serviceAccount.client_email) {
+//   admin.initializeApp({
+//     credential: admin.credential.cert(serviceAccount),
+//     projectId: process.env.FIREBASE_PROJECT_ID,
+//   });
+// } else {
+//   // fallback to default credentials (e.g., when running on GCP environment or CI with ADC)
+//   admin.initializeApp({
+//     credential: admin.credential.applicationDefault(),
+//     projectId: process.env.FIREBASE_PROJECT_ID,
+//   });
+// }
+// const db = admin.firestore();
 
 async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
   const summary = { sourcesProcessed: 0, articlesUpserted: 0, errors: [] };
