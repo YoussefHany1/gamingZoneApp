@@ -10,7 +10,6 @@ const xml2js = require("xml2js");
 const crypto = require("crypto");
 const striptags = require("striptags");
 const he = require("he");
-const { db } = require("../firebase");
 // If you prefer to pass the service account JSON via env var SERVICE_ACCOUNT,
 // try to parse it, otherwise fallback to local file (as original).
 let serviceAccount = null;
@@ -204,18 +203,18 @@ function extractSourcesFromDocData(data) {
 }
 
 // // Initialize Firebase admin
-// if (serviceAccount && serviceAccount.client_email) {
-//   admin.initializeApp({
-//     credential: admin.credential.cert(serviceAccount),
-//     projectId: process.env.FIREBASE_PROJECT_ID,
-//   });
-// } else {
-//   // fallback to default credentials (e.g., when running on GCP environment or CI with ADC)
-//   admin.initializeApp({
-//     credential: admin.credential.applicationDefault(),
-//     projectId: process.env.FIREBASE_PROJECT_ID,
-//   });
-// }
+if (serviceAccount && serviceAccount.client_email) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: process.env.FIREBASE_PROJECT_ID,
+  });
+} else {
+  // fallback to default credentials (e.g., when running on GCP environment or CI with ADC)
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    projectId: process.env.FIREBASE_PROJECT_ID,
+  });
+}
 const db = admin.firestore();
 
 async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
