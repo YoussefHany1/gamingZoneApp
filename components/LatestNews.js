@@ -43,7 +43,7 @@ function LatestNews(props) {
     // const cleanDescription = striptags(String(item.description))
     //   .replace(/\s+/g, " ")
     //   .trim();
-    console.log(item.description);
+    // console.log(item.description);
     return (
       <Pressable
         style={styles.NewsContainer}

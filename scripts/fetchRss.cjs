@@ -68,6 +68,40 @@ function safeId(input) {
     .replace(/^\_+|\_+$/g, "");
 }
 
+function extractThumbnail(i) {
+  if (!i) return null;
+
+  // لو في تاق img داخل الـ description
+  const descImgMatch = he.encode(
+    String(i.description).match(
+      /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
+    )
+  )?.[1];
+  const contentImgMatch = he.encode(
+    String(i.content).match(/<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i)
+  );
+  // نجرب أكثر من احتمال حسب أنواع RSS
+
+  return (
+    i.thumbnail ||
+    i.thumbnail?.[0] ||
+    i.image ||
+    i.enclosure?.url ||
+    i.enclosure?.[0]?.url ||
+    i.enclosure?.[0]?.["url"]?.[0] ||
+    i.enclosure?.[0]?.link ||
+    i["media:thumbnail"]?.url ||
+    i["media:thumbnail"]?.[0] ||
+    i["media:thumbnail"]?.[0]?.url ||
+    i["media:content"]?.url ||
+    i["media:content"]?.[0]?.url ||
+    i["media:content"]?.[0]?.["url"]?.[0] ||
+    descImgMatch ||
+    contentImgMatch ||
+    null
+  );
+}
+
 function normalizeItems(parsed) {
   const items = [];
   if (parsed.rss && parsed.rss.channel) {
@@ -80,36 +114,33 @@ function normalizeItems(parsed) {
         (i.guid && (i.guid._ || i.guid)) ||
         null;
       const title = i.title || "N/A";
-      // (i.title &&
-      //   (typeof i.title === "object" ? i.title._ || i.title : i.title)) ||
-      // "";
       const description =
         striptags(String(i.description)).replace(/\s+/g, " ").trim() ||
         i.content ||
         "";
       const pubDate = i.pubDate || i.pubdate || i["dc:date"] || null;
-      const descriptionImage = he.encode(
-        String(i.description).match(
-          /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
-        )
-      )?.[1];
-      const thumbnail =
-        i.thumbnail ||
-        // i.thumbnail?.[0] ||
-        i.image ||
-        i.enclosure?.[0]?.["url"]?.[0] ||
-        i.enclosure?.[0]?.link ||
-        i["media:thumbnail"]?.[0] ||
-        i["media:content"]?.[0]?.["url"]?.[0] ||
-        descriptionImage ||
-        null;
+      // const descriptionImage = he.encode(
+      //   String(i.description).match(
+      //     /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
+      //   )
+      // )?.[1];
+      // const thumbnail =
+      //   i.thumbnail ||
+      //   i.thumbnail?.[0] ||
+      //   i.image ||
+      //   i.enclosure?.[0]?.["url"]?.[0] ||
+      //   i.enclosure?.[0]?.link ||
+      //   i["media:thumbnail"]?.[0] ||
+      //   i["media:content"]?.[0]?.["url"]?.[0] ||
+      //   descriptionImage ||
+      //   null;
 
       items.push({
         title,
         link,
         description,
         pubDate: pubDate ? new Date(pubDate) : null,
-        thumbnail,
+        thumbnail: extractThumbnail(i),
         raw: i,
       });
     }
