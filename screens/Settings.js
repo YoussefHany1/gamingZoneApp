@@ -3,281 +3,247 @@ import {
   View,
   Text,
   StyleSheet,
-  Switch,
   ScrollView,
+  Switch,
   TouchableOpacity,
-  Alert,
-  StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import notificationService from "../notificationService";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db, auth } from "../firebase";
+import {
+  subscribeToTopic,
+  unsubscribeFromTopic,
+  saveNotificationPreference,
+  getUserNotificationPreferences,
+  getTopicName,
+} from "../notificationService";
 
 const SettingsScreen = () => {
-  const [settings, setSettings] = useState({
-    enabled: true,
-    categories: {
-      news: true,
-      reviews: true,
-      hardware: true,
-    },
-    sources: {},
-  });
-  const [connectionStatus, setConnectionStatus] = useState({
-    isConnected: false,
-    reconnectAttempts: 0,
-  });
-  const [expandedCategory, setExpandedCategory] = useState(null);
+  const [rssFeeds, setRssFeeds] = useState({});
+  const [preferences, setPreferences] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [expandedCategories, setExpandedCategories] = useState({});
 
   useEffect(() => {
-    // Load current settings
-    const currentSettings = notificationService.getNotificationSettings();
-    setSettings(currentSettings);
+    // Load RSS feeds from Firestore
+    const unsubscribeRss = onSnapshot(
+      collection(db, "rss"),
+      (snapshot) => {
+        let feeds = {};
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          feeds = { ...feeds, ...data };
+        });
+        setRssFeeds(feeds);
+      },
+      (error) => {
+        console.error("Error loading RSS feeds:", error);
+      }
+    );
 
-    // Get connection status
-    const status = notificationService.getConnectionStatus();
-    setConnectionStatus(status);
+    // Load user preferences
+    if (auth.currentUser) {
+      loadUserPreferences();
+    }
 
-    // Update connection status every 5 seconds
-    const interval = setInterval(() => {
-      const status = notificationService.getConnectionStatus();
-      setConnectionStatus(status);
-    }, 5000);
-
-    return () => clearInterval(interval);
+    return () => unsubscribeRss();
   }, []);
 
-  const handleSettingChange = async (key, value) => {
-    const newSettings = { ...settings, [key]: value };
-    setSettings(newSettings);
-    await notificationService.updateNotificationSettings(newSettings);
+  const loadUserPreferences = async () => {
+    try {
+      const prefs = await getUserNotificationPreferences(auth.currentUser.uid);
+      setPreferences(prefs);
+    } catch (error) {
+      console.error("Error loading preferences:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCategoryChange = async (category, value) => {
-    const newSettings = {
-      ...settings,
-      categories: {
-        ...settings.categories,
-        [category]: value,
-      },
-    };
-    setSettings(newSettings);
-    await notificationService.updateNotificationSettings(newSettings);
+  const toggleCategory = async (category) => {
+    const categorySources = rssFeeds[category] || [];
+    const allEnabled = categorySources.every(
+      (source) => preferences[`${category}_${source.name}`]
+    );
+
+    const newPreferences = { ...preferences };
+    const promises = [];
+
+    for (const source of categorySources) {
+      const prefId = `${category}_${source.name}`;
+      const topicName = getTopicName(category, source.name);
+      const newValue = !allEnabled;
+
+      newPreferences[prefId] = newValue;
+
+      // Save to Firestore
+      promises.push(
+        saveNotificationPreference(
+          auth.currentUser.uid,
+          category,
+          source.name,
+          newValue
+        )
+      );
+
+      // Subscribe/unsubscribe from FCM topic
+      if (newValue) {
+        promises.push(subscribeToTopic(topicName));
+      } else {
+        promises.push(unsubscribeFromTopic(topicName));
+      }
+    }
+
+    setPreferences(newPreferences);
+    await Promise.all(promises);
   };
 
-  const handleSourceChange = async (sourceUrl, value) => {
-    const newSettings = {
-      ...settings,
-      sources: {
-        ...settings.sources,
-        [sourceUrl]: value,
-      },
-    };
-    setSettings(newSettings);
-    await notificationService.updateNotificationSettings(newSettings);
-  };
+  const toggleSource = async (category, source) => {
+    const prefId = `${category}_${source.name}`;
+    const topicName = getTopicName(category, source.name);
+    const newValue = !preferences[prefId];
 
-  const toggleCategory = (category) => {
-    setExpandedCategory(expandedCategory === category ? null : category);
-  };
+    const newPreferences = { ...preferences };
+    newPreferences[prefId] = newValue;
+    setPreferences(newPreferences);
 
-  const handleClearNotifications = () => {
-    Alert.alert("مسح الإشعارات", "هل تريد مسح جميع الإشعارات؟", [
-      { text: "إلغاء", style: "cancel" },
-      {
-        text: "مسح",
-        style: "destructive",
-        onPress: async () => {
-          await notificationService.clearAllNotifications();
-          Alert.alert("تم", "تم مسح جميع الإشعارات");
-        },
-      },
+    // Save to Firestore and FCM
+    await Promise.all([
+      saveNotificationPreference(
+        auth.currentUser.uid,
+        category,
+        source.name,
+        newValue
+      ),
+      newValue ? subscribeToTopic(topicName) : unsubscribeFromTopic(topicName),
     ]);
   };
 
-  const handleReconnect = () => {
-    notificationService.disconnect();
-    setTimeout(() => {
-      notificationService.connectWebSocket();
-    }, 1000);
+  const toggleCategoryExpansion = (category) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [category]: !prev[category],
+    }));
   };
 
-  const getConnectionStatusText = () => {
-    if (connectionStatus.isConnected) {
-      return "متصل";
-    } else if (connectionStatus.reconnectAttempts > 0) {
-      return `محاولة إعادة الاتصال (${connectionStatus.reconnectAttempts})`;
-    } else {
-      return "غير متصل";
-    }
+  const getCategoryToggleValue = (category) => {
+    const categorySources = rssFeeds[category] || [];
+    if (categorySources.length === 0) return false;
+
+    const enabledCount = categorySources.filter(
+      (source) => preferences[`${category}_${source.name}`]
+    ).length;
+
+    return enabledCount === categorySources.length;
   };
 
-  const getConnectionStatusColor = () => {
-    if (connectionStatus.isConnected) {
-      return "#4CAF50";
-    } else {
-      return "#F44336";
-    }
+  const getCategoryToggleIndeterminate = (category) => {
+    const categorySources = rssFeeds[category] || [];
+    if (categorySources.length === 0) return false;
+
+    const enabledCount = categorySources.filter(
+      (source) => preferences[`${category}_${source.name}`]
+    ).length;
+
+    return enabledCount > 0 && enabledCount < categorySources.length;
   };
+
+  const renderCategorySection = (category, title) => {
+    const sources = rssFeeds[category] || [];
+    const isExpanded = expandedCategories[category];
+    const allEnabled = getCategoryToggleValue(category);
+    const isIndeterminate = getCategoryToggleIndeterminate(category);
+
+    if (sources.length === 0) return null;
+
+    return (
+      <View key={category} style={styles.categorySection}>
+        <TouchableOpacity
+          style={styles.categoryHeader}
+          onPress={() => toggleCategoryExpansion(category)}
+        >
+          <View style={styles.categoryHeaderLeft}>
+            <Ionicons
+              name={isExpanded ? "chevron-down" : "chevron-forward"}
+              size={20}
+              color="#779bdd"
+              style={styles.chevronIcon}
+            />
+            <Text style={styles.categoryTitle}>{title}</Text>
+            <Text style={styles.sourceCount}>({sources.length})</Text>
+          </View>
+          <Switch
+            value={allEnabled}
+            onValueChange={() => toggleCategory(category)}
+            trackColor={{ false: "#3e3e3e", true: "#779bdd" }}
+            thumbColor={allEnabled ? "#ffffff" : "#f4f3f4"}
+            style={[
+              styles.categorySwitch,
+              isIndeterminate && styles.indeterminateSwitch,
+            ]}
+          />
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.sourcesList}>
+            {sources.map((source, index) => {
+              const prefId = `${category}_${source.name}`;
+              const isEnabled = preferences[prefId] || false;
+
+              return (
+                <View key={index} style={styles.sourceItem}>
+                  <View style={styles.sourceInfo}>
+                    <Text style={styles.sourceName}>{source.name}</Text>
+                    {source.language && (
+                      <Text style={styles.sourceLanguage}>
+                        {source.language.toUpperCase()}
+                      </Text>
+                    )}
+                  </View>
+                  <Switch
+                    value={isEnabled}
+                    onValueChange={() => toggleSource(category, source)}
+                    trackColor={{ false: "#3e3e3e", true: "#779bdd" }}
+                    thumbColor={isEnabled ? "#ffffff" : "#f4f3f4"}
+                  />
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#779bdd" />
+        <Text style={styles.loadingText}>Loading settings...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0c1a33" />
-
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>الإعدادات</Text>
-      </View>
-
-      <ScrollView style={styles.content}>
-        {/* Connection Status */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>حالة الاتصال</Text>
-          <View style={styles.connectionStatus}>
-            <View style={styles.connectionInfo}>
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: getConnectionStatusColor() },
-                ]}
-              />
-              <Text style={styles.statusText}>{getConnectionStatusText()}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.reconnectButton}
-              onPress={handleReconnect}
-              disabled={connectionStatus.isConnected}
-            >
-              <Ionicons
-                name="refresh"
-                size={20}
-                color={connectionStatus.isConnected ? "#666" : "#779bdd"}
-              />
-            </TouchableOpacity>
-          </View>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Notification Settings</Text>
+          <Text style={styles.headerSubtitle}>
+            Choose which news sources you want to receive notifications from
+          </Text>
         </View>
 
-        {/* Notification Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>إعدادات الإشعارات</Text>
+        {renderCategorySection("news", "News")}
+        {renderCategorySection("reviews", "Reviews")}
+        {renderCategorySection("hardware", "Hardware")}
 
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>تفعيل الإشعارات</Text>
-            <Switch
-              value={settings.enabled}
-              onValueChange={(value) => handleSettingChange("enabled", value)}
-              trackColor={{ false: "#767577", true: "#779bdd" }}
-              thumbColor={settings.enabled ? "#fff" : "#f4f3f4"}
-            />
-          </View>
-        </View>
-
-        {/* Category Settings */}
-        {settings.enabled && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>الفئات</Text>
-            {Object.entries(settings.categories || {}).map(
-              ([category, enabled]) => {
-                const categoryNames = {
-                  news: "أخبار الألعاب",
-                  reviews: "مراجعات الألعاب",
-                  hardware: "أخبار الهاردوير",
-                };
-
-                return (
-                  <View key={category}>
-                    <TouchableOpacity
-                      style={styles.categoryHeader}
-                      onPress={() => toggleCategory(category)}
-                    >
-                      <Text style={styles.categoryLabel}>
-                        {categoryNames[category]}
-                      </Text>
-                      <View style={styles.categoryHeaderRight}>
-                        <Switch
-                          value={enabled}
-                          onValueChange={(value) =>
-                            handleCategoryChange(category, value)
-                          }
-                          trackColor={{ false: "#767577", true: "#779bdd" }}
-                          thumbColor={enabled ? "#fff" : "#f4f3f4"}
-                        />
-                        <Ionicons
-                          name={
-                            expandedCategory === category
-                              ? "chevron-up"
-                              : "chevron-down"
-                          }
-                          size={20}
-                          color="#779bdd"
-                          style={{ marginLeft: 10 }}
-                        />
-                      </View>
-                    </TouchableOpacity>
-
-                    {expandedCategory === category && enabled && (
-                      <View style={styles.sourcesList}>
-                        {notificationService
-                          .getRSSSources()
-                          [category]?.map((source) => (
-                            <View key={source.url} style={styles.sourceRow}>
-                              <Text style={styles.sourceLabel}>
-                                {source.name}
-                              </Text>
-                              <Switch
-                                value={settings.sources[source.url] !== false}
-                                onValueChange={(value) =>
-                                  handleSourceChange(source.url, value)
-                                }
-                                trackColor={{
-                                  false: "#767577",
-                                  true: "#779bdd",
-                                }}
-                                thumbColor={
-                                  settings.sources[source.url] !== false
-                                    ? "#fff"
-                                    : "#f4f3f4"
-                                }
-                              />
-                            </View>
-                          ))}
-                      </View>
-                    )}
-                  </View>
-                );
-              }
-            )}
-          </View>
-        )}
-
-        {/* Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>الإجراءات</Text>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={handleClearNotifications}
-          >
-            <Ionicons name="trash-outline" size={24} color="#F44336" />
-            <Text style={styles.actionButtonText}>مسح جميع الإشعارات</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>معلومات</Text>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoText}>
-              • يتم فحص مصادر الأخبار كل 5 دقائق
-            </Text>
-            <Text style={styles.infoText}>
-              • الإشعارات تصل فورياً عند نشر خبر جديد
-            </Text>
-            <Text style={styles.infoText}>
-              • يمكنك التحكم في الفئات والمصادر بشكل منفصل
-            </Text>
-            <Text style={styles.infoText}>
-              • اضغط على أيقونة السهم لتوسيع قائمة المصادر
-            </Text>
-          </View>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Notifications will be sent when new articles are published from
+            enabled sources.
+          </Text>
         </View>
       </ScrollView>
     </View>
@@ -289,147 +255,112 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0c1a33",
   },
-  header: {
-    paddingTop: 50,
-    paddingBottom: 20,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#0c1a33",
+  },
+  loadingText: {
+    color: "#779bdd",
+    marginTop: 10,
+    fontSize: 16,
+  },
+  scrollView: {
+    flex: 1,
     paddingHorizontal: 20,
-    backgroundColor: "#0a0f1c",
-    borderBottomWidth: 1,
-    borderBottomColor: "#4a5565",
+  },
+  header: {
+    paddingVertical: 30,
+    paddingTop: 60,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "bold",
-    color: "#fff",
-    textAlign: "center",
+    color: "#ffffff",
+    marginBottom: 8,
   },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  section: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+  headerSubtitle: {
+    fontSize: 16,
     color: "#779bdd",
-    marginBottom: 15,
+    lineHeight: 22,
   },
-  connectionStatus: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#1a2332",
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#4a5565",
-  },
-  connectionInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 10,
-  },
-  statusText: {
-    color: "#fff",
-    fontSize: 16,
-  },
-  reconnectButton: {
-    padding: 10,
-    borderRadius: 5,
-  },
-  settingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#1a2332",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#4a5565",
-  },
-  settingLabel: {
-    color: "#fff",
-    fontSize: 16,
-    flex: 1,
+  categorySection: {
+    marginBottom: 20,
+    backgroundColor: "rgba(119, 155, 221, 0.1)",
+    borderRadius: 12,
+    overflow: "hidden",
   },
   categoryHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#1a2332",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 5,
-    borderWidth: 1,
-    borderColor: "#4a5565",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: "rgba(119, 155, 221, 0.2)",
   },
-  categoryHeaderRight: {
+  categoryHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  categoryLabel: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
     flex: 1,
+  },
+  chevronIcon: {
+    marginRight: 8,
+  },
+  categoryTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#ffffff",
+    marginRight: 8,
+  },
+  sourceCount: {
+    fontSize: 14,
+    color: "#779bdd",
+  },
+  categorySwitch: {
+    transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }],
+  },
+  indeterminateSwitch: {
+    opacity: 0.7,
   },
   sourcesList: {
-    backgroundColor: "#0f1419",
-    borderRadius: 10,
-    marginBottom: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#2a3441",
+    paddingVertical: 8,
   },
-  sourceRow: {
+  sourceItem: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "center",
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingHorizontal: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#2a3441",
+    borderBottomColor: "rgba(119, 155, 221, 0.1)",
   },
-  sourceLabel: {
-    color: "#b7becb",
-    fontSize: 14,
+  sourceInfo: {
     flex: 1,
-    marginLeft: 10,
-  },
-  actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1a2332",
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#4a5565",
   },
-  actionButtonText: {
-    color: "#F44336",
+  sourceName: {
     fontSize: 16,
-    marginLeft: 15,
+    color: "#ffffff",
     fontWeight: "500",
   },
-  infoCard: {
-    backgroundColor: "#1a2332",
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#4a5565",
+  sourceLanguage: {
+    fontSize: 12,
+    color: "#779bdd",
+    marginLeft: 8,
+    backgroundColor: "rgba(119, 155, 221, 0.2)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  infoText: {
-    color: "#b7becb",
+  footer: {
+    paddingVertical: 30,
+    paddingHorizontal: 16,
+  },
+  footerText: {
     fontSize: 14,
-    marginBottom: 8,
+    color: "#779bdd",
+    textAlign: "center",
     lineHeight: 20,
   },
 });

@@ -183,8 +183,68 @@ if (serviceAccount && serviceAccount.client_email) {
 }
 const db = admin.firestore();
 
+// Function to send FCM notifications for new articles
+async function sendNotificationsForNewArticles(newArticles, summary) {
+  for (const article of newArticles) {
+    try {
+      const message = {
+        topic: article.topicName,
+        notification: {
+          title: `📰 ${article.siteName}`,
+          body:
+            article.title.length > 100
+              ? article.title.substring(0, 100) + "..."
+              : article.title,
+        },
+        data: {
+          articleId: article.guid || article.link || "",
+          siteName: article.siteName || "",
+          category: article.category || "",
+          link: article.link || "",
+          thumbnail: article.thumbnail || "",
+        },
+        android: {
+          notification: {
+            icon: "ic_notification",
+            color: "#779bdd",
+            sound: "default",
+            priority: "high",
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: "default",
+              badge: 1,
+            },
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(message);
+      console.log(`✅ Notification sent for ${article.siteName}: ${response}`);
+      summary.notificationsSent++;
+    } catch (error) {
+      console.error(
+        `❌ Failed to send notification for ${article.siteName}:`,
+        error
+      );
+      summary.errors.push({
+        type: "notification_send",
+        site: article.siteName,
+        msg: String(error).slice(0, 1000),
+      });
+    }
+  }
+}
+
 async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
-  const summary = { sourcesProcessed: 0, articlesUpserted: 0, errors: [] };
+  const summary = {
+    sourcesProcessed: 0,
+    articlesUpserted: 0,
+    notificationsSent: 0,
+    errors: [],
+  };
   const sources = [];
 
   try {
@@ -248,6 +308,8 @@ async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
         for (let sindex = 0; sindex < items.length; sindex += batchSize) {
           const chunk = items.slice(sindex, sindex + batchSize);
           const batch = db.batch();
+          const newArticles = []; // Track new articles for notifications
+
           for (const it of chunk) {
             const docId = sha1(it.guid || it.link || it.title);
             const docRef = db
@@ -255,6 +317,10 @@ async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
               .doc(categorySanitized)
               .collection(siteNameSanitized)
               .doc(docId);
+
+            // Check if article already exists
+            const existingDoc = await docRef.get();
+            const isNewArticle = !existingDoc.exists;
 
             // prepare doc payload
             const payload = {
@@ -274,9 +340,25 @@ async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
             };
 
             batch.set(docRef, payload, { merge: true });
+
+            // If it's a new article, add to notification list
+            if (isNewArticle) {
+              newArticles.push({
+                ...payload,
+                topicName: `${
+                  rawCategory || "uncategorized"
+                }_${siteNameSanitized}`,
+                siteName: site.name || siteNameSanitized,
+              });
+            }
           }
           await batch.commit();
           summary.articlesUpserted += chunk.length;
+
+          // Send notifications for new articles
+          if (newArticles.length > 0) {
+            await sendNotificationsForNewArticles(newArticles, summary);
+          }
         }
 
         if (site.docId) {

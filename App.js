@@ -8,9 +8,16 @@ import { Ionicons } from "@expo/vector-icons"; // أيقونات جاهزة من
 import NewsScreen from "./screens/News";
 import HomeScreen from "./screens/Home";
 import SettingsScreen from "./screens/Settings";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import messaging from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
+import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { auth } from "./firebase";
+import {
+  saveFCMToken,
+  getUserNotificationPreferences,
+  syncUserPreferences,
+} from "./notificationService";
 import "./firebase";
 
 const Stack = createNativeStackNavigator();
@@ -41,90 +48,115 @@ function SettingsStack() {
 }
 
 function App() {
+  const [user, setUser] = useState(null);
+
   useEffect(() => {
-    const initFcm = async () => {
-      try {
-        // Request OS notification permission (Android 13+ & iOS)
-        const expoPerms = await Notifications.requestPermissionsAsync();
-        if (expoPerms.status !== "granted") {
-          console.log("OS notification permission not granted");
+    // Set up authentication state listener
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        console.log("✅ User authenticated:", user.uid);
+        setUser(user);
+
+        // Initialize FCM and sync preferences
+        try {
+          await initFcm(user.uid);
+        } catch (error) {
+          console.error("❌ Failed to initialize FCM:", error);
         }
-
-        // Ensure Android notification channel exists for foreground local notifications
-        await Notifications.setNotificationChannelAsync("default", {
-          name: "Default",
-          importance: Notifications.AndroidImportance.HIGH,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: "#FFFFFF",
-          sound: "default",
-          lockscreenVisibility:
-            Notifications.AndroidNotificationVisibility.PUBLIC,
-        });
-
-        const authStatus = await messaging().requestPermission();
-        const enabled =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-        if (!enabled) {
-          console.log("FCM permission not granted");
-          return;
+      } else {
+        console.log("❌ User not authenticated, signing in anonymously...");
+        try {
+          await signInAnonymously(auth);
+        } catch (error) {
+          console.error("❌ Failed to sign in anonymously:", error);
         }
-
-        const token = await messaging().getToken();
-        console.log("FCM token:", token);
-
-        const unsubscribeOnMessage = messaging().onMessage(
-          async (remoteMessage) => {
-            console.log("FCM foreground message:", remoteMessage?.messageId);
-            try {
-              // Show a local notification when app is in foreground
-              const title =
-                remoteMessage?.notification?.title ||
-                remoteMessage?.data?.title ||
-                "New message";
-              const body =
-                remoteMessage?.notification?.body ||
-                remoteMessage?.data?.body ||
-                "";
-
-              await Notifications.scheduleNotificationAsync({
-                content: {
-                  title,
-                  body,
-                  data: remoteMessage?.data || {},
-                },
-                trigger: null, // immediate
-              });
-            } catch (err) {
-              console.error("Failed to present foreground notification:", err);
-            }
-          }
-        );
-
-        const unsubscribeTokenRefresh = messaging().onTokenRefresh(
-          (newToken) => {
-            console.log("FCM token refreshed:", newToken);
-          }
-        );
-
-        return () => {
-          unsubscribeOnMessage();
-          unsubscribeTokenRefresh();
-        };
-      } catch (e) {
-        console.error("FCM init error:", e);
       }
-    };
+    });
 
-    const cleanupPromise = initFcm();
-
-    return () => {
-      // Ensure any listeners from initFcm are cleaned
-      Promise.resolve(cleanupPromise).then((cleanup) => {
-        if (typeof cleanup === "function") cleanup();
-      });
-    };
+    return () => unsubscribeAuth();
   }, []);
+
+  const initFcm = async (userId) => {
+    try {
+      // Request OS notification permission (Android 13+ & iOS)
+      const expoPerms = await Notifications.requestPermissionsAsync();
+      if (expoPerms.status !== "granted") {
+        console.log("OS notification permission not granted");
+      }
+
+      // Ensure Android notification channel exists for foreground local notifications
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "Default",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#FFFFFF",
+        sound: "default",
+        lockscreenVisibility:
+          Notifications.AndroidNotificationVisibility.PUBLIC,
+      });
+
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      if (!enabled) {
+        console.log("FCM permission not granted");
+        return;
+      }
+
+      const token = await messaging().getToken();
+      console.log("FCM token:", token);
+
+      // Save FCM token to user profile
+      await saveFCMToken(userId, token);
+
+      // Load and sync user notification preferences
+      const preferences = await getUserNotificationPreferences(userId);
+      await syncUserPreferences(userId, preferences);
+
+      const unsubscribeOnMessage = messaging().onMessage(
+        async (remoteMessage) => {
+          console.log("FCM foreground message:", remoteMessage?.messageId);
+          try {
+            // Show a local notification when app is in foreground
+            const title =
+              remoteMessage?.notification?.title ||
+              remoteMessage?.data?.title ||
+              "New message";
+            const body =
+              remoteMessage?.notification?.body ||
+              remoteMessage?.data?.body ||
+              "";
+
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title,
+                body,
+                data: remoteMessage?.data || {},
+              },
+              trigger: null, // immediate
+            });
+          } catch (err) {
+            console.error("Failed to present foreground notification:", err);
+          }
+        }
+      );
+
+      const unsubscribeTokenRefresh = messaging().onTokenRefresh(
+        async (newToken) => {
+          console.log("FCM token refreshed:", newToken);
+          await saveFCMToken(userId, newToken);
+        }
+      );
+
+      return () => {
+        unsubscribeOnMessage();
+        unsubscribeTokenRefresh();
+      };
+    } catch (e) {
+      console.error("FCM init error:", e);
+    }
+  };
 
   return (
     <NavigationContainer>
