@@ -9,6 +9,7 @@ import {
   where,
   getDocs,
 } from "firebase/firestore";
+import * as Notifications from "expo-notifications";
 
 /**
  * Generate consistent topic name for FCM
@@ -33,8 +34,9 @@ export function getTopicName(category, sourceName) {
  */
 export async function subscribeToTopic(topicName) {
   try {
+    console.log(`🔄 Attempting to subscribe to topic: ${topicName}`);
     await messaging().subscribeToTopic(topicName);
-    console.log(`✅ Subscribed to topic: ${topicName}`);
+    console.log(`✅ Successfully subscribed to topic: ${topicName}`);
     return true;
   } catch (error) {
     console.error(`❌ Failed to subscribe to topic ${topicName}:`, error);
@@ -49,8 +51,9 @@ export async function subscribeToTopic(topicName) {
  */
 export async function unsubscribeFromTopic(topicName) {
   try {
+    console.log(`🔄 Attempting to unsubscribe from topic: ${topicName}`);
     await messaging().unsubscribeFromTopic(topicName);
-    console.log(`✅ Unsubscribed from topic: ${topicName}`);
+    console.log(`✅ Successfully unsubscribed from topic: ${topicName}`);
     return true;
   } catch (error) {
     console.error(`❌ Failed to unsubscribe from topic ${topicName}:`, error);
@@ -123,9 +126,13 @@ export async function getUserNotificationPreferences(userId) {
  */
 export async function syncUserPreferences(userId, preferences) {
   try {
+    console.log("🔄 Syncing user preferences with FCM topics...");
+    console.log("📋 Preferences to sync:", preferences);
+
     const promises = [];
 
     for (const [prefId, enabled] of Object.entries(preferences)) {
+      console.log(`🔄 Processing preference: ${prefId} = ${enabled}`);
       if (enabled) {
         promises.push(subscribeToTopic(prefId));
       } else {
@@ -133,8 +140,11 @@ export async function syncUserPreferences(userId, preferences) {
       }
     }
 
-    await Promise.all(promises);
-    console.log("✅ Synced user preferences with FCM topics");
+    const results = await Promise.all(promises);
+    console.log(
+      "✅ Synced user preferences with FCM topics. Results:",
+      results
+    );
   } catch (error) {
     console.error("❌ Failed to sync user preferences:", error);
   }
@@ -167,5 +177,53 @@ export async function saveFCMToken(userId, fcmToken) {
   } catch (error) {
     console.error("❌ Failed to save FCM token:", error);
     // Don't throw the error, just log it to prevent app crashes
+  }
+}
+
+/**
+ * Test notification function for debugging
+ */
+export async function testNotification() {
+  try {
+    console.log("🧪 Testing local notification...");
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "🧪 Test Notification",
+        body: "This is a test notification to verify the system is working",
+        sound: "default",
+        badge: 1,
+        categoryIdentifier: "news_notifications",
+      },
+      trigger: null, // immediate
+    });
+    console.log("✅ Test notification scheduled");
+  } catch (error) {
+    console.error("❌ Failed to schedule test notification:", error);
+  }
+}
+
+/**
+ * Test FCM topic subscription
+ */
+export async function testTopicSubscription() {
+  try {
+    console.log("🧪 Testing FCM topic subscription...");
+
+    // Subscribe to a test topic
+    const testTopic = "test_topic";
+    await messaging().subscribeToTopic(testTopic);
+    console.log(`✅ Subscribed to test topic: ${testTopic}`);
+
+    // Wait a moment then unsubscribe
+    setTimeout(async () => {
+      try {
+        await messaging().unsubscribeFromTopic(testTopic);
+        console.log(`✅ Unsubscribed from test topic: ${testTopic}`);
+      } catch (error) {
+        console.error("❌ Failed to unsubscribe from test topic:", error);
+      }
+    }, 5000);
+  } catch (error) {
+    console.error("❌ Failed to test topic subscription:", error);
   }
 }

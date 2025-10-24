@@ -30,7 +30,6 @@ function Slideshow() {
               Linking.openURL(item.link[0]);
             }}
           >
-            {console.log("Slideshow articles:", item.thumbnail)}
             <Image
               style={styles.thumbnail}
               source={

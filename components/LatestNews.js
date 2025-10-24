@@ -11,6 +11,7 @@ import {
 import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
 // import striptags from "striptags";
+import Loading from "../Loading";
 
 function fromSnakeCase(input) {
   return input
@@ -32,18 +33,6 @@ function LatestNews(props) {
   const listData =
     typeof limit === "number" ? articles.slice(0, limit) : articles;
   const renderItem = ({ item }) => {
-    // const description = String(item.description).match(
-    //   /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
-    // )?.[1];
-    // String(item.content).match(
-    //   /<img[^>]+src=(?:'|"|)([^"' >]+)(?:'|"|)[^>]*>/i
-    // );
-    // const descriptionImage = description?.[1];
-    // console.log("descriptionImage:", item["media:content"]?.[0]?.["url"]?.[0]);
-    // const cleanDescription = striptags(String(item.description))
-    //   .replace(/\s+/g, " ")
-    //   .trim();
-    // console.log(item.description);
     return (
       <Pressable
         style={styles.NewsContainer}
@@ -90,10 +79,7 @@ function LatestNews(props) {
     </>
   );
 
-  if (loading)
-    return (
-      <Text style={{ color: "white", textAlign: "center" }}>Loading...</Text>
-    );
+  if (loading) return <Loading />;
   if (error)
     return (
       <Text style={{ color: "white", textAlign: "center" }}>

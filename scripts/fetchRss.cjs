@@ -209,6 +209,8 @@ async function sendNotificationsForNewArticles(newArticles, summary) {
             color: "#779bdd",
             sound: "default",
             priority: "high",
+            channelId: "news_notifications",
+            clickAction: "FLUTTER_NOTIFICATION_CLICK",
           },
         },
         apns: {

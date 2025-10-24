@@ -79,50 +79,100 @@ function App() {
   const initFcm = async (userId) => {
     try {
       // Request OS notification permission (Android 13+ & iOS)
-      const expoPerms = await Notifications.requestPermissionsAsync();
-      if (expoPerms.status !== "granted") {
-        console.log("OS notification permission not granted");
-      }
+      const expoPerms = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+          allowAnnouncements: true,
+        },
+      });
 
-      // Ensure Android notification channel exists for foreground local notifications
+      if (expoPerms.status !== "granted") {
+        console.log(
+          "❌ OS notification permission not granted:",
+          expoPerms.status
+        );
+        return;
+      }
+      console.log("✅ OS notification permission granted");
+
+      // Create notification channel for Android
+      await Notifications.setNotificationChannelAsync("news_notifications", {
+        name: "News Notifications",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#779bdd",
+        sound: "default",
+        lockscreenVisibility:
+          Notifications.AndroidNotificationVisibility.PUBLIC,
+        enableVibrate: true,
+        enableLights: true,
+        showBadge: true,
+        bypassDnd: false,
+      });
+
+      // Also create a default channel for compatibility
       await Notifications.setNotificationChannelAsync("default", {
         name: "Default",
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#FFFFFF",
+        lightColor: "#779bdd",
         sound: "default",
         lockscreenVisibility:
           Notifications.AndroidNotificationVisibility.PUBLIC,
+        enableVibrate: true,
+        enableLights: true,
+        showBadge: true,
       });
 
-      const authStatus = await messaging().requestPermission();
+      // Request FCM permission
+      const authStatus = await messaging().requestPermission({
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      });
+
       const enabled =
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
         authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
       if (!enabled) {
-        console.log("FCM permission not granted");
+        console.log("❌ FCM permission not granted:", authStatus);
         return;
       }
+      console.log("✅ FCM permission granted:", authStatus);
 
       const token = await messaging().getToken();
-      console.log("FCM token:", token);
+      console.log("📱 FCM token:", token);
 
       // Save FCM token to user profile
       await saveFCMToken(userId, token);
 
       // Load and sync user notification preferences
       const preferences = await getUserNotificationPreferences(userId);
+      console.log("📋 User preferences:", preferences);
       await syncUserPreferences(userId, preferences);
 
       const unsubscribeOnMessage = messaging().onMessage(
         async (remoteMessage) => {
-          console.log("FCM foreground message:", remoteMessage?.messageId);
+          console.log(
+            "📨 FCM foreground message received:",
+            remoteMessage?.messageId
+          );
+          console.log("📨 Message data:", remoteMessage?.data);
+          console.log("📨 Message notification:", remoteMessage?.notification);
+
           try {
             // Show a local notification when app is in foreground
             const title =
               remoteMessage?.notification?.title ||
               remoteMessage?.data?.title ||
-              "New message";
+              "📰 خبر جديد";
             const body =
               remoteMessage?.notification?.body ||
               remoteMessage?.data?.body ||
@@ -133,11 +183,16 @@ function App() {
                 title,
                 body,
                 data: remoteMessage?.data || {},
+                sound: "default",
+                badge: 1,
+                categoryIdentifier: "news_notifications",
               },
               trigger: null, // immediate
             });
+
+            console.log("✅ Local notification scheduled");
           } catch (err) {
-            console.error("Failed to present foreground notification:", err);
+            console.error("❌ Failed to present foreground notification:", err);
           }
         }
       );

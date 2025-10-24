@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import Loading from "../Loading";
 import { Ionicons } from "@expo/vector-icons";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db, auth } from "../firebase";
@@ -17,6 +18,9 @@ import {
   saveNotificationPreference,
   getUserNotificationPreferences,
   getTopicName,
+  testNotification,
+  testNotificationWithThumbnail,
+  testTopicSubscription,
 } from "../notificationService";
 
 const SettingsScreen = () => {
@@ -217,12 +221,7 @@ const SettingsScreen = () => {
   };
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#779bdd" />
-        <Text style={styles.loadingText}>Loading settings...</Text>
-      </View>
-    );
+    <Loading />;
   }
 
   return (
@@ -233,6 +232,9 @@ const SettingsScreen = () => {
           <Text style={styles.headerSubtitle}>
             Choose which news sources you want to receive notifications from
           </Text>
+          <Text style={styles.headerSubtitle}>
+            Make sure to allow notifications for this app
+          </Text>
         </View>
 
         {renderCategorySection("news", "News")}
@@ -240,6 +242,22 @@ const SettingsScreen = () => {
         {renderCategorySection("hardware", "Hardware")}
 
         <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.testButton}
+            onPress={testNotificationWithThumbnail}
+          >
+            <Ionicons name="notifications" size={20} color="#ffffff" />
+            <Text style={styles.testButtonText}>Test Local Notification</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.testButton, styles.testButtonSecondary]}
+            onPress={testTopicSubscription}
+          >
+            <Ionicons name="wifi" size={20} color="#ffffff" />
+            <Text style={styles.testButtonText}>Test FCM Subscription</Text>
+          </TouchableOpacity>
+
           <Text style={styles.footerText}>
             Notifications will be sent when new articles are published from
             enabled sources.
@@ -356,6 +374,25 @@ const styles = StyleSheet.create({
   footer: {
     paddingVertical: 30,
     paddingHorizontal: 16,
+  },
+  testButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#779bdd",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  testButtonSecondary: {
+    backgroundColor: "#4CAF50",
+  },
+  testButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 8,
   },
   footerText: {
     fontSize: 14,
