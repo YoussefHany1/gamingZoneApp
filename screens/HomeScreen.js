@@ -5,7 +5,7 @@ import LatestNews from "../components/LatestNews";
 // import Loading from "../Loading";
 
 const sections = [
-  <Slideshow />,
+  <Slideshow website="arab_hardware" category="news" />,
   <LatestNews website="ign" category="news" limit={5} showDropdown={false} />,
   <LatestNews
     website="true_gaming"
@@ -14,7 +14,13 @@ const sections = [
     showDropdown={false}
   />,
   <LatestNews
-    website="guru3d"
+    website="dot_esports"
+    category="esports"
+    limit={5}
+    showDropdown={false}
+  />,
+  <LatestNews
+    website="tom_s_hardware"
     category="hardware"
     limit={5}
     showDropdown={false}
@@ -29,7 +35,7 @@ function Home() {
       <FlatList
         data={sections}
         renderItem={renderItem}
-        style={{ height: "100%", backgroundColor: "#0c1a33" }}
+        style={{ flex: 1, backgroundColor: "#0c1a33" }}
         showsVerticalScrollIndicator={false}
       />
       <StatusBar style="auto" />

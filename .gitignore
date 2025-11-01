@@ -37,3 +37,6 @@ yarn-error.*
 *.tsbuildinfo
 
 *serviceAccountKey.json
+
+# firebase
+firebase-*.json

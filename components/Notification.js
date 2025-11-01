@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
+  Modal,
   StyleSheet,
   ScrollView,
   Switch,
   TouchableOpacity,
-  ActivityIndicator,
 } from "react-native";
 import Loading from "../Loading";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,11 +19,10 @@ import {
   getUserNotificationPreferences,
   getTopicName,
   testNotification,
-  testNotificationWithThumbnail,
   testTopicSubscription,
 } from "../notificationService";
 
-const SettingsScreen = () => {
+const Notification = ({ visible, onClose }) => {
   const [rssFeeds, setRssFeeds] = useState({});
   const [preferences, setPreferences] = useState({});
   const [loading, setLoading] = useState(true);
@@ -221,11 +220,22 @@ const SettingsScreen = () => {
   };
 
   if (loading) {
-    <Loading />;
+    return <Loading />;
   }
 
   return (
-    <View style={styles.container}>
+    <Modal animationType="slide"
+      backdropColor="#0c1a33"
+      onRequestClose={onClose}
+      visible={visible} style={styles.container}>
+      <View style={styles.headerPrev}>
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={onClose}
+        >
+          <Ionicons name="close" size={28} color="#fff" />
+        </TouchableOpacity>
+      </View>
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Notification Settings</Text>
@@ -239,12 +249,13 @@ const SettingsScreen = () => {
 
         {renderCategorySection("news", "News")}
         {renderCategorySection("reviews", "Reviews")}
+        {renderCategorySection("esports", "Esports")}
         {renderCategorySection("hardware", "Hardware")}
 
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.testButton}
-            onPress={testNotificationWithThumbnail}
+            onPress={testNotification}
           >
             <Ionicons name="notifications" size={20} color="#ffffff" />
             <Text style={styles.testButtonText}>Test Local Notification</Text>
@@ -264,7 +275,7 @@ const SettingsScreen = () => {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </Modal>
   );
 };
 
@@ -272,21 +283,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#0c1a33",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#0c1a33",
-  },
-  loadingText: {
-    color: "#779bdd",
-    marginTop: 10,
-    fontSize: 16,
+    zIndex: 1000,
   },
   scrollView: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingVertical: 50,
   },
   header: {
     paddingVertical: 30,
@@ -400,6 +402,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(81, 105, 150, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerPrev: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    top: 50,
+    right: 10,
+    zIndex: 1000,
+  },
 });
 
-export default SettingsScreen;
+export default Notification;

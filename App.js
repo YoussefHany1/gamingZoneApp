@@ -1,17 +1,19 @@
-// import { StatusBar } from "expo-status-bar";
-import { StyleSheet, View } from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+// import { StyleSheet, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons } from "@expo/vector-icons"; // أيقونات جاهزة من Expo
+import { Ionicons } from "@expo/vector-icons";
 // import { BlurView } from "expo-blur";
-import NewsScreen from "./screens/News";
-import HomeScreen from "./screens/Home";
-import SettingsScreen from "./screens/Settings";
+import HomeScreen from "./screens/HomeScreen";
+import NewsScreen from "./screens/NewsScreen";
+import GamesScreen from "./screens/GamesScreen";
+import SettingsScreen from "./screens/SettingsScreen";
 import { useEffect, useState } from "react";
 import messaging from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
-import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { auth } from "./firebase";
 import {
   saveFCMToken,
@@ -39,6 +41,14 @@ function NewsStack() {
   );
 }
 
+function GamesStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="GamesScreen" component={GamesScreen} />
+    </Stack.Navigator>
+  );
+}
+
 function SettingsStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -50,31 +60,28 @@ function SettingsStack() {
 function App() {
   const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    // Set up authentication state listener
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        console.log("✅ User authenticated:", user.uid);
-        setUser(user);
-
-        // Initialize FCM and sync preferences
-        try {
-          await initFcm(user.uid);
-        } catch (error) {
-          console.error("❌ Failed to initialize FCM:", error);
-        }
-      } else {
-        console.log("❌ User not authenticated, signing in anonymously...");
-        try {
-          await signInAnonymously(auth);
-        } catch (error) {
-          console.error("❌ Failed to sign in anonymously:", error);
-        }
+useEffect(() => {
+  const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      console.log("✅ User authenticated:", user.uid);
+      setUser(user);
+      try {
+        await initFcm(user.uid);
+      } catch (error) {
+        console.error("❌ Failed to initialize FCM:", error);
       }
-    });
+    } else {
+      console.log("❌ User not authenticated, signing in anonymously...");
+      try {
+        await signInAnonymously(auth);
+      } catch (error) {
+        console.error("❌ Failed to sign in anonymously:", error);
+      }
+    }
+  });
 
-    return () => unsubscribeAuth();
-  }, []);
+  return () => unsubscribeAuth();
+}, []);
 
   const initFcm = async (userId) => {
     try {
@@ -214,81 +221,86 @@ function App() {
   };
 
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          // animation: "shift",
-          tabBarStyle: {
-            // backgroundColor: "#0c1a33",
-            position: "absolute",
-            // left: 20,
-            right: 0,
-            bottom: 20,
-            height: 60,
-            width: "70%",
-            alignSelf: "center",
-            borderRadius: 30,
+    <SafeAreaProvider>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0c1a33' }} edges={['right', 'bottom', 'left']}>
+        <StatusBar style="light" translucent={true} />
+        <NavigationContainer>
+          <Tab.Navigator
+            screenOptions={({ route }) => ({
+              headerShown: false,
+              tabBarStyle: {
+                position: "absolute",
+                // bottom: 20,
+                left: "15%",      // يضمن أن الـ bar يكون في المنتصف
+                right: "15%",     // نفس المسافة من الجانبين
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: "rgba(9, 9, 44, 0.6)",
+                borderWidth: 0,
+                borderTopWidth: 0,
+                // borderColor: "#040d1b",
+                // تظليل
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.15,
+                shadowRadius: 10,
+                elevation: 8,
+                alignSelf: "center",
+                alignItems: "center",
+                alignContent: "center",
+              },
+              // tabBarBackground: () => (
+              //   <View
+              //     style={[
+              //       StyleSheet.absoluteFill,
+              //       { overflow: "hidden", borderRadius: 70 },
+              //     ]}
+              //   >
+              //     <BlurView
+              //       tint="dark"
+              //       experimentalBlurMethod="dimezisBlurView"
+              //       intensity={70}
+              //       style={StyleSheet.absoluteFill}
+              //     />
+              //   </View>
+              // ),
+              tabBarActiveTintColor: "#779bdd",
+              tabBarInactiveTintColor: "#779bdd",
+              tabBarIcon: ({ focused, color, size }) => {
+                let iconName;
 
-            backgroundColor: "rgba(9, 9, 44, 0.5)",
-            borderWidth: 1,
-            borderColor: "#040d1b",
-            paddingHorizontal: 10,
-            // Shadow for iOS
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.1,
-            shadowRadius: 10,
-            // Elevation for Android
-            elevation: 8,
-          },
-          // tabBarBackground: () => (
-          //   <View
-          //     style={[
-          //       StyleSheet.absoluteFill,
-          //       { overflow: "hidden", borderRadius: 70 },
-          //     ]}
-          //   >
-          //     <BlurView
-          //       tint="dark"
-          //       experimentalBlurMethod="dimezisBlurView"
-          //       intensity={70}
-          //       style={StyleSheet.absoluteFill}
-          //     />
-          //   </View>
-          // ),
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName;
+                if (route.name === "Home") {
+                  iconName = focused ? "home" : "home-outline";
+                } else if (route.name === "News") {
+                  iconName = focused ? "newspaper" : "newspaper-outline";
+                } else if (route.name === "Settings") {
+                  iconName = focused ? "settings" : "settings-outline";
+                } else if (route.name === "Games") {
+                  iconName = focused ? "game-controller" : "game-controller-outline";
+                }
 
-            if (route.name === "Home") {
-              iconName = focused ? "home" : "home-outline";
-            } else if (route.name === "News") {
-              iconName = focused ? "newspaper" : "newspaper-outline";
-            } else if (route.name === "Settings") {
-              iconName = focused ? "settings" : "settings-outline";
-            }
-
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: "#779bdd",
-          tabBarInactiveTintColor: "#779bdd",
-        })}
-      >
-        <Tab.Screen name="Home" component={HomeStack} />
-        <Tab.Screen name="News" component={NewsStack} />
-        <Tab.Screen name="Settings" component={SettingsStack} />
-      </Tab.Navigator>
-    </NavigationContainer>
+                return <Ionicons name={iconName} size={size} color={color} />;
+              },
+            })}
+          >
+            <Tab.Screen name="Home" component={HomeStack} />
+            <Tab.Screen name="News" component={NewsStack} />
+            <Tab.Screen name="Games" component={GamesStack} />
+            <Tab.Screen name="Settings" component={SettingsStack} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: 30,
-    flex: 1,
-    width: "100%",
-    backgroundColor: "#0c1a33",
-  },
-});
+// const styles = StyleSheet.create({
+//   container: {
+//     borderRadius: 30,
+//     flex: 1,
+//     width: "100%",
+//     backgroundColor: "#0c1a33",
+//   },
+// });
 
 export default App;
