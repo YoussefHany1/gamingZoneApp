@@ -7,17 +7,28 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import Notification from "../components/Notification";
+import { signOut } from 'firebase/auth';
+import { auth } from '../firebase';
+import { useNavigation } from '@react-navigation/native';
 
 function SettingsScreen() {
+  const navigation = useNavigation();
   const [notificationModal, setNotificationModal] = useState(false);
-
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      console.log('✅ User signed out');
+      // onAuthStateChanged سيتكفل بالباقي
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
+    }
+  };
   return (
     <>
       <SafeAreaView style={styles.container}>
         <TouchableOpacity
           style={styles.categoryHeader}
-          onPress={() => setNotificationModal(true)}
+          onPress={() => navigation.navigate('NotificationSettings')}
         >
           <View style={styles.categoryHeaderLeft}>
             <Ionicons
@@ -28,15 +39,11 @@ function SettingsScreen() {
             />
             <Text style={styles.categoryTitle}>Notification Settings</Text>
           </View>
-          <Notification
-            visible={notificationModal}
-            onClose={() => setNotificationModal(false)}
-          />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.categoryHeader}
-          onPress={() => setNotificationModal(true)}
+          onPress={() => navigation.navigate('Profile')}
         >
           <View style={styles.categoryHeaderLeft}>
             <Ionicons
@@ -51,7 +58,7 @@ function SettingsScreen() {
 
         <TouchableOpacity
           style={styles.categoryHeader}
-          onPress={() => setNotificationModal(true)}
+          onPress={console.log("Pressed")}
         >
           <View style={styles.categoryHeaderLeft}>
             <Ionicons
@@ -66,7 +73,7 @@ function SettingsScreen() {
 
         <TouchableOpacity
           style={styles.categoryHeader}
-          onPress={() => setNotificationModal(true)}
+          onPress={console.log("Pressed")}
         >
           <View style={styles.categoryHeaderLeft}>
             <Ionicons
@@ -76,6 +83,22 @@ function SettingsScreen() {
               style={styles.chevronIcon}
             />
             <Text style={styles.categoryTitle}>Feedback</Text>
+          </View>
+        </TouchableOpacity>
+        {/* <Button title="تسجيل الخروج" onPress={handleSignOut} /> */}
+
+        <TouchableOpacity
+          style={[styles.categoryHeader, styles.categoryHeaderSignout]}
+          onPress={handleSignOut}
+        >
+          <View style={styles.categoryHeaderLeft}>
+            <Ionicons
+              name="log-out-outline"
+              size={20}
+              color="#779bdd"
+              style={styles.chevronIcon}
+            />
+            <Text style={styles.signout}>Sign Out</Text>
           </View>
         </TouchableOpacity>
       </SafeAreaView>
@@ -110,10 +133,18 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#ffffff",
+    color: "#fff",
     marginRight: 8,
   },
-
+  signout: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "red",
+    marginRight: 8,
+  },
+  categoryHeaderSignout: {
+    backgroundColor: "rgba(221, 119, 119, 0.2)",
+  }
 });
 
 export default SettingsScreen;

@@ -49,7 +49,7 @@ async function fetchGameById(id) {
     if (!id) throw new Error("fetchGameById: missing id");
     const token = await getAppToken();
     const body = `
-    fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, summary, hypes, platforms, collections, cover.url, dlcs, game_modes, game_status, game_type, genres, language_supports, multiplayer_modes, remakes, remasters, screenshots.image_id, storyline, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.slug, similar_games.cover.image_id, collections.games.*;
+    fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, summary, hypes, platforms, collections, cover.url, dlcs, game_modes, game_status, game_type, genres, language_supports, multiplayer_modes, remakes, remasters, screenshots.image_id, storyline, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.slug, similar_games.cover.image_id, collections.games.name, collections.games.cover.image_id;
     where id = ${id};
     limit 1;
   `;
@@ -72,11 +72,11 @@ async function fetchGameById(id) {
 }
 
 function GameDetails({ route, navigation }) {
-    const { gameID: initialGameID } = route.params; // جلب الـ ID من الـ route
+    const { gameID: initialGameID } = route.params;
     const [game, setGame] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [currentId, setCurrentId] = useState(initialGameID); // استخدام الـ ID المبدئي
+    const [currentId, setCurrentId] = useState(initialGameID);
     const mountedRef = useRef(true);
     const scrollRef = useRef(null);
 
@@ -94,7 +94,6 @@ function GameDetails({ route, navigation }) {
     }, [initialGameID]);
 
     useEffect(() => {
-        // تم إزالة الشرط (if !visible)
         if (!currentId) {
             setError("No game ID provided");
             setGame(null);
@@ -162,7 +161,7 @@ function GameDetails({ route, navigation }) {
         );
         images.push(...screenshotImages);
     }
-    console.log(images);
+    console.log(game);
     return (
         <SafeAreaView
             edges={['right', 'bottom', 'left']}
@@ -388,6 +387,35 @@ function GameDetails({ route, navigation }) {
                                 })()}
                             </View>
                         )}
+                        {/* Collection section */}
+                        {game.collections?.[0]?.games &&
+                            <View style={{ marginTop: 20 }}>
+                                <Text style={styles.detailsHeader}>collections Games</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                                    {game.collections?.[0]?.games.map((g) => (
+                                        <TouchableOpacity
+                                            key={g.id}
+                                            style={styles.similarCard}
+                                            onPress={() => {
+                                                setCurrentId(g.id);
+                                            }}
+                                        >
+                                            <Image
+                                                style={styles.similarImg}
+                                                source={
+                                                    g?.cover?.image_id
+                                                        ? { uri: `https://images.igdb.com/igdb/image/upload/t_cover_small/${g.cover.image_id}.jpg` }
+                                                        : require("../assets/image-not-found.webp")
+                                                }
+                                            />
+                                            <Text style={styles.similarName} numberOfLines={2}>
+                                                {g.name}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        }
                         {/* Similar Games section */}
                         {game?.similar_games && game.similar_games.length > 0 && (
                             <View style={{ marginTop: 20 }}>
@@ -439,6 +467,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#0c1a33",
+        marginBottom: 20
     },
     backgroundContainer: {
         flexDirection: "row",
@@ -468,7 +497,6 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
-
     image: {
         width: "100%",
         height: 350,

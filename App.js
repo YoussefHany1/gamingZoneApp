@@ -9,10 +9,13 @@ import NewsScreen from "./screens/NewsScreen";
 import GamesScreen from "./screens/GamesScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import GameDetails from "./components/GameDetails";
+import NotificationSettings from "./components/Notification";
+import Profile from "./components/Profile";
 import { useEffect, useState } from "react";
 import messaging from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
-import { onAuthStateChanged, signInAnonymously } from "firebase/auth";
+// --- تعديلات Firebase Auth ---
+import { onAuthStateChanged } from "firebase/auth"; // إزالة signInAnonymously
 import { auth } from "./firebase";
 import {
   saveFCMToken,
@@ -20,6 +23,12 @@ import {
   syncUserPreferences,
 } from "./notificationService";
 import "./firebase";
+
+// --- شاشات جديدة ---
+import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen'; // إضافة هذا السطر
+import Loading from './Loading';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -53,18 +62,71 @@ function SettingsStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
+      <Stack.Screen name="Profile" component={Profile} />
     </Stack.Navigator>
   );
 }
 
+function MainAppTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarStyle: {
+          position: "absolute",
+          backgroundColor: "#00001c",
+          borderWidth: 0,
+          borderTopWidth: 0,
+          paddingTop: 5,
+          alignItems: "center",
+        },
+        tabBarActiveTintColor: "#779bdd",
+        tabBarInactiveTintColor: "#779bdd",
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName;
+
+          if (route.name === "Home") {
+            iconName = focused ? "home" : "home-outline";
+          } else if (route.name === "News") {
+            iconName = focused ? "newspaper" : "newspaper-outline";
+          } else if (route.name === "Settings") {
+            iconName = focused ? "settings" : "settings-outline";
+          } else if (route.name === "Games") {
+            iconName = focused ? "game-controller" : "game-controller-outline";
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeStack} />
+      <Tab.Screen name="News" component={NewsStack} />
+      <Tab.Screen name="Games" component={GamesStack} />
+      <Tab.Screen name="Settings" component={SettingsStack} />
+    </Tab.Navigator>
+  );
+}
+function AuthStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    </Stack.Navigator>
+  );
+}
+
+
 function App() {
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // --- إضافة حالة التحميل ---
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
       if (user) {
         console.log("✅ User authenticated:", user.uid);
-        setUser(user);
         try {
           await initFcm(user.uid);
         } catch (error) {
@@ -72,17 +134,14 @@ function App() {
         }
       } else {
         console.log("❌ User not authenticated, signing in anonymously...");
-        try {
-          await signInAnonymously(auth);
-        } catch (error) {
-          console.error("❌ Failed to sign in anonymously:", error);
-        }
+
       }
+      setLoading(false);
     });
 
     return () => unsubscribeAuth();
   }, []);
-
+  console.log(user)
   const initFcm = async (userId) => {
     try {
       // Request OS notification permission (Android 13+ & iOS)
@@ -179,7 +238,7 @@ function App() {
             const title =
               remoteMessage?.notification?.title ||
               remoteMessage?.data?.title ||
-              "📰 خبر جديد";
+              "📰 New News!";
             const body =
               remoteMessage?.notification?.body ||
               remoteMessage?.data?.body ||
@@ -220,45 +279,23 @@ function App() {
     }
   };
 
+  if (loading) {
+    return <Loading />;
+  }
+
+
   return (
     <SafeAreaProvider>
       <StatusBar style="light" translucent={true} />
       <NavigationContainer>
-        <Tab.Navigator
-          screenOptions={({ route }) => ({
-            headerShown: false,
-            tabBarStyle: {
-              position: "absolute",
-              backgroundColor: "#00001c",
-              borderWidth: 0,
-              borderTopWidth: 0,
-              paddingTop: 5,
-              alignItems: "center",
-            },
-            tabBarActiveTintColor: "#779bdd",
-            tabBarInactiveTintColor: "#779bdd",
-            tabBarIcon: ({ focused, color, size }) => {
-              let iconName;
-
-              if (route.name === "Home") {
-                iconName = focused ? "home" : "home-outline";
-              } else if (route.name === "News") {
-                iconName = focused ? "newspaper" : "newspaper-outline";
-              } else if (route.name === "Settings") {
-                iconName = focused ? "settings" : "settings-outline";
-              } else if (route.name === "Games") {
-                iconName = focused ? "game-controller" : "game-controller-outline";
-              }
-
-              return <Ionicons name={iconName} size={size} color={color} />;
-            },
-          })}
-        >
-          <Tab.Screen name="Home" component={HomeStack} />
-          <Tab.Screen name="News" component={NewsStack} />
-          <Tab.Screen name="Games" component={GamesStack} />
-          <Tab.Screen name="Settings" component={SettingsStack} />
-        </Tab.Navigator>
+        {/* if user not signed in register screen will show up */}
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {user ? (
+            <Stack.Screen name="MainApp" component={MainAppTabs} />
+          ) : (
+            <Stack.Screen name="Auth" component={AuthStack} />
+          )}
+        </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
   );

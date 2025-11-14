@@ -2,12 +2,12 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  Modal,
   StyleSheet,
   ScrollView,
   Switch,
   TouchableOpacity,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Loading from "../Loading";
 import { Ionicons } from "@expo/vector-icons";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -22,7 +22,7 @@ import {
   testTopicSubscription,
 } from "../notificationService";
 
-const Notification = ({ visible, onClose }) => {
+const Notification = () => {
   const [rssFeeds, setRssFeeds] = useState({});
   const [preferences, setPreferences] = useState({});
   const [loading, setLoading] = useState(true);
@@ -224,25 +224,17 @@ const Notification = ({ visible, onClose }) => {
   }
 
   return (
-    <Modal animationType="slide"
-      backdropColor="#0c1a33"
-      onRequestClose={onClose}
-      visible={visible} style={styles.container}>
-      <View style={styles.headerPrev}>
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={onClose}
-        >
-          <Ionicons name="close" size={28} color="#fff" />
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={28} color="#fff" />
         </TouchableOpacity>
       </View>
       <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
+        <View style={styles.Textheader}>
           <Text style={styles.headerTitle}>Notification Settings</Text>
           <Text style={styles.headerSubtitle}>
-            Choose which news sources you want to receive notifications from
-          </Text>
-          <Text style={styles.headerSubtitle}>
+            Choose which news sources you want to receive notifications from{"\n"}
             Make sure to allow notifications for this app
           </Text>
         </View>
@@ -275,7 +267,7 @@ const Notification = ({ visible, onClose }) => {
           </Text>
         </View>
       </ScrollView>
-    </Modal>
+    </SafeAreaView>
   );
 };
 
@@ -283,21 +275,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#0c1a33",
+  },
+  header: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    top: 50,
+    left: 10,
     zIndex: 1000,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(81, 105, 150, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   scrollView: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingVertical: 50,
   },
-  header: {
-    paddingVertical: 30,
+  Textheader: {
     paddingTop: 60,
+    marginBottom: 20,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#ffffff",
+    color: "#fff",
     marginBottom: 8,
   },
   headerSubtitle: {
