@@ -1,45 +1,72 @@
-import React, { useState, useEffect } from 'react';
 import {
     View,
+    ScrollView,
     Text,
     StyleSheet,
     TextInput,
-    Button,
     Image,
     Alert,
     TouchableOpacity,
-    SafeAreaView,
-    ActivityIndicator,
 } from 'react-native';
-import { auth } from '../firebase';
-import { signOut, updateProfile } from 'firebase/auth';
+import { useState, useEffect } from 'react';
+import { SafeAreaView } from "react-native-safe-area-context";
+import auth from '@react-native-firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
-// --- إزالة: import storage from '@react-native-firebase/storage'; ---
 import firestore from '@react-native-firebase/firestore';
+import DateTimePicker from "@react-native-community/datetimepicker";
+import RNPickerSelect from 'react-native-picker-select';
+import Loading from '../Loading';
 
-// --- !! أدخل بيانات Cloudinary الخاصة بك هنا !! ---
+// Cloudinary
 const CLOUDINARY_CLOUD_NAME = 'dewusw0db';
 const CLOUDINARY_API_KEY = '848952698676177';
-const CLOUDINARY_UPLOAD_PRESET = 'Gaming Zone'; // (الذي جعلته Unsigned)
-// ---
+const CLOUDINARY_UPLOAD_PRESET = 'Gaming Zone';
 
 function SettingsScreen() {
     const [name, setName] = useState('');
     const [imageUri, setImageUri] = useState(null);
+    const [dob, setDob] = useState('');
+    const [platform, setPlatform] = useState('');
+    const [showPicker, setShowPicker] = useState(false);
     const [loading, setLoading] = useState(false);
-    const currentUser = auth.currentUser;
+    const [currentUser, setCurrentUser] = useState(auth().currentUser);
 
     useEffect(() => {
         if (currentUser) {
+            // جلب البيانات الأساسية من Auth (سريع)
             setName(currentUser.displayName || '');
             setImageUri(currentUser.photoURL || null);
+
+            // جلب كل البيانات (بما فيها تاريخ الميلاد) من Firestore
+            const fetchUserData = async () => {
+                try {
+                    const userDocument = await firestore()
+                        .collection('users')
+                        .doc(currentUser.uid)
+                        .get();
+
+                    if (userDocument.exists) {
+                        const userData = userDocument.data();
+                        // تحديث الـ State ببيانات Firestore (هي الأصح)
+                        setName(userData.displayName || '');
+                        setImageUri(userData.photoURL || null);
+                        setDob(userData.dob || '');
+                        setPlatform(userData.platform || ''); // <-- تحميل تاريخ الميلاد
+                    }
+                } catch (error) {
+                    console.error("❌ Error fetching user data from Firestore:", error);
+                }
+            };
+
+            fetchUserData();
         }
     }, [currentUser]);
+    console.log(currentUser)
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('الصلاحيات مطلوبة', 'نحتاج إلى صلاحيات الوصول إلى الصور.');
+            Alert.alert('images permissions are required.', 'We need access to the images.');
             return;
         }
 
@@ -48,9 +75,6 @@ function SettingsScreen() {
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.7,
-            // --- إضافة مهمة: تحويل الصورة إلى Base64 ---
-            // (Cloudinary API يفضل التعامل مع base64 أو file URI مباشرة)
-            // سنستخدم file URI، لكن تأكد أن result.assets[0].uri هو file URI
         });
 
         if (!result.canceled) {
@@ -58,10 +82,8 @@ function SettingsScreen() {
         }
     };
 
-    // --- (هذه هي الدالة التي تم تغييرها) ---
     const uploadImage = async (uri) => {
         if (!uri || !uri.startsWith('file://')) {
-            // إذا لم تتغير الصورة (URI هو رابط ويب)، لا تقم برفعها
             return uri;
         }
 
@@ -69,7 +91,7 @@ function SettingsScreen() {
         const data = new FormData();
         data.append('file', {
             uri: uri,
-            type: `image/${uri.split('.').pop()}`, // مثل 'image/jpeg'
+            type: `image/${uri.split('.').pop()}`,
             name: `profile.${uri.split('.').pop()}`,
         });
         data.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
@@ -93,103 +115,140 @@ function SettingsScreen() {
                 return json.secure_url; // 3. إرجاع الرابط الآمن
             } else {
                 console.error('❌ Cloudinary error:', json);
-                throw new Error('فشل رفع الصورة إلى Cloudinary');
+                throw new Error('Image upload to Cloudinary failed.');
             }
         } catch (e) {
             console.error('❌ Error uploading image:', e);
-            Alert.alert('خطأ', 'فشل رفع الصورة.');
-            throw e; // إيقاف العملية
+            Alert.alert('Error', 'Image upload failed.');
+            throw e;
         }
     };
 
-    // --- (دالة الحفظ تبقى كما هي - لا تحتاج أي تعديل) ---
     const handleSave = async () => {
         if (!currentUser) return;
 
         setLoading(true);
         try {
-            // 1. رفع الصورة (الدالة الجديدة ستُستخدم هنا)
+            // رفع الصورة أولاً (لو اتغيرت)
             const newPhotoURL = await uploadImage(imageUri);
 
-            // 2. تحديث ملف المصادقة (Auth)
-            await updateProfile(currentUser, {
+            // 1. تحديث ملف المصادقة (Auth) - بالاسم والصورة فقط
+            await currentUser.updateProfile({
                 displayName: name,
                 photoURL: newPhotoURL,
             });
 
-            // 3. تحديث ملف Firestore (للتزامن)
+            // 2. تحديث ملف Firestore (بكل البيانات)
             await firestore().collection('users').doc(currentUser.uid).update({
                 displayName: name,
                 photoURL: newPhotoURL,
+                dob: dob,
+                platform: platform,
             });
 
+            // تحديث الـ user state عشان يعكس التغييرات فوراً
+            setCurrentUser(auth().currentUser);
+
             setLoading(false);
-            Alert.alert('تم', 'تم تحديث بياناتك بنجاح.');
+            Alert.alert('Done!', 'Your data has been successfully updated.');
         } catch (error) {
             setLoading(false);
             console.error('❌ Error saving profile:', error);
-            Alert.alert('Error', 'فشل حفظ التغييرات.');
+            Alert.alert('Error!', 'The changes failed to save.');
         }
     };
 
     const handleSignOut = async () => {
         try {
-            await signOut(auth);
+            await auth().signOut();
             console.log('✅ User signed out');
         } catch (error) {
             console.error('❌ Sign out error:', error);
         }
     };
 
+    const handleChange = (event, selectedDate) => {
+        setShowPicker(false);
+        if (selectedDate) {
+            const isoDate = selectedDate.toISOString().split("T")[0]; // YYYY-MM-DD
+            setDob(isoDate);
+        }
+    };
+
     return (
         <SafeAreaView style={styles.container}>
-            <Text style={styles.title}>الإعدادات</Text>
-
-            <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
-                <Image
-                    style={styles.avatar}
-                    source={imageUri ? { uri: imageUri } : require('../assets/icon.png')}
-                />
-                <Text style={styles.changePicText}>تغيير الصورة</Text>
-            </TouchableOpacity>
-
-            <TextInput
-                style={styles.input}
-                placeholder="الاسم"
-                placeholderTextColor="#888"
-                value={name}
-                onChangeText={setName}
-            />
-
             {loading ? (
-                <ActivityIndicator size="large" color="#779bdd" />
+                <Loading />
             ) : (
-                <Button title="حفظ التغييرات" onPress={handleSave} color="#779bdd" />
+                <ScrollView style={styles.subContainer}>
+                    <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
+                        <Image
+                            style={styles.avatar}
+                            source={imageUri ? { uri: imageUri } : require('../assets/default_profile.png')}
+                        />
+                        <Text style={styles.changePicText}>Change your profile picture</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.label}>Your Name:</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Your Name"
+                        placeholderTextColor="#888"
+                        value={name}
+                        onChangeText={setName}
+                    />
+                    <Text style={styles.label}>Birthday:</Text>
+                    <TouchableOpacity onPress={() => setShowPicker(true)}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Date of Birth (YYYY-MM-DD)"
+                            placeholderTextColor="#888"
+                            value={dob}
+                            editable={false} // عشان المستخدم يضغط ويفتح الـ picker بدل الكتابة
+                        />
+                    </TouchableOpacity>
+                    {showPicker && (
+                        <DateTimePicker
+                            mode="date"
+                            display={"default"}
+                            value={dob ? new Date(dob) : new Date()}
+                            onChange={handleChange}
+                        />
+                    )}
+                    <Text style={styles.label}>Choose your platform:</Text>
+                    <View style={styles.selectWrapper}>
+                        <RNPickerSelect
+                            value={platform}
+                            onValueChange={(itemValue, itemIndex) => setPlatform(itemValue)}
+                            items={[
+                                { label: 'PC', value: 'pc' },
+                                { label: 'Playstaion', value: 'playstaion' },
+                                { label: 'Xbox', value: 'xbox' },
+                                { label: 'Android', value: 'android' },
+                            ]}
+                        />
+                    </View>
+
+                    <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
+                        <Text style={styles.saveText}>Save Changes</Text>
+                    </TouchableOpacity>
+                    {/* <TouchableOpacity title="Sign Out" onPress={handleSignOut} color="#d9534f"> */}
+
+                    {/* </TouchableOpacity> */}
+                </ScrollView>
             )}
-
-            <View style={styles.separator} />
-
-            <Button title="تسجيل الخروج" onPress={handleSignOut} color="#d9534f" />
         </SafeAreaView>
     );
 }
 
 export default SettingsScreen;
 
-// ... (نفس الـ styles من الرد السابق)
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#0c1a33',
-        padding: 20,
-        alignItems: 'center',
     },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#fff',
-        marginBottom: 30,
-        marginTop: 20,
+    subContainer: {
+        padding: 20,
     },
     avatarContainer: {
         alignItems: 'center',
@@ -210,7 +269,7 @@ const styles = StyleSheet.create({
     },
     input: {
         width: '100%',
-        backgroundColor: '#1a2a47',
+        backgroundColor: "rgba(119, 155, 221, 0.2)",
         color: '#fff',
         padding: 15,
         borderRadius: 5,
@@ -220,4 +279,34 @@ const styles = StyleSheet.create({
     separator: {
         height: 40,
     },
+    container2: {
+        flex: 1,
+        paddingTop: 80,
+        paddingHorizontal: 20,
+    },
+    label: {
+        fontSize: 18,
+        fontWeight: "600",
+        marginBottom: 10,
+        color: "white",
+    },
+    selectWrapper: {
+        borderWidth: 1,
+        borderRadius: 8,
+        overflow: "hidden",
+        marginBottom: 20,
+        backgroundColor: "rgba(119, 155, 221, 0.2)",
+    },
+    saveBtn: {
+        backgroundColor: "#516996",
+        borderRadius: 12,
+        alignSelf: "center",
+        padding: 15
+    },
+    saveText: {
+        color: "#fff",
+        textAlign: "center",
+        fontSize: 18,
+        fontWeight: "600"
+    }
 });

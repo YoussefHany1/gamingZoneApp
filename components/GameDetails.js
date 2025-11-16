@@ -9,12 +9,15 @@ import {
     ScrollView,
     TouchableOpacity,
     Linking,
+    Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import YoutubePlayer from "react-native-youtube-iframe";
 import Loading from '../Loading'
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
 const CLIENT_ID = TWITCH_CLIENT_ID;
 const CLIENT_SECRET = TWITCH_CLIENT_SECRET;
@@ -80,12 +83,27 @@ function GameDetails({ route, navigation }) {
     const mountedRef = useRef(true);
     const scrollRef = useRef(null);
 
+    const [user, setUser] = useState();
+    const [authLoading, setAuthLoading] = useState(true);
+    const [isWanted, setIsWanted] = useState(false);
+    const [isPlayed, setIsPlayed] = useState(false);
+
     useEffect(() => {
         mountedRef.current = true;
         return () => {
             mountedRef.current = false;
         };
     }, []);
+
+    // --- 2. useEffect لمراقبة حالة المصادقة (كما هو ولكن مهم) ---
+    useEffect(() => {
+        const subscriber = auth().onAuthStateChanged((u) => {
+            setUser(u);
+            setAuthLoading(false);
+        });
+        return subscriber; // unsubscribe
+    }, []);
+
 
     useEffect(() => {
         if (initialGameID && initialGameID !== currentId) {
@@ -103,6 +121,10 @@ function GameDetails({ route, navigation }) {
         let cancelled = false;
         setLoading(true);
         setError(null);
+
+        // --- إضافة: إعادة تعيين الحالة عند تغيير اللعبة ---
+        // setIsWanted(false);
+        // setIsPlayed(false);
 
         fetchGameById(currentId)
             .then((g) => {
@@ -129,7 +151,67 @@ function GameDetails({ route, navigation }) {
         return () => {
             cancelled = true;
         };
-    }, [currentId]);
+    }, [currentId]);// <-- سيعمل هذا الـ effect عند تغيير currentId
+    useEffect(() => {
+        // --- 4. التعديل الأهم: ننتظر انتهاء تحميل المصادقة ---
+        if (authLoading || !user || !currentId) {
+            // لو المصادقة لسة بتحمل، أو مفيش مستخدم، أو مفيش لعبة، منعملش حاجة
+            // ونضمن إن الأزرار مطفية
+            setIsWanted(false);
+            setIsPlayed(false);
+            return; // <-- أهم سطر
+        }
+
+        const gameIdStr = String(currentId);
+
+        // 1. مراقبة قائمة "Want"
+        const wantRef = firestore()
+            .collection('users')
+            .doc(user.uid)
+            .collection('wantList')
+            .doc(gameIdStr);
+
+        const unsubWant = wantRef.onSnapshot(
+            (doc) => { // <-- دالة onNext
+                if (mountedRef.current) {
+                    // --- التعديل هنا ---
+                    // تحقق أن 'doc' موجود قبل قراءة 'doc.exists'
+                    setIsWanted(doc && doc.exists);
+                }
+            },
+            (error) => { // <-- دالة onError (مهمة)
+                console.error("Firestore (wantList) snapshot error: ", error);
+                // يمكنك إضافة منطق هنا لإبلاغ المستخدم بالخطأ
+            }
+        );
+
+        // 2. مراقبة قائمة "Played"
+        const playedRef = firestore()
+            .collection('users')
+            .doc(user.uid)
+            .collection('playedList')
+            .doc(gameIdStr);
+
+        const unsubPlayed = playedRef.onSnapshot(
+            (doc) => { // <-- دالة onNext
+                if (mountedRef.current) {
+                    // --- التعديل هنا ---
+                    // تحقق أن 'doc' موجود قبل قراءة 'doc.exists'
+                    setIsPlayed(doc && doc.exists);
+                }
+            },
+            (error) => { // <-- دالة onError (مهمة)
+                console.error("Firestore (playedList) snapshot error: ", error);
+            }
+        );
+
+        // إيقاف المراقبة عند الخروج من الشاشة أو تغيير اللعبة
+        return () => {
+            unsubWant();
+            unsubPlayed();
+        };
+    }, [currentId, user, authLoading]); // <-- يعمل عند تغيير اللعبة أو المستخدم
+
 
     function getRatingColor(rating) {
         if (rating <= 2) return "#8B0000";
@@ -149,8 +231,75 @@ function GameDetails({ route, navigation }) {
         12: require("../assets/play-store.png"),
         10: require("../assets/apple-store.png"),
     };
-    let images = [];
 
+    // --- دوال جديدة للضغط على الأزرار ---
+    const getGameData = () => {
+        if (!game) return null;
+        return {
+            id: game.id,
+            name: game.name,
+            cover_image_id: game.cover?.image_id || null,
+            release_date: game.release_dates?.[0]?.human || "N/A",
+        };
+    };
+
+    const handleWant = async () => {
+        if (authLoading) return; // لا تفعل شيئاً إذا كانت المصادقة لا تزال قيد التحميل
+        // -----------------------
+
+        if (!user) { // الآن هذا السطر آمن
+            Alert.alert("Login required", "Please log in, to be able to add games to your lists.");
+            return;
+        }
+        if (!game) return;
+
+        const gameIdStr = String(game.id);
+        const gameData = getGameData();
+        const wantRef = firestore().collection('users').doc(user.uid).collection('wantList').doc(gameIdStr);
+        const playedRef = firestore().collection('users').doc(user.uid).collection('playedList').doc(gameIdStr);
+
+        if (isWanted) {
+            // إذا كانت موجودة، احذفها
+            await wantRef.delete();
+        } else {
+            // إذا لم تكن موجودة، أضفها
+            await wantRef.set(gameData);
+            // وإذا كانت في قائمة Played، احذفها من هناك
+            if (isPlayed) {
+                await playedRef.delete();
+            }
+        }
+    };
+
+    const handlePlayed = async () => {
+        if (authLoading) return; // لا تفعل شيئاً إذا كانت المصادقة لا تزال قيد التحميل
+        // -----------------------
+
+        if (!user) { // الآن هذا السطر آمن
+            Alert.alert("Login required", "Please log in, to be able to add games to your lists.");
+            return;
+        }
+        if (!game) return;
+
+        const gameIdStr = String(game.id);
+        const gameData = getGameData();
+        const wantRef = firestore().collection('users').doc(user.uid).collection('wantList').doc(gameIdStr);
+        const playedRef = firestore().collection('users').doc(user.uid).collection('playedList').doc(gameIdStr);
+
+        if (isPlayed) {
+            // إذا كانت موجودة، احذفها
+            await playedRef.delete();
+        } else {
+            // إذا لم تكن موجودة، أضفها
+            await playedRef.set(gameData);
+            // وإذا كانت في قائمة Want، احذفها من هناك
+            if (isWanted) {
+                await wantRef.delete();
+            }
+        }
+    };
+
+    let images = [];
     if (!loading && !error && game?.cover?.image_id) {
         images.push(`https://images.igdb.com/igdb/image/upload/t_720p/${game.cover.image_id}.jpg`);
     }
@@ -168,7 +317,7 @@ function GameDetails({ route, navigation }) {
             style={styles.container}
         >
             <View style={styles.header}>
-                <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
+                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back" size={28} color="#fff" />
                 </TouchableOpacity>
             </View>
@@ -189,14 +338,17 @@ function GameDetails({ route, navigation }) {
 
             {!loading && game && (
                 <ScrollView ref={scrollRef} style={styles.container} showsVerticalScrollIndicator={false}>
-                    <Image
-                        style={styles.image}
-                        source={
-                            game.cover?.image_id
-                                ? { uri: `https://images.igdb.com/igdb/image/upload/t_720p/${game.cover.image_id}.jpg` }
-                                : require("../assets/image-not-found.webp")
-                        }
-                    />
+                    {game.cover?.image_id ?
+                        <Image
+                            style={styles.image}
+                            source={{ uri: `https://images.igdb.com/igdb/image/upload/t_720p/${game.cover?.image_id}.jpg` }}
+                        />
+                        : <Image
+                            style={styles.image}
+                            source={require("../assets/image-not-found.webp")}
+                        />
+                    }
+
                     {/* {game.cover.image_id &&
                         images.push(`https://images.igdb.com/igdb/image/upload/t_720p/${game.cover.image_id}.jpg`)
                     }
@@ -260,18 +412,18 @@ function GameDetails({ route, navigation }) {
                         </View>
                         {/* Buttons section */}
                         <View style={styles.playContainer}>
-                            <TouchableOpacity style={styles.wantBtn}>
+                            <TouchableOpacity style={[styles.wantBtn, isWanted && styles.wantBtnActive]} onPress={handleWant}>
                                 <Text style={styles.wantBtnText}>
-                                    <Ionicons name="bookmark" size={20} color="white" /> Want
+                                    <Ionicons name={isWanted ? "bookmark" : "bookmark-outline"} size={20} color="white" /> Want
                                 </Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.playedBtn}>
+                            <TouchableOpacity style={[styles.playedBtn, isPlayed && styles.playedBtnActive]} onPress={handlePlayed}>
                                 <Text style={styles.playedBtnText}>
-                                    <Ionicons name="checkmark-sharp" size={24} color="white" /> Played
+                                    <Ionicons name={isPlayed ? "checkmark-done" : "checkmark-sharp"} size={24} color="white" /> Played
                                 </Text>
                             </TouchableOpacity>
                         </View>
-
+                        {/* About Section */}
                         <View>
                             <Text style={styles.detailsHeader}>About</Text>
                             <Text style={styles.summary}>{game.summary}</Text>
@@ -390,7 +542,7 @@ function GameDetails({ route, navigation }) {
                         {/* Collection section */}
                         {game.collections?.[0]?.games &&
                             <View style={{ marginTop: 20 }}>
-                                <Text style={styles.detailsHeader}>collections Games</Text>
+                                <Text style={styles.detailsHeader}>Game series</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                                     {game.collections?.[0]?.games.map((g) => (
                                         <TouchableOpacity
@@ -489,7 +641,7 @@ const styles = StyleSheet.create({
         left: 10,
         zIndex: 1000,
     },
-    closeButton: {
+    backButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
@@ -506,14 +658,11 @@ const styles = StyleSheet.create({
     content: {
         padding: 15,
         paddingBottom: 40,
-        // width: "100%",
     },
     title: {
         color: "white",
         fontSize: 24,
         fontWeight: "bold",
-        // lineHeight: 32,
-        // textAlign: "center",
     },
     releaseDate: {
         color: "gray",
@@ -527,10 +676,8 @@ const styles = StyleSheet.create({
     platformContainer: {
         flexDirection: "row",
         alignItems: "center",
-        // height: "100%",
         flexWrap: "wrap",
         flex: 1,
-        // justifyContent: "flex-end"
     },
     platform: {
         color: "white",
@@ -545,7 +692,6 @@ const styles = StyleSheet.create({
     },
     rating: {
         color: "white",
-        // backgroundColor: "#516996",
         textAlign: "center",
         borderRadius: 50,
         textAlignVertical: "center",
@@ -568,7 +714,7 @@ const styles = StyleSheet.create({
     storesBtn: {
         backgroundColor: "#516996",
         borderWidth: 1,
-        borderColor: "gray",
+        borderColor: "#779bdd",
         borderRadius: 12,
         marginRight: 10,
         width: 60,
@@ -596,6 +742,9 @@ const styles = StyleSheet.create({
         marginRight: 10,
         padding: 8
     },
+    wantBtnActive: {
+        backgroundColor: "#FF8C00", // لون برتقالي للإشارة للتفعيل
+    },
     wantBtnText: {
         color: "white",
         textAlign: "center",
@@ -608,6 +757,10 @@ const styles = StyleSheet.create({
         borderColor: "#516996",
         borderRadius: 8,
         padding: 8
+    },
+    playedBtnActive: {
+        backgroundColor: "#32CD32", // لون أخضر للإشارة للتفعيل
+        borderColor: "#32CD32",
     },
     playedBtnText: {
         color: "white",

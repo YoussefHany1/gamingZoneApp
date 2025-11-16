@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, ScrollView } from "react-native"
 import { useState, useEffect } from "react"
+
 function FreeGames({ data }) {
     const [game, setGame] = useState(data);
     // console.log(game.nextGames)

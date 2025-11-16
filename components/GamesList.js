@@ -169,10 +169,16 @@ export default function GamesList({ endpoint, query }) {
       {!loading && !error && games.length > 0 && (
         <FlatList
           data={games}
-          horizontal={true}
+          horizontal={!!endpoint}
+          numColumns={query ? 2 : 1}
+          key={query ? 'grid' : 'list'}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderGame}
-          contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 5 }}
+          contentContainerStyle={{
+            paddingVertical: 12,
+            paddingHorizontal: 5,
+            ...(query && { alignItems: 'center' }),
+          }}
         />
       )}
     </View>
@@ -180,7 +186,7 @@ export default function GamesList({ endpoint, query }) {
 }
 
 const styles = StyleSheet.create({
-  container: { // إضافة margin للـ container لفصل القوائم
+  container: {
     marginBottom: 10,
   },
   header: { fontSize: 28, color: 'white', margin: 12, fontWeight: 'bold' },

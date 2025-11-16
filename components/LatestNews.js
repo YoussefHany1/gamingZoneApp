@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   },
   par: {
     fontSize: 12,
-    color: "#b7becb",
+    color: "#779bdd",
     marginRight: 12
   },
   thumbnail: {

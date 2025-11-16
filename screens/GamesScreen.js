@@ -46,47 +46,51 @@ function GamesScreen() {
     return (
         <>
             <SafeAreaView style={styles.container}>
-                <ScrollView >
-                    {loading ? (
-                        <Loading />
-                    ) : (
-                        <View style={{ marginBottom: 60 }}>
-                            <Text style={styles.header}>Find Your Next Gaming Adventure</Text>
-                            <View style={styles.searchContainer}>
-                                <TextInput
-                                    style={styles.searchBar}
-                                    placeholder="Search for games..."
-                                    placeholderTextColor="#999"
-                                    value={searchQuery}
-                                    onChangeText={handleSearchTextChange}
-                                    onSubmitEditing={() => setSubmittedQuery(searchQuery)} // Activate search when pressing enter
-                                    returnKeyType="search"
-                                />
-                                {searchQuery.length > 0 && (
-                                    <TouchableOpacity style={styles.clearTextBtn} onPress={handleClearSearch}>
-                                        <Ionicons name="close-sharp" size={24} color="white" />
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                            {submittedQuery === '' ? (
-                                <>
-                                    {/* if search is empty show the defult lists */}
-                                    <FreeGames data={data} />
-                                    <GamesList endpoint="/popular" />
-                                    <GamesList endpoint="/recently-released" />
-                                    <GamesList endpoint="/top-rated" />
-                                    <GamesList endpoint="/coming-soon" />
-                                    <GamesList endpoint="/most-anticipated" />
-                                </>
-                            ) : (
-                                // if search not empty show search results
-                                <GamesList query={submittedQuery} />
+                {loading ? (
+                    <Loading />
+                ) : (
 
+                    <View  >
+                        {/* <Text style={styles.header}>Find Your Next Gaming Adventure</Text> */}
+                        <View style={styles.searchContainer}>
+                            <TextInput
+                                style={styles.searchBar}
+                                placeholder="Search for games..."
+                                placeholderTextColor="#999"
+                                value={searchQuery}
+                                onChangeText={handleSearchTextChange}
+                                onSubmitEditing={() => setSubmittedQuery(searchQuery)} // Activate search when pressing enter
+                                returnKeyType="search"
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity style={styles.clearTextBtn} onPress={handleClearSearch}>
+                                    <Ionicons name="close-sharp" size={24} color="white" />
+                                </TouchableOpacity>
                             )}
                         </View>
-                    )}
-                </ScrollView>
-            </SafeAreaView>
+                        {submittedQuery === '' ? (
+                            <>
+                                <ScrollView >
+                                    {/* if search is empty show the defult lists */}
+                                    <View style={{ paddingBottom: 120 }}>
+                                        <FreeGames data={data} />
+                                        <GamesList endpoint="/popular" />
+                                        <GamesList endpoint="/recently-released" />
+                                        <GamesList endpoint="/top-rated" />
+                                        <GamesList endpoint="/coming-soon" />
+                                        <GamesList endpoint="/most-anticipated" />
+                                        <GamesList endpoint="/nostalgia-corner" />
+                                    </View>
+                                </ScrollView>
+                            </>
+                        ) : (
+                            // if search not empty show search results
+                            <GamesList query={submittedQuery} />
+
+                        )}
+                    </View>
+                )}
+            </SafeAreaView >
         </>
     );
 }
@@ -98,19 +102,19 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: "#0c1a33"
     },
-    header: {
-        color: "white",
-        fontSize: 28,
-        textAlign: "center",
-        alignSelf: "center",
-        fontWeight: "bold",
-        backgroundColor: "#516996",
-        paddingHorizontal: 15,
-        paddingVertical: 8,
-        margin: 30,
-        marginTop: 10,
-        borderRadius: 16
-    },
+    // header: {
+    //     color: "white",
+    //     fontSize: 28,
+    //     textAlign: "center",
+    //     alignSelf: "center",
+    //     fontWeight: "bold",
+    //     backgroundColor: "#516996",
+    //     paddingHorizontal: 15,
+    //     paddingVertical: 8,
+    //     margin: 30,
+    //     marginTop: 10,
+    //     borderRadius: 16
+    // },
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',

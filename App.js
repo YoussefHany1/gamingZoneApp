@@ -11,18 +11,21 @@ import SettingsScreen from "./screens/SettingsScreen";
 import GameDetails from "./components/GameDetails";
 import NotificationSettings from "./components/Notification";
 import Profile from "./components/Profile";
+import WantListScreen from './screens/WantListScreen';
+import PlayedListScreen from './screens/PlayedListScreen';
 import { useEffect, useState } from "react";
 import messaging from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
 // --- تعديلات Firebase Auth ---
-import { onAuthStateChanged } from "firebase/auth"; // إزالة signInAnonymously
-import { auth } from "./firebase";
+// import { onAuthStateChanged } from "firebase/auth"; // إزالة signInAnonymously
+// import { auth } from "./firebase";
+import auth from '@react-native-firebase/auth';
 import {
   saveFCMToken,
   getUserNotificationPreferences,
   syncUserPreferences,
 } from "./notificationService";
-import "./firebase";
+// import "./firebase";
 
 // --- شاشات جديدة ---
 import LoginScreen from './screens/LoginScreen';
@@ -60,10 +63,22 @@ function GamesStack() {
 
 function SettingsStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
-      <Stack.Screen name="Profile" component={Profile} />
+    <Stack.Navigator screenOptions={{
+      headerStyle: {
+        backgroundColor: '#0c1a33'
+      },
+      headerTintColor: '#fff',
+      headerTitleStyle: {
+        fontWeight: 'bold'
+      },
+    }}>
+      <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: "Notification Settings" }} />
+      <Stack.Screen name="Profile" component={Profile} options={{ title: "Account Settings" }} />
+      <Stack.Screen name="WantListScreen" component={WantListScreen} options={{ title: "Want List" }} />
+      <Stack.Screen name="PlayedListScreen" component={PlayedListScreen} options={{ title: "Played List" }} />
+      <Stack.Screen name="GamesScreen" component={GamesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="GameDetails" component={GameDetails} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -123,7 +138,7 @@ function App() {
   const [loading, setLoading] = useState(true); // --- إضافة حالة التحميل ---
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    const unsubscribeAuth = auth().onAuthStateChanged(async (user) => {
       setUser(user);
       if (user) {
         console.log("✅ User authenticated:", user.uid);

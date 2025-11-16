@@ -10,32 +10,59 @@ import {
   Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase.js";
+// import { collection, onSnapshot } from "firebase/firestore";
+// import { db } from "../firebase.js";
+import firestore from '@react-native-firebase/firestore';
 
-const docRef = collection(db, "rss");
-let rssFeeds = [];
+// const docRef = collection(db, "rss");
+// let rssFeeds = [];
 
-onSnapshot(
-  docRef,
-  (snap) => {
-    if (snap) {
-      rssFeeds = [];
-      snap.docs.forEach((doc) => {
-        const data = doc.data();
-        rssFeeds = { ...rssFeeds, ...data };
-      });
-      // console.log("✅ Current data: ", rssFeeds?.hardware);
-    } else {
-      console.log("❌ Document does not exist.");
-    }
-  },
-  (err) => {
-    console.error("🚨 Error while fetching Firestore document:", err);
-  }
-);
+// onSnapshot(
+//   docRef,
+//   (snap) => {
+//     if (snap) {
+//       rssFeeds = [];
+//       snap.docs.forEach((doc) => {
+//         const data = doc.data();
+//         rssFeeds = { ...rssFeeds, ...data };
+//       });
+//       // console.log("✅ Current data: ", rssFeeds?.hardware);
+//     } else {
+//       console.log("❌ Document does not exist.");
+//     }
+//   },
+//   (err) => {
+//     console.error("🚨 Error while fetching Firestore document:", err);
+//   }
+// );
 
 const DropdownPicker = (props) => {
+  const [rssFeeds, setRssFeeds] = useState({}); // 1. نستخدم State
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { // 2. نستخدم Effect لجلب البيانات
+    const subscriber = firestore()
+      .collection('rss')
+      .onSnapshot(
+        (snapshot) => {
+          let feeds = {};
+          snapshot.docs.forEach((doc) => {
+            const data = doc.data();
+            feeds = { ...feeds, ...data };
+          });
+          setRssFeeds(feeds);
+          setLoading(false);
+        },
+        (error) => {
+          console.error("🚨 Error fetching Firestore:", error);
+          setLoading(false);
+        }
+      );
+
+    // إلغاء الاشتراك
+    return () => subscriber();
+  }, []);
+
   const category = props.category.toLowerCase();
   const websites = rssFeeds[category] || [];
 
@@ -51,7 +78,7 @@ const DropdownPicker = (props) => {
   // reset when category changes
   useEffect(() => {
     setSelected(props.value ?? websites[0] ?? null);
-  }, [props.category]);
+  }, [props.category, websites]);
 
   // keep in sync when parent controls the value
   useEffect(() => {

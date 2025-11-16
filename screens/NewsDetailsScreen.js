@@ -21,7 +21,7 @@ function NewsDetails({ article, visible, onClose }) {
             {/* Close Button */}
             <View style={styles.header}>
                 <TouchableOpacity
-                    style={styles.closeButton}
+                    style={styles.backButton}
                     onPress={onClose}
                 >
                     <Ionicons name="close" size={28} color="#fff" />
@@ -73,8 +73,8 @@ const styles = StyleSheet.create({
         position: "absolute",
         width: 40,
         height: 40,
-        top: 30,
-        left: 10,
+        top: 40,
+        left: 15,
         zIndex: 1000,
     },
     headerTitle: {
@@ -98,11 +98,11 @@ const styles = StyleSheet.create({
         color: "white",
         marginTop: 20
     },
-    closeButton: {
+    backButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: "rgba(81, 105, 150, 0.3)",
+        backgroundColor: "rgba(81, 105, 150, 0.5)",
         justifyContent: "center",
         alignItems: "center",
     },

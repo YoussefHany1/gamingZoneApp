@@ -2,21 +2,23 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity
+  TouchableOpacity,
+  Image
 } from "react-native";
+import { useState, useEffect } from 'react';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { signOut } from 'firebase/auth';
-import { auth } from '../firebase';
+import auth from '@react-native-firebase/auth';
 import { useNavigation } from '@react-navigation/native';
 
 function SettingsScreen() {
   const navigation = useNavigation();
-  const [notificationModal, setNotificationModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState(auth().currentUser);
+  console.log(currentUser._user)
+
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      await auth().signOut();
       console.log('✅ User signed out');
       // onAuthStateChanged سيتكفل بالباقي
     } catch (error) {
@@ -26,13 +28,21 @@ function SettingsScreen() {
   return (
     <>
       <SafeAreaView style={styles.container}>
+        {/* <Image source={require('../assets/logo.png')} style={styles.logo} /> */}
+        {currentUser?._user &&
+          <TouchableOpacity style={styles.userContainer} onPress={() => navigation.navigate('Profile')}>
+            <Image source={
+              currentUser._user.photoURL ? { uri: currentUser._user.photoURL } : require('../assets/default_profile.png')} style={styles.avatar} />
+            <Text style={styles.displayName}>{currentUser._user.displayName}</Text>
+          </TouchableOpacity>
+        }
         <TouchableOpacity
           style={styles.categoryHeader}
           onPress={() => navigation.navigate('NotificationSettings')}
         >
           <View style={styles.categoryHeaderLeft}>
             <Ionicons
-              name="chevron-forward"
+              name="notifications"
               size={20}
               color="#779bdd"
               style={styles.chevronIcon}
@@ -43,11 +53,40 @@ function SettingsScreen() {
 
         <TouchableOpacity
           style={styles.categoryHeader}
-          onPress={() => navigation.navigate('Profile')}
+          onPress={() => navigation.navigate('WantListScreen')}
         >
           <View style={styles.categoryHeaderLeft}>
             <Ionicons
-              name="chevron-forward"
+              name="bookmark"
+              size={20}
+              color="#779bdd"
+              style={styles.chevronIcon}
+            />
+            <Text style={styles.categoryTitle}>Want to Play List</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.categoryHeader}
+          onPress={() => navigation.navigate('PlayedListScreen')}
+        >
+          <View style={styles.categoryHeaderLeft}>
+            <Ionicons
+              name="checkmark-sharp"
+              size={20}
+              color="#779bdd"
+              style={styles.chevronIcon}
+            />
+            <Text style={styles.categoryTitle}>Played Games List</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.categoryHeader}
+        // onPress={() => navigation.navigate('Profile')}
+        >
+          <View style={styles.categoryHeaderLeft}>
+            <Ionicons
+              name="star"
               size={20}
               color="#779bdd"
               style={styles.chevronIcon}
@@ -112,6 +151,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0c1a33",
     paddingHorizontal: 16,
+  },
+  userContainer: {
+    marginVertical: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "rgba(119, 155, 221, 0.2)",
+    borderRadius: 12,
+  },
+  avatar: {
+    height: 50,
+    width: 50,
+    borderRadius: 50,
+  },
+  displayName: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "bold",
+    marginLeft: 15,
+  },
+  logo: {
+    width: 200,
+    height: 200,
+    alignSelf: 'center',
   },
   categoryHeader: {
     marginVertical: 15,

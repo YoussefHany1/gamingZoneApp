@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Text, Alert, Image } from 'react-native';
-import { auth } from '../firebase'; // تأكد من المسار الصحيح
-import { sendPasswordResetEmail } from 'firebase/auth';
+// import { auth } from '../firebase'; // تأكد من المسار الصحيح
+// import { sendPasswordResetEmail } from 'firebase/auth';
+import auth from '@react-native-firebase/auth';
 import { SafeAreaView } from "react-native-safe-area-context";
 
 function ForgotPasswordScreen({ navigation }) {
@@ -16,7 +17,7 @@ function ForgotPasswordScreen({ navigation }) {
 
         setLoading(true);
         try {
-            await sendPasswordResetEmail(auth, email);
+            await auth().sendPasswordResetEmail(email);
             Alert.alert(
                 'Sent successfully',
                 'A password reset link has been sent to your email. (Please also check your Spam folder)',

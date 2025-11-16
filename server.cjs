@@ -118,7 +118,7 @@ async function fetchGameById(id) {
 
 // دالة مُساعدة لإنشاء الاستعلامات الأساسية
 const currentTimestamp = Math.floor(Date.now() / 1000);
-const BASE_QUERY_FIELDS = 'fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, summary, hypes, platforms, collections, cover, dlcs, game_modes, game_status, game_type, genres, language_supports, multiplayer_modes, remakes, remasters, screenshots.url, storyline, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.slug, similar_games.cover.image_id, collections.games.*';
+const BASE_QUERY_FIELDS = 'fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, hypes, platforms, collections, cover, dlcs, game_modes, game_status, game_type, genres, language_supports, multiplayer_modes, remakes, remasters, screenshots.url, storyline, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.slug, similar_games.cover.image_id, collections.games.*';
 const BASE_QUERY_WHERE = `where (cover.image_id != null  & game_type = (0,8,9,10))`;
 
 
@@ -194,6 +194,22 @@ app.get('/popular', async (req, res) => {
       ${BASE_QUERY_WHERE};
       sort popularity desc;
       limit 10;
+    `;
+    const data = await callIgdb('games', query);
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// old
+app.get('/nostalgia-corner', async (req, res) => {
+  try {
+    const query = `
+fields name, first_release_date, total_rating_count, platforms.name, cover.url, cover.image_id;
+where (platforms = (6, 7, 8, 13) & first_release_date < 1167609600 & total_rating_count > 100);
+sort total_rating_count desc;
+limit 50;
     `;
     const data = await callIgdb('games', query);
     res.json(data);

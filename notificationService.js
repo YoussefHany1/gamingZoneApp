@@ -1,14 +1,6 @@
 import messaging from "@react-native-firebase/messaging";
-import { db, auth } from "./firebase";
-import {
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import firestore from '@react-native-firebase/firestore'; // ✅
+// ❌ (احذف كل imports الويب بتاعة db, auth, doc, setDoc, collection, getDocs)
 import * as Notifications from "expo-notifications";
 
 /**
@@ -75,10 +67,14 @@ export async function saveNotificationPreference(
   enabled
 ) {
   try {
-    const prefId = `${category}_${sourceName}`;
-    const prefRef = doc(db, "users", userId, "notificationPreferences", prefId);
+    const prefId = getTopicName(category, sourceName);
+    const prefRef = firestore()
+      .collection("users")
+      .doc(userId)
+      .collection("notificationPreferences")
+      .doc(prefId);
 
-    await setDoc(prefRef, {
+    await prefRef.set({
       category,
       sourceName,
       enabled,
@@ -103,8 +99,11 @@ export async function getUserNotificationPreferences(userId) {
       return {};
     }
 
-    const prefsRef = collection(db, "users", userId, "notificationPreferences");
-    const snapshot = await getDocs(prefsRef);
+    const prefsRef = firestore()
+      .collection("users")
+      .doc(userId)
+      .collection("notificationPreferences");
+    const snapshot = await prefsRef.get();
 
     const preferences = {};
     snapshot.forEach((doc) => {
@@ -162,9 +161,8 @@ export async function saveFCMToken(userId, fcmToken) {
       return;
     }
 
-    const userRef = doc(db, "users", userId);
-    await setDoc(
-      userRef,
+    const userRef = firestore().collection("users").doc(userId); // ✅
+    await userRef.set(
       {
         fcmToken,
         lastActive: new Date(),

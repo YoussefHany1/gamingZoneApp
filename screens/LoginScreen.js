@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Text, Alert, Image } from 'react-native';
-import { auth } from '../firebase'; // تأكد من مسار ملف firebase
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import auth from '@react-native-firebase/auth';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-// --- إعداد Google Sign-In (يجب وضع الـ Web Client ID من Firebase) ---
+
 GoogleSignin.configure({
     webClientId: '1003577837647-jpm4m77muign33bu3inaihqf6p82b50v.apps.googleusercontent.com',
 });
@@ -21,7 +21,7 @@ function LoginScreen({ navigation }) {
             return;
         }
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            await auth().signInWithEmailAndPassword(email, password);
             console.log('✅ Login successful');
             // سيقوم onAuthStateChanged في App.js بالباقي
         } catch (error) {
@@ -53,10 +53,10 @@ function LoginScreen({ navigation }) {
             const idToken = userInfoResponse.data.idToken;
 
             // إنشاء بيانات الاعتماد
-            const googleCredential = GoogleAuthProvider.credential(idToken);
+            const googleCredential = auth.GoogleAuthProvider.credential(idToken);
 
             // تسجيل الدخول (أو التسجيل) في Firebase
-            await signInWithCredential(auth, googleCredential);
+            await auth().signInWithCredential(googleCredential);
 
             console.log('✅ Signed in with Google credential');
             // سيقوم onAuthStateChanged في App.js بالباقي
@@ -101,10 +101,17 @@ function LoginScreen({ navigation }) {
             <TouchableOpacity onPress={handleLogin} style={styles.button}>
                 <Text style={styles.buttonText}>Sign In</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={onGoogleButtonPress} style={styles.button}>
-                <Ionicons name="logo-google" size={28} color="white" />
-                <Text style={styles.buttonText}> Sign In with Google</Text>
-            </TouchableOpacity>
+            <LinearGradient
+                colors={["#10574b", "#3174f1", "#e92d18", "#c38d0c"]}
+                style={styles.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+            >
+                <TouchableOpacity onPress={onGoogleButtonPress} style={{ alignItems: "center", flexDirection: "row" }}>
+                    <Ionicons name="logo-google" size={28} color="white" />
+                    <Text style={styles.buttonText}> Sign In with Google</Text>
+                </TouchableOpacity>
+            </LinearGradient>
             <TouchableOpacity
                 onPress={() => navigation.navigate('Register')}
                 style={styles.newAccButton}
@@ -162,6 +169,13 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "center",
         marginBottom: 20,
+    },
+    gradient: {
+        padding: 15,
+        borderRadius: 12,
+        alignItems: "center",
+        flexDirection: "row",
+        justifyContent: "center",
     },
     buttonText: {
         color: "white",

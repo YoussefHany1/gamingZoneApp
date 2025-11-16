@@ -10,8 +10,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Loading from "../Loading";
 import { Ionicons } from "@expo/vector-icons";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db, auth } from "../firebase";
+import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
 import {
   subscribeToTopic,
   unsubscribeFromTopic,
@@ -22,7 +22,7 @@ import {
   testTopicSubscription,
 } from "../notificationService";
 
-const Notification = () => {
+const Notification = ({ navigation }) => {
   const [rssFeeds, setRssFeeds] = useState({});
   const [preferences, setPreferences] = useState({});
   const [loading, setLoading] = useState(true);
@@ -30,32 +30,34 @@ const Notification = () => {
 
   useEffect(() => {
     // Load RSS feeds from Firestore
-    const unsubscribeRss = onSnapshot(
-      collection(db, "rss"),
-      (snapshot) => {
-        let feeds = {};
-        snapshot.docs.forEach((doc) => {
-          const data = doc.data();
-          feeds = { ...feeds, ...data };
-        });
-        setRssFeeds(feeds);
-      },
-      (error) => {
-        console.error("Error loading RSS feeds:", error);
-      }
-    );
+    const unsubscribeRss = firestore()
+      .collection("rss")
+      .onSnapshot(
+        (snapshot) => {
+          let feeds = {};
+          snapshot.docs.forEach((doc) => {
+            const data = doc.data();
+            feeds = { ...feeds, ...data };
+          });
+          setRssFeeds(feeds);
+        },
+        (error) => {
+          console.error("Error loading RSS feeds:", error);
+        }
+      );
 
     // Load user preferences
-    if (auth.currentUser) {
-      loadUserPreferences();
+    const currentUser = auth().currentUser;
+    if (currentUser) {
+      loadUserPreferences(currentUser.uid);
     }
 
     return () => unsubscribeRss();
   }, []);
 
-  const loadUserPreferences = async () => {
+  const loadUserPreferences = async (userId) => {
     try {
-      const prefs = await getUserNotificationPreferences(auth.currentUser.uid);
+      const prefs = await getUserNotificationPreferences(userId);
       setPreferences(prefs);
     } catch (error) {
       console.error("Error loading preferences:", error);
@@ -65,6 +67,9 @@ const Notification = () => {
   };
 
   const toggleCategory = async (category) => {
+    const userId = auth().currentUser?.uid;
+    if (!userId) return; //  لو المستخدم مش موجود، اخرج
+
     const categorySources = rssFeeds[category] || [];
     const allEnabled = categorySources.every(
       (source) => preferences[`${category}_${source.name}`]
@@ -83,7 +88,7 @@ const Notification = () => {
       // Save to Firestore
       promises.push(
         saveNotificationPreference(
-          auth.currentUser.uid,
+          userId,
           category,
           source.name,
           newValue
@@ -103,6 +108,9 @@ const Notification = () => {
   };
 
   const toggleSource = async (category, source) => {
+    const userId = auth().currentUser?.uid;
+    if (!userId) return;
+
     const prefId = `${category}_${source.name}`;
     const topicName = getTopicName(category, source.name);
     const newValue = !preferences[prefId];
@@ -114,7 +122,7 @@ const Notification = () => {
     // Save to Firestore and FCM
     await Promise.all([
       saveNotificationPreference(
-        auth.currentUser.uid,
+        userId,
         category,
         source.name,
         newValue
@@ -225,15 +233,9 @@ const Notification = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={28} color="#fff" />
-        </TouchableOpacity>
-      </View>
       <ScrollView style={styles.scrollView}>
         <View style={styles.Textheader}>
-          <Text style={styles.headerTitle}>Notification Settings</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={styles.subtitle}>
             Choose which news sources you want to receive notifications from{"\n"}
             Make sure to allow notifications for this app
           </Text>
@@ -276,37 +278,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0c1a33",
   },
-  header: {
-    position: "absolute",
-    width: 40,
-    height: 40,
-    top: 50,
-    left: 10,
-    zIndex: 1000,
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(81, 105, 150, 0.4)",
-    justifyContent: "center",
-    alignItems: "center",
+  title: {
+    color: "white",
+    fontSize: 22,
+    fontWeight: "bold",
   },
   scrollView: {
-    flex: 1,
+    // flex: 1,
     paddingHorizontal: 20,
   },
   Textheader: {
-    paddingTop: 60,
+    paddingTop: 10,
     marginBottom: 20,
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  headerSubtitle: {
+  subtitle: {
     fontSize: 16,
     color: "#779bdd",
     lineHeight: 22,
@@ -407,14 +392,6 @@ const styles = StyleSheet.create({
     color: "#779bdd",
     textAlign: "center",
     lineHeight: 20,
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(81, 105, 150, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
   },
   headerPrev: {
     position: "absolute",

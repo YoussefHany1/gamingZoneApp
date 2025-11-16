@@ -1,31 +1,30 @@
-import * as React from "react";
+import React, { useState, useEffect } from "react"; // ✅
 import { useWindowDimensions, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TabView, SceneMap, TabBar } from "react-native-tab-view";
 import LatestNews from "../components/LatestNews.js";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase.js";
+import firestore from '@react-native-firebase/firestore';
 
-const docRef = collection(db, "rss");
-let rssFeeds = [];
+// const docRef = collection(db, "rss");
+// let rssFeeds = [];
 
-onSnapshot(
-  docRef,
-  (snap) => {
-    if (snap) {
-      rssFeeds = [];
-      snap.docs.forEach((doc) => {
-        const data = doc.data();
-        rssFeeds = { ...rssFeeds, ...data };
-      });
-    } else {
-      console.log("❌ Document does not exist.");
-    }
-  },
-  (err) => {
-    console.error("🚨 Error while fetching Firestore document:", err);
-  }
-);
+// onSnapshot(
+//   docRef,
+//   (snap) => {
+//     if (snap) {
+//       rssFeeds = [];
+//       snap.docs.forEach((doc) => {
+//         const data = doc.data();
+//         rssFeeds = { ...rssFeeds, ...data };
+//       });
+//     } else {
+//       console.log("❌ Document does not exist.");
+//     }
+//   },
+//   (err) => {
+//     console.error("🚨 Error while fetching Firestore document:", err);
+//   }
+// );
 
 function normalized(input) {
   return input
@@ -36,9 +35,14 @@ function normalized(input) {
 }
 
 // News Route Component
-const NewsRoute = () => {
+const NewsRoute = ({ rssFeeds }) => {
   const [selected, setSelected] = React.useState(rssFeeds.news?.[0]);
   console.log("NewsRoute selected:", selected);
+  React.useEffect(() => {
+    if (!selected && rssFeeds.news?.length > 0) {
+      setSelected(rssFeeds.news[0]);
+    }
+  }, [rssFeeds.news, selected]);
 
   return (
     <View style={styles.scene}>
@@ -54,9 +58,13 @@ const NewsRoute = () => {
 };
 
 // Reviews Route Component
-const ReviewsRoute = () => {
+const ReviewsRoute = ({ rssFeeds }) => {
   const [selected, setSelected] = React.useState(rssFeeds.reviews?.[0]);
-
+  React.useEffect(() => {
+    if (!selected && rssFeeds.reviews?.length > 0) {
+      setSelected(rssFeeds.reviews[0]);
+    }
+  }, [rssFeeds.reviews, selected]);
   return (
     <View style={styles.scene}>
       <LatestNews
@@ -70,9 +78,13 @@ const ReviewsRoute = () => {
   );
 };
 
-const EsportsRoute = () => {
+const EsportsRoute = ({ rssFeeds }) => {
   const [selected, setSelected] = React.useState(rssFeeds.esports?.[0]);
-
+  React.useEffect(() => {
+    if (!selected && rssFeeds.esports?.length > 0) {
+      setSelected(rssFeeds.esports[0]);
+    }
+  }, [rssFeeds.esports, selected]);
   return (
     <View style={styles.scene}>
       <LatestNews
@@ -87,9 +99,13 @@ const EsportsRoute = () => {
 };
 
 // Hardware Route Component
-const HardwareRoute = () => {
+const HardwareRoute = ({ rssFeeds }) => {
   const [selected, setSelected] = React.useState(rssFeeds.hardware?.[0]);
-
+  React.useEffect(() => {
+    if (!selected && rssFeeds.hardware?.length > 0) {
+      setSelected(rssFeeds.hardware[0]);
+    }
+  }, [rssFeeds.hardware, selected]);
   return (
     <View style={styles.scene}>
       <LatestNews
@@ -131,6 +147,10 @@ export const Reviews = () => {
 export default function TabViewExample() {
   const layout = useWindowDimensions();
   const [index, setIndex] = React.useState(0);
+
+  // ✅ الخطوات الجديدة لجلب البيانات
+  const [rssFeeds, setRssFeeds] = React.useState({}); // 1. نستخدم State
+  const [loading, setLoading] = React.useState(true);
   const [routes] = React.useState([
     { key: "news", title: "News" },
     { key: "reviews", title: "Reviews" },
@@ -138,12 +158,56 @@ export default function TabViewExample() {
     { key: "hardware", title: "Hardware" },
   ]);
 
-  const renderScene = SceneMap({
-    news: NewsRoute,
-    reviews: ReviewsRoute,
-    esports: EsportsRoute,
-    hardware: HardwareRoute,
-  });
+  // ✅ 2. نستخدم Effect لجلب البيانات (باستخدام مكتبة الـ Native)
+  React.useEffect(() => {
+    const subscriber = firestore()
+      .collection('rss')
+      .onSnapshot(
+        (snapshot) => {
+          let feeds = {};
+          snapshot.docs.forEach((doc) => {
+            const data = doc.data();
+            feeds = { ...feeds, ...data };
+          });
+          setRssFeeds(feeds);
+          setLoading(false);
+        },
+        (error) => {
+          console.error("🚨 Error fetching Firestore:", error);
+          setLoading(false);
+        }
+      );
+
+    // إلغاء الاشتراك عند إغلاق الشاشة
+    return () => subscriber();
+  }, []);
+
+  // ✅ 3. لازم نغير SceneMap علشان نقدر نمرر الـ props
+  const renderScene = ({ route }) => {
+    switch (route.key) {
+      case 'news':
+        return <NewsRoute rssFeeds={rssFeeds} />; // بنمرر الـ prop هنا
+      case 'reviews':
+        return <ReviewsRoute rssFeeds={rssFeeds} />; // وهنا
+      case 'esports':
+        return <EsportsRoute rssFeeds={rssFeeds} />; // وهنا
+      case 'hardware':
+        return <HardwareRoute rssFeeds={rssFeeds} />; // وهنا
+      default:
+        return null;
+    }
+  };
+
+  // ✅ 4. (اختياري) ممكن نضيف شاشة تحميل
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.scene}>
+          <Text style={{ color: 'white' }}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
