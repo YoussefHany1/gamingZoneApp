@@ -1,0 +1,181 @@
+{
+    "common": {
+        "loading": "جارٍ التحميل..",
+        "error": "خطأ",
+        "cancel": "الغاء",
+        "ok": "حسناً",
+        "remove": "إزالة",
+        "saveChanges": "حفظ التغييرات",
+        "noData": "لا توجد بيانات لعرضها",
+        "imageNotFound": "لم يتم العثور على الصورة"
+    },
+    "auth": {
+        "login": {
+            "title": "تسجيل الدخول",
+            "emailPlaceholder": "البريد الإلكتروني",
+            "passwordPlaceholder": "كلمة السر",
+            "forgotPassword": "هل نسيت كلمة السر؟",
+            "signInButton": "تسجيل الدخول",
+            "googleSignIn": "تسجيل الدخول باستخدام جوجل",
+            "createAccount": "إنشاء حساب جديد",
+            "emptyFields": "الرجاء إدخال بريدك الإلكتروني وكلمة السر.",
+            "success": "تم تسجيل الدخول بنجاح",
+            "failed": "فشل تسجيل الدخول"
+        },
+        "register": {
+            "title": "إنشاء حساب جديد",
+            "emailPlaceholder": "البريد الإلكتروني",
+            "passwordPlaceholder": "كلمة السر",
+            "signUpButton": "إنشاء حساب",
+            "googleSignUp": "سجل باستخدام جوجل",
+            "haveAnAccount": "هل لديك حساب بالفعل؟",
+            "success": "تم التسجيل بنجاح"
+        },
+        "forgotPassword": {
+            "title": "إعادة تعيين كلمة السر الخاصة بك",
+            "emailPlaceholder": "البريد الإلكتروني",
+            "sendButton": "إرسال رابط إعادة تعيين كلمة المرور",
+            "sending": "جارٍ التحميل...",
+            "backToLogin": "العودة إلى تسجيل الدخول",
+            "emptyEmail": "الرجاء إدخال عنوان بريدك الإلكتروني.",
+            "successTitle": "تم الإرسال بنجاح",
+            "successMessage": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني. (يُرجى أيضًا التحقق من مجلد البريد العشوائي 'Spam')",
+            "userNotFound": "لم يتم تسجيل أي حساب بهذا البريد الإلكتروني."
+        },
+        "alerts": {
+            "loginRequired": "تسجيل الدخول مطلوب",
+            "loginRequiredMessage": "يرجى تسجيل الدخول لتتمكن من إضافة الألعاب إلى قوائمك.",
+            "googleIdTokenError": "خطأ في تسجيل الدخول عبر Google: لم يتم العثور على idToken."
+        }
+    },
+    "navigation": {
+        "tabs": {
+            "home": "الرئيسية",
+            "news": "الأخبار",
+            "games": "الألعاب",
+            "settings": "الإعدادات"
+        },
+        "titles": {
+            "notificationSettings": "إعدادات الإشعارات",
+            "accountSettings": "إعدادات الحساب",
+            "wantList": "قائمة الرغبات",
+            "playedList": "قائمة ما تم لعبه"
+        }
+    },
+    "home": {
+        "slideshow": {
+            "error": "خطأ في تحميل عرض الشرائح"
+        },
+        "sections": {
+            "news": "أخبار",
+            "reviews": "مراجعات",
+            "esports": "رياضات إلكترونية",
+            "hardware": "أجهزة وعتاد"
+        }
+    },
+    "news": {
+        "tabs": {
+            "news": "أخبار الألعاب",
+            "reviews": "المراجعات",
+            "esports": "أخبار الرياضة إلكترونية",
+            "hardware": "أخبار الهاردوير"
+        },
+        "latestHeader": "أحدث {{category}}",
+        "details": {
+            "readFullArticle": "قراءة المقال كاملاً"
+        },
+        "dropdown": {
+            "visitWebsite": "زيارة الموقع"
+        }
+    },
+    "games": {
+        "screen": {
+            "searchPlaceholder": "ابحث عن ألعاب...",
+            "header": "اعثر على مغامرتك القادمة"
+        },
+        "freeGames": {
+            "header": "احصل على اللعبة المجانية الأسبوعية من Epic Games",
+            "freeOn": "مجانية على",
+            "days": "يوم",
+            "hours": "ساعة",
+            "minutes": "دقيقة",
+            "seconds": "ثانية",
+            "discount": "خصم\n100%"
+        },
+        "list": {
+            "searchResults": "نتائج البحث",
+            "noResults": "لم يتم العثور على ألعاب.",
+            "serverError": "فشل الاتصال بالخادم. يرجى التأكد من أن الخادم يعمل."
+        },
+        "details": {
+            "availableStores": "متاح في هذه المتاجر",
+            "buttons": {
+                "want": "أريدها",
+                "played": "لعبتها"
+            },
+            "about": "عن اللعبة",
+            "genres": "التصنيفات",
+            "gameModes": "أطوار اللعب",
+            "developer": "المطور",
+            "publisher": "الناشر",
+            "languages": {
+                "title": "دعم اللغات",
+                "audio": "الصوت",
+                "subtitles": "الترجمة",
+                "interface": "الواجهة"
+            },
+            "engines": "محركات اللعبة",
+            "trailer": "فيديو تشويقي",
+            "series": "سلسلة اللعبة",
+            "similar": "ألعاب مشابهة"
+        }
+    },
+    "userLists": {
+        "empty": {
+            "title": "قائمتك فارغة",
+            "playedSub": "أضف الألعاب التي لعبتها هنا.",
+            "wantSub": "أضف الألعاب التي تريد لعبها.",
+            "findButton": "ابحث عن لعبتك",
+            "findButtonNew": "ابحث عن لعبتك الجديدة"
+        },
+        "actions": {
+            "confirmDeleteTitle": "تأكيد الحذف",
+            "confirmDeleteMessage": "هل أنت متأكد أنك تريد إزالة \"{{gameName}}\" من قائمتك؟"
+        }
+    },
+    "settings": {
+        "language": "اللغة",
+        "currentLang": "العربية",
+        "menu": {
+            "notifications": "إعدادات الإشعارات",
+            "wantList": "قائمة \"أريد لعبها\"",
+            "playedList": "قائمة \"ألعاب لعبتها\"",
+            "changeLanguage": "تغيير اللغة",
+            "rateUs": "قيمنا",
+            "supportUs": "ادعمنا",
+            "feedback": "ملاحظات وآراء",
+            "signOut": "تسجيل الخروج"
+        },
+        "profile": {
+            "changePic": "تغيير صورة الملف الشخصي",
+            "nameLabel": "اسمك:",
+            "namePlaceholder": "الاسم",
+            "dobLabel": "تاريخ ميلادك:",
+            "dobPlaceholder": "تاريخ الميلاد (سنة-شهر-يوم)",
+            "platformLabel": "اختر منصتك:",
+            "platforms": {
+                "pc": "كمبيوتر شخصي",
+                "playstation": "بلايستيشن",
+                "xbox": "إكس بوكس",
+                "android": "أندرويد"
+            },
+            "saveSuccessTitle": "تم!",
+            "saveSuccessMessage": "تم تحديث بياناتك بنجاح.",
+            "permissionError": "مطلوب إذن الوصول للصور."
+        },
+        "notifications": {
+            "description": "اختر مصادر الأخبار التي تريد تلقي إشعارات منها\nتأكد من السماح بالإشعارات لهذا التطبيق",
+            "footer": "سيتم إرسال الإشعارات عند نشر مقالات جديدة من المصادر المفعلة."
+        }
+    }
+}

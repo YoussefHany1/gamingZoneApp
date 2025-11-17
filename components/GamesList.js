@@ -10,6 +10,7 @@ import {
 import Loading from '../Loading'
 import { useNavigation } from '@react-navigation/native';
 import { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET } from '@env';
+import { useTranslation } from 'react-i18next';
 
 const SERVER_URL = 'http://192.168.1.102:3000';
 
@@ -68,7 +69,7 @@ export default function GamesList({ endpoint, query }) {
   const [loading, setLoading] = useState(true);
   const [games, setGames] = useState([]);
   const [error, setError] = useState(null);
-
+  const { t } = useTranslation();
   // 4. fetch data from localhost
   const fetchGamesFromServer = useCallback(async (ep) => {
     setLoading(true);
@@ -82,7 +83,7 @@ export default function GamesList({ endpoint, query }) {
       setGames(data);
     } catch (e) {
       console.error(e);
-      setError('The connection to the server failed. Please ensure the server is running and that you are using the correct IP address.');
+      setError(`${t('games.list.serverError')}`);
     }
     setLoading(false);
   }, []);
@@ -152,7 +153,7 @@ export default function GamesList({ endpoint, query }) {
   );
 
   // change headerText (Title) based on props
-  const headerText = endpoint ? formatPath(endpoint) : (query ? "Search Results" : null);
+  const headerText = endpoint ? formatPath(endpoint) : (query ? `${t('games.list.searchResults')}` : null);
 
   return (
     <View style={styles.container}>
@@ -163,7 +164,7 @@ export default function GamesList({ endpoint, query }) {
       {error && <Text style={styles.error}>{error}</Text>}
 
       {!loading && !error && games.length === 0 && (query || endpoint) && (
-        <Text style={styles.noResults}>No games found.</Text>
+        <Text style={styles.noResults}>{t('games.list.noResults')}</Text>
       )}
 
       {!loading && !error && games.length > 0 && (

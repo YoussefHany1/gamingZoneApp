@@ -16,21 +16,17 @@ import PlayedListScreen from './screens/PlayedListScreen';
 import { useEffect, useState } from "react";
 import messaging from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
-// --- تعديلات Firebase Auth ---
-// import { onAuthStateChanged } from "firebase/auth"; // إزالة signInAnonymously
-// import { auth } from "./firebase";
+import './i18n';
+import { useTranslation } from 'react-i18next';
 import auth from '@react-native-firebase/auth';
 import {
   saveFCMToken,
   getUserNotificationPreferences,
   syncUserPreferences,
 } from "./notificationService";
-// import "./firebase";
-
-// --- شاشات جديدة ---
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
-import ForgotPasswordScreen from './screens/ForgotPasswordScreen'; // إضافة هذا السطر
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 import Loading from './Loading';
 
 const Stack = createNativeStackNavigator();
@@ -62,6 +58,7 @@ function GamesStack() {
 }
 
 function SettingsStack() {
+  const { t } = useTranslation();
   return (
     <Stack.Navigator screenOptions={{
       headerStyle: {
@@ -73,10 +70,10 @@ function SettingsStack() {
       },
     }}>
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: "Notification Settings" }} />
-      <Stack.Screen name="Profile" component={Profile} options={{ title: "Account Settings" }} />
-      <Stack.Screen name="WantListScreen" component={WantListScreen} options={{ title: "Want List" }} />
-      <Stack.Screen name="PlayedListScreen" component={PlayedListScreen} options={{ title: "Played List" }} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: t('navigation.titles.notificationSettings') }} />
+      <Stack.Screen name="Profile" component={Profile} options={{ title: t('navigation.titles.accountSettings') }} />
+      <Stack.Screen name="WantListScreen" component={WantListScreen} options={{ title: t('navigation.titles.wantList') }} />
+      <Stack.Screen name="PlayedListScreen" component={PlayedListScreen} options={{ title: t('navigation.titles.playedList') }} />
       <Stack.Screen name="GamesScreen" component={GamesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="GameDetails" component={GameDetails} options={{ headerShown: false }} />
     </Stack.Navigator>
@@ -84,6 +81,7 @@ function SettingsStack() {
 }
 
 function MainAppTabs() {
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -98,6 +96,7 @@ function MainAppTabs() {
         },
         tabBarActiveTintColor: "#779bdd",
         tabBarInactiveTintColor: "#779bdd",
+        tabBarLabel: t(`navigation.tabs.${route.name.toLowerCase()}`),
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
@@ -156,7 +155,7 @@ function App() {
 
     return () => unsubscribeAuth();
   }, []);
-  console.log(user)
+  // console.log(user)
   const initFcm = async (userId) => {
     try {
       // Request OS notification permission (Android 13+ & iOS)
@@ -236,7 +235,6 @@ function App() {
 
       // Load and sync user notification preferences
       const preferences = await getUserNotificationPreferences(userId);
-      console.log("📋 User preferences:", preferences);
       await syncUserPreferences(userId, preferences);
 
       const unsubscribeOnMessage = messaging().onMessage(

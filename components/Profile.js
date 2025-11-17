@@ -16,6 +16,7 @@ import firestore from '@react-native-firebase/firestore';
 import DateTimePicker from "@react-native-community/datetimepicker";
 import RNPickerSelect from 'react-native-picker-select';
 import Loading from '../Loading';
+import { useTranslation } from 'react-i18next';
 
 // Cloudinary
 const CLOUDINARY_CLOUD_NAME = 'dewusw0db';
@@ -30,6 +31,7 @@ function SettingsScreen() {
     const [showPicker, setShowPicker] = useState(false);
     const [loading, setLoading] = useState(false);
     const [currentUser, setCurrentUser] = useState(auth().currentUser);
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (currentUser) {
@@ -61,7 +63,6 @@ function SettingsScreen() {
             fetchUserData();
         }
     }, [currentUser]);
-    console.log(currentUser)
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -186,24 +187,24 @@ function SettingsScreen() {
                             style={styles.avatar}
                             source={imageUri ? { uri: imageUri } : require('../assets/default_profile.png')}
                         />
-                        <Text style={styles.changePicText}>Change your profile picture</Text>
+                        <Text style={styles.changePicText}>{t('settings.profile.changePic')}</Text>
                     </TouchableOpacity>
-                    <Text style={styles.label}>Your Name:</Text>
+                    <Text style={styles.label}>{t('settings.profile.nameLabel')}</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Your Name"
+                        placeholder={t('settings.profile.namePlaceholder')}
                         placeholderTextColor="#888"
                         value={name}
                         onChangeText={setName}
                     />
-                    <Text style={styles.label}>Birthday:</Text>
+                    <Text style={styles.label}>{t('settings.profile.dobLabel')}</Text>
                     <TouchableOpacity onPress={() => setShowPicker(true)}>
                         <TextInput
                             style={styles.input}
-                            placeholder="Date of Birth (YYYY-MM-DD)"
+                            placeholder={t('settings.profile.dobPlaceholder')}
                             placeholderTextColor="#888"
                             value={dob}
-                            editable={false} // عشان المستخدم يضغط ويفتح الـ picker بدل الكتابة
+                            editable={false}
                         />
                     </TouchableOpacity>
                     {showPicker && (
@@ -214,22 +215,22 @@ function SettingsScreen() {
                             onChange={handleChange}
                         />
                     )}
-                    <Text style={styles.label}>Choose your platform:</Text>
+                    <Text style={styles.label}>{t('settings.profile.platformLabel')}</Text>
                     <View style={styles.selectWrapper}>
                         <RNPickerSelect
                             value={platform}
                             onValueChange={(itemValue, itemIndex) => setPlatform(itemValue)}
                             items={[
-                                { label: 'PC', value: 'pc' },
-                                { label: 'Playstaion', value: 'playstaion' },
-                                { label: 'Xbox', value: 'xbox' },
-                                { label: 'Android', value: 'android' },
+                                { label: `${t('settings.profile.platforms.pc')}`, value: 'pc' },
+                                { label: `${t('settings.profile.platforms.playstation')}`, value: 'playstaion' },
+                                { label: `${t('settings.profile.platforms.xbox')}`, value: 'xbox' },
+                                { label: `${t('settings.profile.platforms.android')}`, value: 'android' },
                             ]}
                         />
                     </View>
 
                     <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
-                        <Text style={styles.saveText}>Save Changes</Text>
+                        <Text style={styles.saveText}>{t('common.saveChanges')}</Text>
                     </TouchableOpacity>
                     {/* <TouchableOpacity title="Sign Out" onPress={handleSignOut} color="#d9534f"> */}
 
@@ -278,11 +279,6 @@ const styles = StyleSheet.create({
     },
     separator: {
         height: 40,
-    },
-    container2: {
-        flex: 1,
-        paddingTop: 80,
-        paddingHorizontal: 20,
     },
     label: {
         fontSize: 18,

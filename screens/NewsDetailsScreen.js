@@ -9,9 +9,10 @@ import {
     TouchableOpacity
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from 'react-i18next';
 
 function NewsDetails({ article, visible, onClose }) {
-
+    const { t } = useTranslation();
     return (
         <Modal
             animationType="slide"
@@ -56,7 +57,7 @@ function NewsDetails({ article, visible, onClose }) {
                         onPress={() => Linking.openURL(article.link)}
                     >
                         <Ionicons name="open-outline" size={20} color="white" style={{ marginRight: 8 }} />
-                        <Text style={styles.buttonText}>Read the full article</Text>
+                        <Text style={styles.buttonText}>{t('news.details.readFullArticle')}</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>

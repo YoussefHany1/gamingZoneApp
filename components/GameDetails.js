@@ -18,6 +18,7 @@ import YoutubePlayer from "react-native-youtube-iframe";
 import Loading from '../Loading'
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { useTranslation } from 'react-i18next';
 
 const CLIENT_ID = TWITCH_CLIENT_ID;
 const CLIENT_SECRET = TWITCH_CLIENT_SECRET;
@@ -87,7 +88,7 @@ function GameDetails({ route, navigation }) {
     const [authLoading, setAuthLoading] = useState(true);
     const [isWanted, setIsWanted] = useState(false);
     const [isPlayed, setIsPlayed] = useState(false);
-
+    const { t } = useTranslation();
     useEffect(() => {
         mountedRef.current = true;
         return () => {
@@ -348,16 +349,6 @@ function GameDetails({ route, navigation }) {
                             source={require("../assets/image-not-found.webp")}
                         />
                     }
-
-                    {/* {game.cover.image_id &&
-                        images.push(`https://images.igdb.com/igdb/image/upload/t_720p/${game.cover.image_id}.jpg`)
-                    }
-                    {game.screenshots &&
-                        game.screenshots.map((shot) => (
-                            // console.log(shot.image_id)
-                            images.push(`https://images.igdb.com/igdb/image/upload/t_720p/${shot.image_id}.jpg`)
-                        ))
-                    } */}
                     <View style={styles.backgroundContainer}>
                         <LinearGradient
                             colors={["transparent", "#0c1a33"]}
@@ -398,7 +389,7 @@ function GameDetails({ route, navigation }) {
                             )}
                         </View>
                         {/* stores section */}
-                        {game.websites && <Text style={styles.storesHeader}>Available at these stores</Text>}
+                        {game.websites && <Text style={styles.storesHeader}>{t('games.details.availableStores')}</Text>}
                         <View style={styles.storesContainer}>
                             {game.websites?.map((site) => {
                                 const icon = storeIcons[site.type];
@@ -414,18 +405,18 @@ function GameDetails({ route, navigation }) {
                         <View style={styles.playContainer}>
                             <TouchableOpacity style={[styles.wantBtn, isWanted && styles.wantBtnActive]} onPress={handleWant}>
                                 <Text style={styles.wantBtnText}>
-                                    <Ionicons name={isWanted ? "bookmark" : "bookmark-outline"} size={20} color="white" /> Want
+                                    <Ionicons name={isWanted ? "bookmark" : "bookmark-outline"} size={20} color="white" /> {t('games.details.buttons.played')}
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={[styles.playedBtn, isPlayed && styles.playedBtnActive]} onPress={handlePlayed}>
                                 <Text style={styles.playedBtnText}>
-                                    <Ionicons name={isPlayed ? "checkmark-done" : "checkmark-sharp"} size={24} color="white" /> Played
+                                    <Ionicons name={isPlayed ? "checkmark-done" : "checkmark-sharp"} size={24} color="white" /> {t('games.details.buttons.played')}
                                 </Text>
                             </TouchableOpacity>
                         </View>
                         {/* About Section */}
                         <View>
-                            <Text style={styles.detailsHeader}>About</Text>
+                            <Text style={styles.detailsHeader}>{t('games.details.about')}</Text>
                             <Text style={styles.summary}>{game.summary}</Text>
                         </View>
 
@@ -433,7 +424,7 @@ function GameDetails({ route, navigation }) {
                             {/* generes section */}
                             {game.genres && (
                                 <View style={styles.textCard}>
-                                    <Text style={styles.detailsHeader}>Genres</Text>
+                                    <Text style={styles.detailsHeader}>{t('games.details.genres')}</Text>
                                     {game.genres.map((genre) => (
                                         <View key={genre.id}>
                                             <Text style={styles.detailsText}>{genre.name}</Text>
@@ -444,7 +435,7 @@ function GameDetails({ route, navigation }) {
                             {/* Game mode section */}
                             {game.game_modes && (
                                 <View style={styles.textCard}>
-                                    <Text style={styles.detailsHeader}>Game Modes</Text>
+                                    <Text style={styles.detailsHeader}>{t('games.details.gameModes')}</Text>
                                     {game.game_modes.map((mode) => (
                                         <View key={mode.id}>
                                             <Text style={styles.detailsText}>{mode.name}</Text>
@@ -457,7 +448,7 @@ function GameDetails({ route, navigation }) {
                                     {/* Developers section*/}
                                     {game.involved_companies.some(company => company.developer) && (
                                         <View style={styles.textCard}>
-                                            <Text style={styles.detailsHeader}>Developer</Text>
+                                            <Text style={styles.detailsHeader}>{t('games.details.developer')}</Text>
                                             {game.involved_companies
                                                 .filter(company => company.developer)
                                                 .map(company => (
@@ -471,7 +462,7 @@ function GameDetails({ route, navigation }) {
                                     {/* Publishers section*/}
                                     {game.involved_companies.some(company => company.publisher) && (
                                         <View style={styles.textCard}>
-                                            <Text style={styles.detailsHeader}>Publisher</Text>
+                                            <Text style={styles.detailsHeader}>{t('games.details.publisher')}</Text>
                                             {game.involved_companies
                                                 .filter(company => company.publisher)
                                                 .map(company => (
@@ -487,7 +478,7 @@ function GameDetails({ route, navigation }) {
                             {game.language_supports && (
                                 <>
                                     <View style={styles.textCard}>
-                                        <Text style={styles.detailsHeader}>Language Supports</Text>
+                                        <Text style={styles.detailsHeader}>{t('games.details.languages.title')}</Text>
                                         {["Audio", "Subtitles", "Interface"].map((type) => {
                                             const langs = game.language_supports
                                                 ?.filter(l => l.language_support_type.name === type)
@@ -506,7 +497,7 @@ function GameDetails({ route, navigation }) {
                             {/* Game Engines section */}
                             {game.game_engines && (
                                 <View style={styles.textCard}>
-                                    <Text style={styles.detailsHeader}>Game Engines</Text>
+                                    <Text style={styles.detailsHeader}>{t('games.details.engines')}</Text>
                                     {game.game_engines.map((engine) => (
                                         <View key={engine.id}>
                                             <Text style={styles.detailsText}>{engine.name}</Text>
@@ -528,7 +519,7 @@ function GameDetails({ route, navigation }) {
                                     if (trailer?.video_id) {
                                         return (
                                             <>
-                                                <Text style={styles.detailsHeader}>Game Trailer</Text>
+                                                <Text style={styles.detailsHeader}>{t('games.details.trailer')}</Text>
                                                 <View style={styles.ytVid}>
                                                     <YoutubePlayer height={250} videoId={trailer.video_id} />
                                                 </View>
@@ -542,7 +533,7 @@ function GameDetails({ route, navigation }) {
                         {/* Collection section */}
                         {game.collections?.[0]?.games &&
                             <View style={{ marginTop: 20 }}>
-                                <Text style={styles.detailsHeader}>Game series</Text>
+                                <Text style={styles.detailsHeader}>{t('games.details.series')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                                     {game.collections?.[0]?.games.map((g) => (
                                         <TouchableOpacity
@@ -571,7 +562,7 @@ function GameDetails({ route, navigation }) {
                         {/* Similar Games section */}
                         {game?.similar_games && game.similar_games.length > 0 && (
                             <View style={{ marginTop: 20 }}>
-                                <Text style={styles.detailsHeader}>Similar Games</Text>
+                                <Text style={styles.detailsHeader}>{t('games.details.similar')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                                     {game.similar_games.map((sg) => (
                                         <TouchableOpacity

@@ -341,15 +341,15 @@ async function runFetchAll({ concurrency = 4, batchSize = 400 } = {}) {
               thumbnail: it.thumbnail || null, // <-- new field
             };
 
-            batch.set(docRef, payload, { merge: true });
+            // batch.set(docRef, payload, { merge: true });
 
             // If it's a new article, add to notification list
             if (isNewArticle) {
+              batch.set(docRef, payload, { merge: true });
               newArticles.push({
                 ...payload,
-                topicName: `${
-                  rawCategory || "uncategorized"
-                }_${siteNameSanitized}`,
+                topicName: `${rawCategory || "uncategorized"
+                  }_${siteNameSanitized}`,
                 siteName: site.name || siteNameSanitized,
               });
             }

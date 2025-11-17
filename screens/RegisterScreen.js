@@ -5,6 +5,7 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from 'react-i18next';
 
 GoogleSignin.configure({
     webClientId: '1003577837647-jpm4m77muign33bu3inaihqf6p82b50v.apps.googleusercontent.com',
@@ -12,6 +13,7 @@ GoogleSignin.configure({
 });
 
 function SignupScreen({ navigation }) {
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
@@ -22,7 +24,7 @@ function SignupScreen({ navigation }) {
             return;
         }
         try {
-            await createUserWithEmailAndPassword(auth, email, password);
+            await auth().createUserWithEmailAndPassword(email, password);
             console.log('✅ Sign up successful');
             // سيقوم onAuthStateChanged في App.js بالباقي
         } catch (error) {
@@ -36,24 +38,26 @@ function SignupScreen({ navigation }) {
         try {
             await GoogleSignin.hasPlayServices();
 
-            // قمنا بتغيير اسم المتغير إلى userInfoResponse ليعكس اللوج
             const userInfoResponse = await GoogleSignin.signIn();
-            // console.log('Google User Info:', JSON.stringify(userInfoResponse, null, 2));
 
-            // التحقق من المسار الصحيح: userInfoResponse.data.idToken
-            if (!userInfoResponse || !userInfoResponse.data || !userInfoResponse.data.idToken) {
-                console.error('❌ Google sign up error: idToken not found in userInfo.data');
+            // [تم التصحيح] التحقق من المسار الصحيح: userInfoResponse.idToken
+            // المكتبة الحديثة لا تستخدم .data
+            const idToken = userInfoResponse.idToken;
+
+            if (!idToken) {
+                console.error('❌ Google sign up error: idToken not found in response.', JSON.stringify(userInfoResponse));
                 Alert.alert('خطأ', 'لم نتمكن من الحصول على معرف جوجل (idToken not found).');
                 return;
             }
-            const idToken = userInfoResponse.data.idToken;
+
             // إنشاء بيانات الاعتماد
             const googleCredential = auth.GoogleAuthProvider.credential(idToken);
             // تسجيل الدخول (أو التسجيل) في Firebase
             await auth().signInWithCredential(googleCredential);
-            console.log('✅ Signed in with Google credential');
+            console.log('✅ Signed up with Google credential');
+
         } catch (error) {
-            console.error('❌ Google sign in error:', error);
+            console.error('❌ Google sign up error:', error);
             if (error.code === statusCodes.SIGN_IN_CANCELLED) {
                 console.log('User cancelled the login flow');
             } else {
@@ -65,11 +69,11 @@ function SignupScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <Image source={require('../assets/logo.png')} style={styles.logo} />
-            <Text style={styles.title}>Sign Up</Text>
+            <Text style={styles.title}>{t('auth.register.title')}</Text>
             <View style={styles.inputContainer}>
                 <TextInput
                     style={styles.input}
-                    placeholder="Email"
+                    placeholder={t('auth.register.emailPlaceholder')}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -77,14 +81,14 @@ function SignupScreen({ navigation }) {
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder="Password"
+                    placeholder={t('auth.register.passwordPlaceholder')}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
                 />
             </View>
             <TouchableOpacity style={styles.button} onPress={handleSignup} >
-                <Text style={styles.buttonText}>Sign Up</Text>
+                <Text style={styles.buttonText}>{t('auth.register.signUpButton')}</Text>
             </TouchableOpacity>
             <LinearGradient
                 colors={["#10574b", "#3174f1", "#e92d18", "#c38d0c"]}
@@ -94,14 +98,14 @@ function SignupScreen({ navigation }) {
             >
                 <TouchableOpacity onPress={onGoogleButtonPress} style={{ alignItems: "center", flexDirection: "row" }}>
                     <Ionicons name="logo-google" size={28} color="white" />
-                    <Text style={styles.buttonText}> Sign Up with Google</Text>
+                    <Text style={styles.buttonText}> {t('auth.register.googleSignUp')}</Text>
                 </TouchableOpacity>
             </LinearGradient>
             <TouchableOpacity
                 style={styles.newAccButton}
                 onPress={() => navigation.navigate('Login')}
             >
-                <Text style={styles.buttonText}>Sign In</Text>
+                <Text style={styles.buttonText}>{t('auth.register.haveAnAccount')}</Text>
             </TouchableOpacity>
         </SafeAreaView>
     );

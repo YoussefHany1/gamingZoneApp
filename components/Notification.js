@@ -21,12 +21,14 @@ import {
   testNotification,
   testTopicSubscription,
 } from "../notificationService";
+import { useTranslation } from 'react-i18next';
 
 const Notification = ({ navigation }) => {
   const [rssFeeds, setRssFeeds] = useState({});
   const [preferences, setPreferences] = useState({});
   const [loading, setLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState({});
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Load RSS feeds from Firestore
@@ -236,8 +238,7 @@ const Notification = ({ navigation }) => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.Textheader}>
           <Text style={styles.subtitle}>
-            Choose which news sources you want to receive notifications from{"\n"}
-            Make sure to allow notifications for this app
+            {t('settings.notifications.description')}
           </Text>
         </View>
 
@@ -264,8 +265,7 @@ const Notification = ({ navigation }) => {
           </TouchableOpacity>
 
           <Text style={styles.footerText}>
-            Notifications will be sent when new articles are published from
-            enabled sources.
+            {t('settings.notifications.footer')}
           </Text>
         </View>
       </ScrollView>

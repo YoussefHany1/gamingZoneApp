@@ -5,29 +5,29 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
-  RefreshControl,
 } from "react-native";
 import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
 import Loading from "../Loading";
 import NewsDetails from "../screens/NewsDetailsScreen";
 import { useState } from "react";
-function fromSnakeCase(input) {
-  return input
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+import { useTranslation } from 'react-i18next';
+
 
 function LatestNews({ limit, language, category, website, selectedItem, onChangeFeed, showDropdown }) {
-  const { articles, loading, error, refreshing, onRefresh } = useFeed(
-    category,
-    website
-  );
-
+  const [activeModal, setActiveModal] = useState(false);
+  const { articles, loading, error } = useFeed(category, website);
+  const { t } = useTranslation();
   const listData =
     typeof limit === "number" ? articles.slice(0, limit) : articles;
-  const [activeModal, setActiveModal] = useState(false);
+
+  function fromSnakeCase(input) {
+    return input
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  }
+
   const renderItem = ({ item }) => {
     return (
       <TouchableOpacity
@@ -59,22 +59,27 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
     );
   };
 
-  const renderHeader = () => (
-    <>
-      <Text style={styles.header}>Latest {category.charAt(0).toUpperCase() + category.slice(1)}</Text>
-      {showDropdown !== false && (
-        <DropdownPicker
-          category={category}
-          value={selectedItem}
-          onChange={(item) => {
-            if (typeof onChangeFeed === "function") {
-              onChangeFeed(item);
-            }
-          }}
-        />
-      )}
-    </>
-  );
+  const renderHeader = () => {
+    const translatedCategory = t(`news.tabs.${category.toLowerCase()}`);
+    return (
+      <>
+        <Text style={styles.header}>
+          {/* {t('news.latestHeader', { category: category.charAt(0).toUpperCase() + category.slice(1) })} */}
+          {t('news.latestHeader', { category: translatedCategory })}
+        </Text>
+        {showDropdown !== false && (
+          <DropdownPicker
+            category={category}
+            value={selectedItem}
+            onChange={(item) => {
+              if (typeof onChangeFeed === "function") {
+                onChangeFeed(item);
+              }
+            }}
+          />
+        )}
+      </>)
+  };
 
   if (loading) return <Loading />;
   if (error)
@@ -85,20 +90,20 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
     );
 
   return (
-    <View style={[styles.container, language === "ar" && { direction: "rtl" }]}>
+    <View style={[styles.container, language === "ar" ? { direction: "rtl" } : { direction: "ltr" }]}>
       <FlatList
         data={listData}
         renderItem={renderItem}
         keyExtractor={(item, index) => index.toString()}
         ListHeaderComponent={renderHeader}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#516996"
-          />
-        }
+      // refreshControl={
+      //   <RefreshControl
+      //     refreshing={refreshing}
+      //     onRefresh={onRefresh}
+      //     tintColor="#516996"
+      //   />
+      // }
       />
     </View>
   );
@@ -117,7 +122,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#516996",
     paddingHorizontal: 80,
     paddingVertical: 10,
-    marginBottom: 30,
+    marginVertical: 30,
     borderRadius: 16,
     color: "white",
   },

@@ -1,9 +1,32 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Linking, ScrollView } from "react-native"
 import { useState, useEffect } from "react"
+import { EpicFreeGames } from 'epic-free-games';
+import Loading from "../Loading";
+import { useTranslation } from 'react-i18next';
 
-function FreeGames({ data }) {
-    const [game, setGame] = useState(data);
-    // console.log(game.nextGames)
+function FreeGames() {
+    const { t } = useTranslation();
+    const [game, setGame] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const epicFreeGames = new EpicFreeGames({
+            country: "US",
+            locale: "en-US",
+            includeAll: true,
+        });
+
+        epicFreeGames
+            .getGames()
+            .then((res) => {
+                setGame(res);
+                setLoading(false);
+            })
+            .catch((err) => {
+                console.error("Error fetching games:", err);
+                setLoading(false);
+            });
+    }, []);
 
     const [timeLeft, setTimeLeft] = useState(getTimeUntilNextThursday());
 
@@ -40,13 +63,16 @@ function FreeGames({ data }) {
     const minutes = Math.floor((timeLeft / (1000 * 60)) % 60);
     const hours = Math.floor((timeLeft / (1000 * 60 * 60)) % 24);
     const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-
+    // console.log(game)
     return (
         <>
             <View>
-                <Text style={styles.header}>Get your free weekly game from Epic Games</Text>
+                {loading &&
+                    <Loading />
+                }
+                <Text style={styles.header}>{t('games.freeGames.header')}</Text>
                 <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} style={styles.container}>
-                    {game.currentGames.map((item, index) => (
+                    {game?.currentGames?.map((item, index) => (
                         <TouchableOpacity key={index} style={styles.gameCard} onPress={() => {
                             Linking.openURL(`https://store.epicgames.com/en-US/p/${item.offerMappings?.[index]?.pageSlug}`)
                         }}>
@@ -57,31 +83,31 @@ function FreeGames({ data }) {
                                     }
                                     : require("../assets/image-not-found.webp")
                             } style={styles.cover} resizeMode="cover" />
-                            <Text style={styles.discout}>100%{"\n"}OFF</Text>
+                            <Text style={styles.discout}>{t('games.freeGames.discount')}</Text>
                             <Text style={styles.title} numberOfLines={3}>{item.title}</Text>
                         </TouchableOpacity>
                     ))}
-                    {game.nextGames.map((item, index) => (
+                    {game?.nextGames?.map((item, index) => (
                         <TouchableOpacity key={index} style={styles.gameCard} onPress={() => {
                             Linking.openURL(`https://store.epicgames.com/en-US/p/${item.offerMappings?.[index]?.pageSlug}`)
                         }}>
                             <View style={styles.overlay}>
-                                <Text style={styles.subCount}>Free On</Text>
+                                <Text style={styles.subCount}>{t('games.freeGames.freeOn')}</Text>
                                 <View style={{ flexDirection: "row", justifyContent: "space-evenly", width: "100%" }}>
                                     <View>
-                                        <Text style={styles.countdownNum}>Days</Text>
+                                        <Text style={styles.countdownNum}>{t('games.freeGames.days')}</Text>
                                         <Text style={styles.countdownNum}>{days}</Text>
                                     </View>
                                     <View>
-                                        <Text style={styles.countdownNum}>Hrs</Text>
+                                        <Text style={styles.countdownNum}>{t('games.freeGames.hours')}</Text>
                                         <Text style={styles.countdownNum}>{hours}</Text>
                                     </View>
                                     <View>
-                                        <Text style={styles.countdownNum}>Min</Text>
+                                        <Text style={styles.countdownNum}>{t('games.freeGames.minutes')}</Text>
                                         <Text style={styles.countdownNum}>{minutes}</Text>
                                     </View>
                                     <View>
-                                        <Text style={styles.countdownNum}>Sec</Text>
+                                        <Text style={styles.countdownNum}>{t('games.freeGames.seconds')}</Text>
                                         <Text style={styles.countdownNum}>{seconds}</Text>
                                     </View>
                                 </View>
@@ -94,7 +120,6 @@ function FreeGames({ data }) {
                                     }
                                     : require("../assets/image-not-found.webp")
                             } style={styles.cover} resizeMode="cover" />
-                            <Text style={styles.discout}>100%{"\n"}OFF</Text>
                             <Text style={styles.title}>{item.title}</Text>
                         </TouchableOpacity>
                     ))}

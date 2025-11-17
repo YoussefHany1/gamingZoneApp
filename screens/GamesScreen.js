@@ -1,36 +1,20 @@
-import { ScrollView, StyleSheet, View, Text, TextInput, TouchableOpacity } from "react-native";
+import { ScrollView, StyleSheet, View, TextInput, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, useEffect } from "react";
-import { EpicFreeGames } from 'epic-free-games';
 import FreeGames from "../components/FreeGames";
 import GamesList from "../components/GamesList";
 import { Ionicons } from "@expo/vector-icons";
 import Loading from '../Loading'
+import { useTranslation } from 'react-i18next';
 
 function GamesScreen() {
+    const { t } = useTranslation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(''); // store the currently typed text
     const [submittedQuery, setSubmittedQuery] = useState(''); // save the text after clicking enter
 
-    useEffect(() => {
-        const epicFreeGames = new EpicFreeGames({
-            country: "US",
-            locale: "en-US",
-            includeAll: true,
-        });
 
-        epicFreeGames
-            .getGames()
-            .then((res) => {
-                setData(res);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error("Error fetching games:", err);
-                setLoading(false);
-            });
-    }, []);
     const handleSearchTextChange = (text) => {
         setSearchQuery(text);
         if (text === '') {
@@ -46,50 +30,50 @@ function GamesScreen() {
     return (
         <>
             <SafeAreaView style={styles.container}>
-                {loading ? (
+                {/* {loading ? (
                     <Loading />
-                ) : (
+                ) : ( */}
 
-                    <View  >
-                        {/* <Text style={styles.header}>Find Your Next Gaming Adventure</Text> */}
-                        <View style={styles.searchContainer}>
-                            <TextInput
-                                style={styles.searchBar}
-                                placeholder="Search for games..."
-                                placeholderTextColor="#999"
-                                value={searchQuery}
-                                onChangeText={handleSearchTextChange}
-                                onSubmitEditing={() => setSubmittedQuery(searchQuery)} // Activate search when pressing enter
-                                returnKeyType="search"
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity style={styles.clearTextBtn} onPress={handleClearSearch}>
-                                    <Ionicons name="close-sharp" size={24} color="white" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                        {submittedQuery === '' ? (
-                            <>
-                                <ScrollView >
-                                    {/* if search is empty show the defult lists */}
-                                    <View style={{ paddingBottom: 120 }}>
-                                        <FreeGames data={data} />
-                                        <GamesList endpoint="/popular" />
-                                        <GamesList endpoint="/recently-released" />
-                                        <GamesList endpoint="/top-rated" />
-                                        <GamesList endpoint="/coming-soon" />
-                                        <GamesList endpoint="/most-anticipated" />
-                                        <GamesList endpoint="/nostalgia-corner" />
-                                    </View>
-                                </ScrollView>
-                            </>
-                        ) : (
-                            // if search not empty show search results
-                            <GamesList query={submittedQuery} />
-
+                <View  >
+                    {/* <Text style={styles.header}>{t('games.screen.header')}</Text> */}
+                    <View style={styles.searchContainer}>
+                        <TextInput
+                            style={styles.searchBar}
+                            placeholder={t('games.screen.searchPlaceholder')}
+                            placeholderTextColor="#999"
+                            value={searchQuery}
+                            onChangeText={handleSearchTextChange}
+                            onSubmitEditing={() => setSubmittedQuery(searchQuery)} // Activate search when pressing enter
+                            returnKeyType="search"
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity style={styles.clearTextBtn} onPress={handleClearSearch}>
+                                <Ionicons name="close-sharp" size={24} color="white" />
+                            </TouchableOpacity>
                         )}
                     </View>
-                )}
+                    {submittedQuery === '' ? (
+                        <>
+                            <ScrollView >
+                                {/* if search is empty show the defult lists */}
+                                <View style={{ paddingBottom: 120 }}>
+                                    <FreeGames />
+                                    <GamesList endpoint="/popular" />
+                                    <GamesList endpoint="/recently-released" />
+                                    <GamesList endpoint="/top-rated" />
+                                    <GamesList endpoint="/coming-soon" />
+                                    <GamesList endpoint="/most-anticipated" />
+                                    <GamesList endpoint="/nostalgia-corner" />
+                                </View>
+                            </ScrollView>
+                        </>
+                    ) : (
+                        // if search not empty show search results
+                        <GamesList query={submittedQuery} />
+
+                    )}
+                </View>
+                {/* )} */}
             </SafeAreaView >
         </>
     );

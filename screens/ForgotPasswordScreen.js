@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, Text, Alert, Image } from 'react-native';
-// import { auth } from '../firebase'; // تأكد من المسار الصحيح
-// import { sendPasswordResetEmail } from 'firebase/auth';
+import { TextInput, TouchableOpacity, StyleSheet, Text, Alert, Image } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from 'react-i18next';
 
 function ForgotPasswordScreen({ navigation }) {
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -38,10 +38,10 @@ function ForgotPasswordScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <Image source={require('../assets/logo.png')} style={styles.logo} />
-            <Text style={styles.title}>Reset your Password</Text>
+            <Text style={styles.title}>{t('auth.forgotPassword.title')}</Text>
             <TextInput
                 style={styles.input}
-                placeholder="Email"
+                placeholder={t('auth.forgotPassword.emailPlaceholder')}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -52,13 +52,13 @@ function ForgotPasswordScreen({ navigation }) {
                 onPress={handleResetPassword}
                 disabled={loading}
             >
-                <Text style={styles.buttonText}>{loading ? 'Loadding..' : 'Send a reset password link'}</Text>
+                <Text style={styles.buttonText}>{t('auth.forgotPassword.sendButton')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
                 style={styles.backButton}
                 onPress={() => navigation.goBack()}
             >
-                <Text style={styles.buttonText}>Back to Login</Text>
+                <Text style={styles.buttonText}>{t('auth.forgotPassword.backToLogin')}</Text>
             </TouchableOpacity>
         </SafeAreaView>
     );
@@ -66,7 +66,6 @@ function ForgotPasswordScreen({ navigation }) {
 
 export default ForgotPasswordScreen;
 
-// (يمكنك استخدام نفس الأنماط (styles) من شاشة LoginScreen)
 const styles = StyleSheet.create({
     container: {
         flex: 1,

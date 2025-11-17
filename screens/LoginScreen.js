@@ -5,12 +5,14 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from 'react-i18next';
 
 GoogleSignin.configure({
     webClientId: '1003577837647-jpm4m77muign33bu3inaihqf6p82b50v.apps.googleusercontent.com',
 });
 
 function LoginScreen({ navigation }) {
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
@@ -22,10 +24,11 @@ function LoginScreen({ navigation }) {
         }
         try {
             await auth().signInWithEmailAndPassword(email, password);
-            console.log('✅ Login successful');
+            console.log(`${t('auth.login.success')})`);
             // سيقوم onAuthStateChanged في App.js بالباقي
         } catch (error) {
-            console.error('❌ Login failed:', error);
+            console.error(`${t('auth.login.failed')})`, error);
+            // الخطأ [auth/invalid-credential] سيظهر هنا إذا كانت البيانات خاطئة
             Alert.alert('error while trying to login', error.message);
         }
     };
@@ -35,22 +38,20 @@ function LoginScreen({ navigation }) {
         try {
             await GoogleSignin.hasPlayServices();
 
-            // قمنا بتغيير اسم المتغير إلى userInfoResponse ليعكس اللوج
             const userInfoResponse = await GoogleSignin.signIn();
 
             // طباعة اللوج (كما هي)
             console.log('Google User Info:', JSON.stringify(userInfoResponse, null, 2));
 
-            // --- هذا هو التعديل المهم ---
-            // التحقق من المسار الصحيح: userInfoResponse.data.idToken
-            if (!userInfoResponse || !userInfoResponse.data || !userInfoResponse.data.idToken) {
-                console.error('❌ Google sign in error: idToken not found in userInfo.data');
-                Alert.alert('خطأ', 'لم نتمكن من الحصول على معرف جوجل (idToken not found).');
+            // [تم التصحيح] التحقق من المسار الصحيح: userInfoResponse.data.idToken
+            // اللوغ الذي أرسلته يثبت أن التوكن موجود داخل .data
+            const idToken = userInfoResponse.data?.idToken;
+
+            if (!idToken) {
+                console.error('❌ Google sign in error: idToken not found in userInfoResponse.data', JSON.stringify(userInfoResponse));
+                Alert.alert('خطأ', 'لم نتمكن من الحصول على معرف جوجل (idToken not found in data).');
                 return;
             }
-
-            // --- الحصول على idToken من المسار الصحيح ---
-            const idToken = userInfoResponse.data.idToken;
 
             // إنشاء بيانات الاعتماد
             const googleCredential = auth.GoogleAuthProvider.credential(idToken);
@@ -74,11 +75,12 @@ function LoginScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <Image source={require('../assets/logo.png')} style={styles.logo} />
-            <Text style={styles.title}>Sign In</Text>
+            <Text style={styles.title}>{t('auth.login.title')}</Text>
             <View style={styles.inputContainer}>
                 <TextInput
                     style={styles.input}
-                    placeholder="Email"
+                    placeholder={t('auth.login.emailPlaceholder')}
+                    placeholderTextColor="#aaa" // تحسين الوضوح
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -86,7 +88,8 @@ function LoginScreen({ navigation }) {
                 />
                 <TextInput
                     style={styles.input}
-                    placeholder="Password"
+                    placeholder={t('auth.login.passwordPlaceholder')}
+                    placeholderTextColor="#aaa" // تحسين الوضوح
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -95,11 +98,11 @@ function LoginScreen({ navigation }) {
                     onPress={() => navigation.navigate('ForgotPassword')}
                     style={styles.forgotPasswordButton}
                 >
-                    <Text style={styles.forgotPasswordText}>Forget Password?</Text>
+                    <Text style={styles.forgotPasswordText}>{t('auth.login.forgotPassword')}</Text>
                 </TouchableOpacity>
             </View>
             <TouchableOpacity onPress={handleLogin} style={styles.button}>
-                <Text style={styles.buttonText}>Sign In</Text>
+                <Text style={styles.buttonText}>{t('auth.login.title')}</Text>
             </TouchableOpacity>
             <LinearGradient
                 colors={["#10574b", "#3174f1", "#e92d18", "#c38d0c"]}
@@ -109,14 +112,14 @@ function LoginScreen({ navigation }) {
             >
                 <TouchableOpacity onPress={onGoogleButtonPress} style={{ alignItems: "center", flexDirection: "row" }}>
                     <Ionicons name="logo-google" size={28} color="white" />
-                    <Text style={styles.buttonText}> Sign In with Google</Text>
+                    <Text style={styles.buttonText}> {t('auth.login.googleSignIn')}</Text>
                 </TouchableOpacity>
             </LinearGradient>
             <TouchableOpacity
                 onPress={() => navigation.navigate('Register')}
                 style={styles.newAccButton}
             >
-                <Text style={styles.buttonText}>Create new account</Text>
+                <Text style={styles.buttonText}>{t('auth.login.createAccount')}</Text>
             </TouchableOpacity>
         </SafeAreaView>
     );

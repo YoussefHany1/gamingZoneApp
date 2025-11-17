@@ -1,0 +1,181 @@
+{
+    "common": {
+        "loading": "Loading...",
+        "error": "Error",
+        "cancel": "Cancel",
+        "ok": "OK",
+        "remove": "Remove",
+        "saveChanges": "Save Changes",
+        "noData": "No data to display",
+        "imageNotFound": "Image not found"
+    },
+    "auth": {
+        "login": {
+            "title": "Sign In",
+            "emailPlaceholder": "Email",
+            "passwordPlaceholder": "Password",
+            "forgotPassword": "Forget Password?",
+            "signInButton": "Sign In",
+            "googleSignIn": "Sign In with Google",
+            "createAccount": "Create new account",
+            "emptyFields": "Please enter your email and password.",
+            "success": "Login successful",
+            "failed": "Login failed"
+        },
+        "register": {
+            "title": "Sign Up",
+            "emailPlaceholder": "Email",
+            "passwordPlaceholder": "Password",
+            "signUpButton": "Sign Up",
+            "googleSignUp": "Sign Up with Google",
+            "haveAnAccount": "Already have an account?",
+            "success": "Sign up successful"
+        },
+        "forgotPassword": {
+            "title": "Reset your Password",
+            "emailPlaceholder": "Email",
+            "sendButton": "Send a reset password link",
+            "sending": "Loading..",
+            "backToLogin": "Back to Login",
+            "emptyEmail": "Please enter your email address.",
+            "successTitle": "Sent successfully",
+            "successMessage": "A password reset link has been sent to your email. (Please also check your Spam folder)",
+            "userNotFound": "No account is registered with this email address."
+        },
+        "alerts": {
+            "loginRequired": "Login required",
+            "loginRequiredMessage": "Please log in to be able to add games to your lists.",
+            "googleIdTokenError": "Google sign in error: idToken not found."
+        }
+    },
+    "navigation": {
+        "tabs": {
+            "home": "Home",
+            "news": "News",
+            "games": "Games",
+            "settings": "Settings"
+        },
+        "titles": {
+            "notificationSettings": "Notification Settings",
+            "accountSettings": "Account Settings",
+            "wantList": "Want List",
+            "playedList": "Played List"
+        }
+    },
+    "home": {
+        "slideshow": {
+            "error": "Error loading slideshow"
+        },
+        "sections": {
+            "news": "News",
+            "reviews": "Reviews",
+            "esports": "Esports",
+            "hardware": "Hardware"
+        }
+    },
+    "news": {
+        "tabs": {
+            "news": "News",
+            "reviews": "Reviews",
+            "esports": "Esports",
+            "hardware": "Hardware"
+        },
+        "latestHeader": "Latest {{category}}",
+        "details": {
+            "readFullArticle": "Read the full article"
+        },
+        "dropdown": {
+            "visitWebsite": "Visit Website"
+        }
+    },
+    "games": {
+        "screen": {
+            "searchPlaceholder": "Search for games...",
+            "header": "Find Your Next Gaming Adventure"
+        },
+        "freeGames": {
+            "header": "Get your free weekly game from Epic Games",
+            "freeOn": "Free On",
+            "days": "Days",
+            "hours": "Hrs",
+            "minutes": "Min",
+            "seconds": "Sec",
+            "discount": "100%\nOFF"
+        },
+        "list": {
+            "searchResults": "Search Results",
+            "noResults": "No games found.",
+            "serverError": "The connection to the server failed. Please ensure the server is running."
+        },
+        "details": {
+            "availableStores": "Available at these stores",
+            "buttons": {
+                "want": "Want",
+                "played": "Played"
+            },
+            "about": "About",
+            "genres": "Genres",
+            "gameModes": "Game Modes",
+            "developer": "Developer",
+            "publisher": "Publisher",
+            "languages": {
+                "title": "Language Supports",
+                "audio": "Audio",
+                "subtitles": "Subtitles",
+                "interface": "Interface"
+            },
+            "engines": "Game Engines",
+            "trailer": "Game Trailer",
+            "series": "Game series",
+            "similar": "Similar Games"
+        }
+    },
+    "userLists": {
+        "empty": {
+            "title": "Your list is empty",
+            "playedSub": "Add the games you have played here.",
+            "wantSub": "Add the games you want to play.",
+            "findButton": "Find Your Game",
+            "findButtonNew": "Find Your New Game"
+        },
+        "actions": {
+            "confirmDeleteTitle": "Confirm deletion",
+            "confirmDeleteMessage": "Are you sure you want to remove \"{{gameName}}\" from your list?"
+        }
+    },
+    "settings": {
+        "language": "language",
+        "currentLang": "English",
+        "menu": {
+            "notifications": "Notification Settings",
+            "wantList": "Want to Play List",
+            "playedList": "Played Games List",
+            "changeLanguage": "Change Language",
+            "rateUs": "Rate Us",
+            "supportUs": "Support Us",
+            "feedback": "Feedback",
+            "signOut": "Sign Out"
+        },
+        "profile": {
+            "changePic": "Change your profile picture",
+            "nameLabel": "Your Name:",
+            "namePlaceholder": "Your Name",
+            "dobLabel": "Your Birthday date:",
+            "dobPlaceholder": "Date of Birth (YYYY-MM-DD)",
+            "platformLabel": "Choose your platform:",
+            "platforms": {
+                "pc": "PC",
+                "playstation": "Playstation",
+                "xbox": "Xbox",
+                "android": "Android"
+            },
+            "saveSuccessTitle": "Done!",
+            "saveSuccessMessage": "Your data has been successfully updated.",
+            "permissionError": "Images permissions are required."
+        },
+        "notifications": {
+            "description": "Choose which news sources you want to receive notifications from\nMake sure to allow notifications for this app",
+            "footer": "Notifications will be sent when new articles are published from enabled sources."
+        }
+    }
+}

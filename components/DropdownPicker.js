@@ -10,31 +10,9 @@ import {
   Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-// import { collection, onSnapshot } from "firebase/firestore";
-// import { db } from "../firebase.js";
 import firestore from '@react-native-firebase/firestore';
-
-// const docRef = collection(db, "rss");
-// let rssFeeds = [];
-
-// onSnapshot(
-//   docRef,
-//   (snap) => {
-//     if (snap) {
-//       rssFeeds = [];
-//       snap.docs.forEach((doc) => {
-//         const data = doc.data();
-//         rssFeeds = { ...rssFeeds, ...data };
-//       });
-//       // console.log("✅ Current data: ", rssFeeds?.hardware);
-//     } else {
-//       console.log("❌ Document does not exist.");
-//     }
-//   },
-//   (err) => {
-//     console.error("🚨 Error while fetching Firestore document:", err);
-//   }
-// );
+import RNPickerSelect from 'react-native-picker-select';
+import Loading from "../Loading";
 
 const DropdownPicker = (props) => {
   const [rssFeeds, setRssFeeds] = useState({}); // 1. نستخدم State
@@ -58,111 +36,74 @@ const DropdownPicker = (props) => {
           setLoading(false);
         }
       );
-
-    // إلغاء الاشتراك
     return () => subscriber();
   }, []);
 
   const category = props.category.toLowerCase();
   const websites = rssFeeds[category] || [];
+  // 2. تحويل مصفوفة المواقع (websites) إلى الشكل الذي تتطلبه RNPickerSelect
+  //    يجب أن تكون `items` على شكل: [{ label: 'Site Name', value: 'siteName' }]
+  const pickerItems = websites.map(site => ({
+    label: site.name,
+    value: site.name, // نستخدم الاسم كقيمة فريدة (value)
+  }));
 
-  // init safely (use websites[0] if موجود)
-  const [selected, setSelected] = useState(() => {
-    // prefer controlled value from parent if provided
-    if (props.value) return props.value;
-    return websites[0] ?? null;
-  });
-  const [open, setOpen] = useState(false);
-
-  // important: reset selected if websites (or category) تتغير
-  // reset when category changes
-  useEffect(() => {
-    setSelected(props.value ?? websites[0] ?? null);
-  }, [props.category, websites]);
-
-  // keep in sync when parent controls the value
-  useEffect(() => {
-    if (props.value && props.value?.name !== selected?.name) {
-      setSelected(props.value);
+  // 3. الدالة التي سيتم استدعاؤها من RNPickerSelect عند التغيير
+  //    مهمتها هي إيجاد الكائن (Object) الكامل المطابق للقيمة (value) التي تم اختيارها
+  //    وإرساله إلى المكون الأب (Parent) عبر props.onChange
+  const handleValueChange = (value) => {
+    if (typeof props.onChange === "function") {
+      if (!value) {
+        // إذا اختار المستخدم الـ placeholder (القيمة null)
+        props.onChange(null);
+      } else {
+        // ابحث عن الكائن الكامل المطابق للاسم (value)
+        const fullItem = websites.find(site => site.name === value);
+        props.onChange(fullItem || null);
+      }
     }
-  }, [props.value]);
-
-  const renderItem = ({ item }) => {
-    const isSelected = selected?.name === item.name;
-    return (
-      <TouchableOpacity
-        style={[styles.option, isSelected && styles.optionSelected]}
-        onPress={() => {
-          // log the item we clicked
-          console.log("pressed item:", item.name);
-          setSelected(item);
-          // call callback (if موجود) قبل اغلاق المودال لو حبيت
-          if (typeof props.onChange === "function") {
-            props.onChange(item);
-          }
-          setOpen(false);
-        }}
-        accessibilityRole="button"
-      >
-        <Text
-          style={[
-            styles.check,
-            isSelected ? styles.checkVisible : styles.checkHidden,
-          ]}
-        >
-          ✓
-        </Text>
-
-        <View style={styles.itemRow}>
-          <Image source={{ uri: item.image }} style={styles.avatar} />
-          <Text numberOfLines={1} style={styles.optionText}>
-            {item.name}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    );
   };
+
+  // 4. العنصر المختار حالياً (الكائن الكامل) يُؤخذ مباشرة من props.value
+  const selectedItem = props.value;
+
+  // --- عرض حالات التحميل أو عدم وجود بيانات ---
+  if (loading) {
+    return <Loading />;
+  }
+
+  if (websites.length === 0 && !loading) {
+    return <View style={styles.wrapper}><Text style={styles.buttonText}>No sites found for {props.category}</Text></View>;
+  }
+
 
   return (
     <View style={styles.wrapper}>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => setOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={`Open picker. Selected: ${selected?.name ?? "none"
-          }`}
-      >
-        <View style={styles.dropdownButton}>
-          <Image source={{ uri: selected?.image }} style={styles.avatar} />
-          <Text style={styles.buttonText}>{selected?.name}</Text>
-        </View>
-        <Text style={styles.chev}>▾</Text>
-      </TouchableOpacity>
+      <View style={styles.pickerContainer}>
+        {/* نعرض صورة الموقع المختار بجانب الـ Picker */}
+        {selectedItem?.image && (
+          <Image source={{ uri: selectedItem?.image }} style={styles.avatar} />
+        )}
 
-      <Modal
-        visible={open}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setOpen(false)}
-      >
-        {/* هنا نضع overlay كعنصر منفصل لكي لا يلتقط اللمسات داخل صندوق القائمة */}
-        <TouchableOpacity style={styles.overlay} onPress={() => setOpen(false)} />
-        <View style={styles.dropdownContainer}>
-          <FlatList
-            data={websites}
-            keyExtractor={(i) => String(i.id)}
-            extraData={selected}
-            renderItem={renderItem}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
+        {/* 6. مكون RNPickerSelect الأساسي */}
+        <View style={{ flex: 1 }}>
+          <RNPickerSelect
+            onValueChange={handleValueChange}
+            items={websites.map(site => ({
+              label: site.name, value: site.name
+            }))}
+            value={selectedItem?.name ?? null} // القيمة الحالية هي "اسم" العنصر المختار
+            placeholder={{ label: "Select a website...", value: null }}
           />
         </View>
-      </Modal>
+      </View>
+
       <View style={styles.siteDesc}>
-        <Image source={{ uri: selected?.image }} style={styles.siteImg} />
+        <Image source={{ uri: selectedItem?.image }} style={styles.siteImg} />
         <View style={styles.siteText}>
-          <Text style={styles.siteName}>{selected.name}</Text>
-          <Text style={styles.siteAbout}>{selected.aboutSite}</Text>
-          {selected.language === "ar" ? <TouchableOpacity onPress={() => Linking.openURL(selected.website)} style={styles.visitSiteBtn}><Text style={styles.visitSite}>زور الموقع <Ionicons name="arrow-up-right-box-outline" size={18} color="white" /></Text></TouchableOpacity> : <TouchableOpacity onPress={() => Linking.openURL(selected.website)} style={styles.visitSiteBtn}><Text style={styles.visitSite}>Visit Website <Ionicons name="arrow-up-right-box-outline" size={18} color="white" /></Text></TouchableOpacity>}
+          <Text style={styles.siteName}>{selectedItem.name}</Text>
+          <Text style={styles.siteAbout}>{selectedItem.aboutSite}</Text>
+          {selectedItem.language === "ar" ? <TouchableOpacity onPress={() => Linking.openURL(selectedItem?.website)} style={styles.visitSiteBtn}><Text style={styles.visitSite}>زور الموقع <Ionicons name="arrow-up-right-box-outline" size={18} color="white" /></Text></TouchableOpacity> : <TouchableOpacity onPress={() => Linking.openURL(selectedItem.website)} style={styles.visitSiteBtn}><Text style={styles.visitSite}>Visit Website <Ionicons name="arrow-up-right-box-outline" size={18} color="white" /></Text></TouchableOpacity>}
         </View>
       </View>
     </View>
@@ -171,22 +112,19 @@ const DropdownPicker = (props) => {
 
 const styles = StyleSheet.create({
   wrapper: {
+    flex: 1,
     alignItems: "center",
     paddingBottom: 20,
   },
-  button: {
-    width: 208,
+  pickerContainer: {
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "rgba(119, 155, 221, 0.2)",
+    width: "50%",
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-  },
-  dropdownButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    alignItems: 'center',
+    paddingHorizontal: 10,
   },
   buttonText: {
     alignItems: "center",
@@ -194,75 +132,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flexShrink: 1,
   },
-  chev: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 16,
-    marginLeft: 8,
-  },
-
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)", // dims background
-    // justifyContent: "center", // يضع القائمة في الوسط, غيّر إذا تريد أسفل الزر
-    padding: 20,
-  },
-  dropdownContainer: {
-    position: "absolute",
-    top: 200,
-    width: 208,
-    maxHeight: 300,
-    alignSelf: "center",
-    backgroundColor: "#0b1220", // مكان تشبه bg
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
-    paddingVertical: 6,
-    elevation: 6,
-  },
-
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  optionSelected: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-  check: {
-    width: 20,
-    textAlign: "center",
-    marginRight: 6,
-    fontSize: 16,
-  },
-  checkVisible: {
-    color: "#fff",
-    opacity: 1,
-  },
-  checkHidden: {
-    color: "transparent",
-  },
-
-  itemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
   avatar: {
     width: 20,
     height: 20,
     borderRadius: 10,
     marginRight: 10,
     backgroundColor: "#ccc",
-  },
-  optionText: {
-    color: "#fff",
-    fontSize: 14,
-    // flexShrink: 1,
-  },
-  separator: {
-    height: 6,
   },
   siteDesc: {
     flexDirection: "row-reverse",

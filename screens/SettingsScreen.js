@@ -3,18 +3,24 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image
+  Image,
+  ScrollView
 } from "react-native";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import auth from '@react-native-firebase/auth';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
+import LanguageSelect from "../components/LanguageSelect";
 
 function SettingsScreen() {
   const navigation = useNavigation();
+  const [activeModal, setActiveModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(auth().currentUser);
-  console.log(currentUser._user)
+  const { t } = useTranslation();
+
+  // console.log(currentUser._user)
 
   const handleSignOut = async () => {
     try {
@@ -29,117 +35,135 @@ function SettingsScreen() {
     <>
       <SafeAreaView style={styles.container}>
         {/* <Image source={require('../assets/logo.png')} style={styles.logo} /> */}
-        {currentUser?._user &&
-          <TouchableOpacity style={styles.userContainer} onPress={() => navigation.navigate('Profile')}>
-            <Image source={
-              currentUser._user.photoURL ? { uri: currentUser._user.photoURL } : require('../assets/default_profile.png')} style={styles.avatar} />
-            <Text style={styles.displayName}>{currentUser._user.displayName}</Text>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {currentUser?._user &&
+            <TouchableOpacity style={styles.userContainer} onPress={() => navigation.navigate('Profile')}>
+              <Image source={
+                currentUser._user.photoURL ? { uri: currentUser._user.photoURL } : require('../assets/default_profile.png')} style={styles.avatar} />
+              <Text style={styles.displayName}>{currentUser._user.displayName}</Text>
+            </TouchableOpacity>
+          }
+          <TouchableOpacity
+            style={styles.categoryHeader}
+            onPress={() => navigation.navigate('NotificationSettings')}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <Ionicons
+                name="notifications"
+                size={20}
+                color="#779bdd"
+                style={styles.chevronIcon}
+              />
+              <Text style={styles.categoryTitle}>{t('settings.menu.notifications')}</Text>
+            </View>
           </TouchableOpacity>
-        }
-        <TouchableOpacity
-          style={styles.categoryHeader}
-          onPress={() => navigation.navigate('NotificationSettings')}
-        >
-          <View style={styles.categoryHeaderLeft}>
-            <Ionicons
-              name="notifications"
-              size={20}
-              color="#779bdd"
-              style={styles.chevronIcon}
-            />
-            <Text style={styles.categoryTitle}>Notification Settings</Text>
-          </View>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.categoryHeader}
-          onPress={() => navigation.navigate('WantListScreen')}
-        >
-          <View style={styles.categoryHeaderLeft}>
-            <Ionicons
-              name="bookmark"
-              size={20}
-              color="#779bdd"
-              style={styles.chevronIcon}
-            />
-            <Text style={styles.categoryTitle}>Want to Play List</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.categoryHeader}
-          onPress={() => navigation.navigate('PlayedListScreen')}
-        >
-          <View style={styles.categoryHeaderLeft}>
-            <Ionicons
-              name="checkmark-sharp"
-              size={20}
-              color="#779bdd"
-              style={styles.chevronIcon}
-            />
-            <Text style={styles.categoryTitle}>Played Games List</Text>
-          </View>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.categoryHeader}
+            onPress={() => navigation.navigate('WantListScreen')}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <Ionicons
+                name="bookmark"
+                size={20}
+                color="#779bdd"
+                style={styles.chevronIcon}
+              />
+              <Text style={styles.categoryTitle}>{t('settings.menu.wantList')}</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.categoryHeader}
+            onPress={() => navigation.navigate('PlayedListScreen')}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <Ionicons
+                name="checkmark-sharp"
+                size={20}
+                color="#779bdd"
+                style={styles.chevronIcon}
+              />
+              <Text style={styles.categoryTitle}>{t('settings.menu.playedList')}</Text>
+            </View>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.categoryHeader}
-        // onPress={() => navigation.navigate('Profile')}
-        >
-          <View style={styles.categoryHeaderLeft}>
-            <Ionicons
-              name="star"
-              size={20}
-              color="#779bdd"
-              style={styles.chevronIcon}
-            />
-            <Text style={styles.categoryTitle}>Rate Us</Text>
-          </View>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.categoryHeader}
+          // onPress={() => navigation.navigate('Profile')}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <Ionicons
+                name="star"
+                size={20}
+                color="#779bdd"
+                style={styles.chevronIcon}
+              />
+              <Text style={styles.categoryTitle}>{t('settings.menu.rateUs')}</Text>
+            </View>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.categoryHeader}
-          onPress={console.log("Pressed")}
-        >
-          <View style={styles.categoryHeaderLeft}>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color="#779bdd"
-              style={styles.chevronIcon}
-            />
-            <Text style={styles.categoryTitle}>Support Us</Text>
-          </View>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.categoryHeader}
+            onPress={() => setActiveModal(true)}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <Ionicons
+                name="language"
+                size={20}
+                color="#779bdd"
+                style={styles.chevronIcon}
+              />
+              <Text style={styles.categoryTitle}>{t('settings.menu.changeLanguage')}</Text>
+            </View>
+          </TouchableOpacity>
+          <LanguageSelect visible={activeModal} onClose={() => setActiveModal(null)} />
 
-        <TouchableOpacity
-          style={styles.categoryHeader}
-          onPress={console.log("Pressed")}
-        >
-          <View style={styles.categoryHeaderLeft}>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color="#779bdd"
-              style={styles.chevronIcon}
-            />
-            <Text style={styles.categoryTitle}>Feedback</Text>
-          </View>
-        </TouchableOpacity>
-        {/* <Button title="تسجيل الخروج" onPress={handleSignOut} /> */}
+          <TouchableOpacity
+            style={styles.categoryHeader}
+            onPress={console.log("Pressed")}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color="#779bdd"
+                style={styles.chevronIcon}
+              />
+              <Text style={styles.categoryTitle}>{t('settings.menu.supportUs')}</Text>
+            </View>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.categoryHeader, styles.categoryHeaderSignout]}
-          onPress={handleSignOut}
-        >
-          <View style={styles.categoryHeaderLeft}>
-            <Ionicons
-              name="log-out-outline"
-              size={20}
-              color="#779bdd"
-              style={styles.chevronIcon}
-            />
-            <Text style={styles.signout}>Sign Out</Text>
-          </View>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.categoryHeader}
+            onPress={console.log("Pressed")}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color="#779bdd"
+                style={styles.chevronIcon}
+              />
+              <Text style={styles.categoryTitle}>{t('settings.menu.feedback')}</Text>
+            </View>
+          </TouchableOpacity>
+          {/* <Button title="تسجيل الخروج" onPress={handleSignOut} /> */}
+
+          <TouchableOpacity
+            style={[styles.categoryHeader, styles.categoryHeaderSignout]}
+            onPress={handleSignOut}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <Ionicons
+                name="log-out-outline"
+                size={20}
+                color="#779bdd"
+                style={styles.chevronIcon}
+              />
+              <Text style={styles.signout}>{t('settings.menu.signOut')}</Text>
+            </View>
+          </TouchableOpacity>
+        </ScrollView>
       </SafeAreaView>
 
     </>
@@ -207,6 +231,7 @@ const styles = StyleSheet.create({
   },
   categoryHeaderSignout: {
     backgroundColor: "rgba(221, 119, 119, 0.2)",
+    marginBottom: 80
   }
 });
 

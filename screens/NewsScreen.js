@@ -1,30 +1,11 @@
-import React, { useState, useEffect } from "react"; // ✅
+import { useState, useEffect } from "react"; // ✅
 import { useWindowDimensions, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TabView, SceneMap, TabBar } from "react-native-tab-view";
 import LatestNews from "../components/LatestNews.js";
 import firestore from '@react-native-firebase/firestore';
-
-// const docRef = collection(db, "rss");
-// let rssFeeds = [];
-
-// onSnapshot(
-//   docRef,
-//   (snap) => {
-//     if (snap) {
-//       rssFeeds = [];
-//       snap.docs.forEach((doc) => {
-//         const data = doc.data();
-//         rssFeeds = { ...rssFeeds, ...data };
-//       });
-//     } else {
-//       console.log("❌ Document does not exist.");
-//     }
-//   },
-//   (err) => {
-//     console.error("🚨 Error while fetching Firestore document:", err);
-//   }
-// );
+import Loading from "../Loading.js";
+import { useTranslation } from 'react-i18next';
 
 function normalized(input) {
   return input
@@ -36,9 +17,9 @@ function normalized(input) {
 
 // News Route Component
 const NewsRoute = ({ rssFeeds }) => {
-  const [selected, setSelected] = React.useState(rssFeeds.news?.[0]);
+  const [selected, setSelected] = useState(rssFeeds.news?.[0]);
   console.log("NewsRoute selected:", selected);
-  React.useEffect(() => {
+  useEffect(() => {
     if (!selected && rssFeeds.news?.length > 0) {
       setSelected(rssFeeds.news[0]);
     }
@@ -59,8 +40,8 @@ const NewsRoute = ({ rssFeeds }) => {
 
 // Reviews Route Component
 const ReviewsRoute = ({ rssFeeds }) => {
-  const [selected, setSelected] = React.useState(rssFeeds.reviews?.[0]);
-  React.useEffect(() => {
+  const [selected, setSelected] = useState(rssFeeds.reviews?.[0]);
+  useEffect(() => {
     if (!selected && rssFeeds.reviews?.length > 0) {
       setSelected(rssFeeds.reviews[0]);
     }
@@ -79,8 +60,8 @@ const ReviewsRoute = ({ rssFeeds }) => {
 };
 
 const EsportsRoute = ({ rssFeeds }) => {
-  const [selected, setSelected] = React.useState(rssFeeds.esports?.[0]);
-  React.useEffect(() => {
+  const [selected, setSelected] = useState(rssFeeds.esports?.[0]);
+  useEffect(() => {
     if (!selected && rssFeeds.esports?.length > 0) {
       setSelected(rssFeeds.esports[0]);
     }
@@ -100,8 +81,8 @@ const EsportsRoute = ({ rssFeeds }) => {
 
 // Hardware Route Component
 const HardwareRoute = ({ rssFeeds }) => {
-  const [selected, setSelected] = React.useState(rssFeeds.hardware?.[0]);
-  React.useEffect(() => {
+  const [selected, setSelected] = useState(rssFeeds.hardware?.[0]);
+  useEffect(() => {
     if (!selected && rssFeeds.hardware?.length > 0) {
       setSelected(rssFeeds.hardware[0]);
     }
@@ -145,21 +126,22 @@ export const Reviews = () => {
 
 // Main Tab View Component
 export default function TabViewExample() {
+  const { t } = useTranslation();
   const layout = useWindowDimensions();
-  const [index, setIndex] = React.useState(0);
+  const [index, setIndex] = useState(0);
 
   // ✅ الخطوات الجديدة لجلب البيانات
-  const [rssFeeds, setRssFeeds] = React.useState({}); // 1. نستخدم State
-  const [loading, setLoading] = React.useState(true);
-  const [routes] = React.useState([
-    { key: "news", title: "News" },
-    { key: "reviews", title: "Reviews" },
-    { key: "esports", title: "Esports" },
-    { key: "hardware", title: "Hardware" },
+  const [rssFeeds, setRssFeeds] = useState({}); // 1. نستخدم State
+  const [loading, setLoading] = useState(true);
+  const [routes] = useState([
+    { key: "news", title: `${t('news.tabs.news')}` },
+    { key: "reviews", title: `${t('news.tabs.reviews')}` },
+    { key: "esports", title: `${t('news.tabs.esports')}` },
+    { key: "hardware", title: `${t('news.tabs.hardware')}` },
   ]);
 
   // ✅ 2. نستخدم Effect لجلب البيانات (باستخدام مكتبة الـ Native)
-  React.useEffect(() => {
+  useEffect(() => {
     const subscriber = firestore()
       .collection('rss')
       .onSnapshot(
@@ -177,8 +159,6 @@ export default function TabViewExample() {
           setLoading(false);
         }
       );
-
-    // إلغاء الاشتراك عند إغلاق الشاشة
     return () => subscriber();
   }, []);
 
@@ -188,24 +168,18 @@ export default function TabViewExample() {
       case 'news':
         return <NewsRoute rssFeeds={rssFeeds} />; // بنمرر الـ prop هنا
       case 'reviews':
-        return <ReviewsRoute rssFeeds={rssFeeds} />; // وهنا
+        return <ReviewsRoute rssFeeds={rssFeeds} />;
       case 'esports':
-        return <EsportsRoute rssFeeds={rssFeeds} />; // وهنا
+        return <EsportsRoute rssFeeds={rssFeeds} />;
       case 'hardware':
-        return <HardwareRoute rssFeeds={rssFeeds} />; // وهنا
+        return <HardwareRoute rssFeeds={rssFeeds} />;
       default:
         return null;
     }
   };
-
-  // ✅ 4. (اختياري) ممكن نضيف شاشة تحميل
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.scene}>
-          <Text style={{ color: 'white' }}>Loading...</Text>
-        </View>
-      </SafeAreaView>
+      <Loading />
     );
   }
 
@@ -241,7 +215,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0c1a33",
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 40,
+
   },
   standaloneContainer: {
     flex: 1,
@@ -261,12 +235,13 @@ const styles = StyleSheet.create({
     fontSize: 14
   },
   tabBar: {
-    backgroundColor: "#0a0f1c"
+    backgroundColor: "#0a0f1c",
   },
   tabIndicator: {
     backgroundColor: "#516996"
   },
   tabLabel: {
+    color: "#a9b7d0",
     fontSize: 16,
     fontWeight: "600"
   },
