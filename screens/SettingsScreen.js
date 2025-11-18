@@ -12,11 +12,10 @@ import { Ionicons } from "@expo/vector-icons";
 import auth from '@react-native-firebase/auth';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import LanguageSelect from "../components/LanguageSelect";
+import LanguageSelect from "./LanguageSelect";
 
 function SettingsScreen() {
   const navigation = useNavigation();
-  const [activeModal, setActiveModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(auth().currentUser);
   const { t } = useTranslation();
 
@@ -104,7 +103,7 @@ function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.categoryHeader}
-            onPress={() => setActiveModal(true)}
+            onPress={() => navigation.navigate('LanguageScreen')}
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons
@@ -116,7 +115,6 @@ function SettingsScreen() {
               <Text style={styles.categoryTitle}>{t('settings.menu.changeLanguage')}</Text>
             </View>
           </TouchableOpacity>
-          <LanguageSelect visible={activeModal} onClose={() => setActiveModal(null)} />
 
           <TouchableOpacity
             style={styles.categoryHeader}

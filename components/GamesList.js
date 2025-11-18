@@ -11,6 +11,7 @@ import Loading from '../Loading'
 import { useNavigation } from '@react-navigation/native';
 import { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET } from '@env';
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SERVER_URL = 'http://192.168.1.102:3000';
 
@@ -64,40 +65,91 @@ function getRatingColor(rating) {
   return '#006400';
 };
 
+const generateCacheKey = (type, value) => `games_cache:${type}:${value}`;
+
 export default function GamesList({ endpoint, query }) {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [games, setGames] = useState([]);
   const [error, setError] = useState(null);
   const { t } = useTranslation();
+
   // 4. fetch data from localhost
   const fetchGamesFromServer = useCallback(async (ep) => {
     setLoading(true);
-    setGames([]);
+    setGames([]); // تفريغ القائمة مؤقتاً عند تغيير التصنيف
     setError(null);
+    const cacheKey = generateCacheKey('server', ep);
+    let cacheFound = false;
+
+    // 4.1. محاولة عرض الكاش فوراً
+    try {
+      const cachedData = await AsyncStorage.getItem(cacheKey);
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        console.log(`📦 Showing Cached Data immediately for endpoint: ${ep}`);
+        setGames(parsedData.data);
+        setLoading(false); // إظهار المحتوى للمستخدم
+        cacheFound = true;
+      }
+    } catch (e) {
+      console.error("Error reading cache:", e);
+    }
+
+    // 4.2. جلب البيانات الجديدة من الخادم في الخلفية (Sync)
     const url = `${SERVER_URL}${ep}`;
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Server returned status: ${res.status}`);
       const data = await res.json();
-      setGames(data);
+
+      console.log(`🔥 Server update received for endpoint: ${ep} - Syncing UI...`);
+      setGames(data); // تحديث الواجهة بالبيانات الجديدة
+      setLoading(false);
+
+      // 4.3. تخزين البيانات الجديدة في الكاش
+      const cacheData = { data: data, timestamp: Date.now() };
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheData));
+
     } catch (e) {
-      console.error(e);
-      setError(`${t('games.list.serverError')}`);
+      console.error("Network request failed:", e);
+      // إذا لم نجد كاش في البداية، وفشلت الشبكة أيضاً، نعرض خطأ
+      if (!cacheFound) {
+        setError(`${t('games.list.serverError')}`);
+      } else {
+        console.log("Keeping cached data displayed despite network error.");
+      }
+      setLoading(false);
     }
-    setLoading(false);
-  }, []);
+  }, [t]);
 
   // 5. ftech data from IGDB for serach
   const fetchGamesFromIGDB = useCallback(async (q) => {
     setLoading(true);
     setGames([]);
     setError(null);
+    const cacheKey = generateCacheKey('search', q);
+    let cacheFound = false;
 
+    // 5.1. محاولة عرض الكاش فوراً
+    try {
+      const cachedData = await AsyncStorage.getItem(cacheKey);
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        // console.log(`📦 Showing Cached Data immediately for query: ${q}`);
+        setGames(parsedData.data);
+        setLoading(false);
+        cacheFound = true;
+      }
+    } catch (e) {
+      console.error("Error reading cache:", e);
+    }
+
+    // 5.2. جلب البيانات من IGDB في الخلفية
     try {
       const token = await getAppToken();
       const body = `
-                fields id, name, cover.image_id, first_release_date, total_rating, cover.url, dlcs, remakes, remasters, release_dates.human;
+                fields id, name, cover.image_id, first_release_date, total_rating, game_type;
                 search "${q}";
                 limit 50;
             `;
@@ -106,19 +158,29 @@ export default function GamesList({ endpoint, query }) {
         headers: { "Client-ID": CLIENT_ID, "Authorization": `Bearer ${token}`, "Content-Type": "text/plain", "Accept": "application/json" },
         body,
       });
+
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`IGDB fetch failed: ${res.status} ${res.statusText} ${text}`);
       }
+
       const json = await res.json();
+      // console.log(`🔥 IGDB update received for query: ${q} - Syncing UI...`);
       setGames(json);
+      setLoading(false);
+
+      // حفظ الكاش الجديد
+      const cacheData = { data: json, timestamp: Date.now() };
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheData));
+
     } catch (err) {
       console.error("Error fetching search results:", err);
-      setError(err.message);
-      setGames([]);
+      if (!cacheFound) {
+        setError(err.message || `${t('games.list.serverError')}`);
+      }
+      setLoading(false);
     }
-    setLoading(false);
-  }, []);
+  }, [t]);
 
   // useEffect decides which function to call
   useEffect(() => {
@@ -136,21 +198,40 @@ export default function GamesList({ endpoint, query }) {
     }
   }, [endpoint, query, fetchGamesFromServer, fetchGamesFromIGDB]);
 
+  // game type
+  const GAME_TYPE_LABELS = {
+    1: 'DLC',
+    2: 'Expansion',
+    5: 'MOD',
+    6: 'Episode',
+    7: 'Season',
+    8: 'Remake',
+    9: 'Remaster',
+    10: 'Expanded',
+  };
+  // console.log(games)
+  const renderGame = ({ item }) => {
+    const label = GAME_TYPE_LABELS[item.game_type];
+    return (
+      <TouchableOpacity style={styles.gameCard} onPress={() => navigation.navigate('GameDetails', { gameID: item.id })}>
+        <Image
+          source={item.cover ? { uri: `https://images.igdb.com/igdb/image/upload/t_cover_big/${item.cover.image_id}.jpg` } : require("../assets/image-not-found.webp")}
+          style={styles.cover}
+        />
+        {
+          label && (
+            <Text style={styles.gameType}>{label}</Text>
+          )
+        }
+        {item.total_rating != null && <Text style={[
+          styles.rating,
+          { backgroundColor: getRatingColor(item.total_rating / 10) }
+        ]}>{Math.round(item.total_rating) / 10}</Text>}
 
-  const renderGame = ({ item }) => (
-    <TouchableOpacity style={styles.gameCard} onPress={() => navigation.navigate('GameDetails', { gameID: item.id })}>
-      <Image
-        source={item.cover ? { uri: `https://images.igdb.com/igdb/image/upload/t_cover_big/${item.cover.image_id}.jpg` } : require("../assets/image-not-found.webp")}
-        style={styles.cover}
-      />
-      {item.total_rating != null && <Text style={[
-        styles.rating,
-        { backgroundColor: getRatingColor(item.total_rating / 10) }
-      ]}>{Math.round(item.total_rating) / 10}</Text>}
-
-      <Text style={styles.title} numberOfLines={2}>{item.name}</Text>
-    </TouchableOpacity>
-  );
+        <Text style={styles.title} numberOfLines={2}>{item.name}</Text>
+      </TouchableOpacity>
+    )
+  };
 
   // change headerText (Title) based on props
   const headerText = endpoint ? formatPath(endpoint) : (query ? `${t('games.list.searchResults')}` : null);
@@ -175,10 +256,11 @@ export default function GamesList({ endpoint, query }) {
           key={query ? 'grid' : 'list'}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderGame}
+          showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
             paddingVertical: 12,
             paddingHorizontal: 5,
-            ...(query && { alignItems: 'center' }),
+            ...(query && { alignItems: 'center', paddingBottom: 340 }),
           }}
         />
       )}
@@ -202,8 +284,20 @@ const styles = StyleSheet.create({
   },
   cover: {
     width: 150,
-    height: 150,
+    height: 200,
     borderRadius: 10,
+    backgroundColor: "#516996",
+  },
+  gameType: {
+    position: "absolute",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    color: "white",
+    fontWeight: "600",
+    top: 0,
+    left: 0,
+    padding: 5,
+    margin: 12,
+    borderRadius: 12
   },
   title: {
     color: "white",

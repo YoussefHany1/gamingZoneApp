@@ -1,5 +1,3 @@
-import React, { useEffect, useState, useRef } from "react";
-import { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET } from '@env';
 import {
     View,
     Text,
@@ -11,18 +9,22 @@ import {
     Linking,
     Alert,
 } from "react-native";
+import { useEffect, useState, useRef } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import YoutubePlayer from "react-native-youtube-iframe";
-import Loading from '../Loading'
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Loading from '../Loading'
+import { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET } from '@env';
 import { useTranslation } from 'react-i18next';
 
 const CLIENT_ID = TWITCH_CLIENT_ID;
 const CLIENT_SECRET = TWITCH_CLIENT_SECRET;
 const IGDB_URL = "https://api.igdb.com/v4/games";
+const CACHE_KEY_PREFIX = 'GAME_DETAILS_CACHE_';
 
 let cachedToken = null;
 async function getAppToken() {
@@ -53,7 +55,7 @@ async function fetchGameById(id) {
     if (!id) throw new Error("fetchGameById: missing id");
     const token = await getAppToken();
     const body = `
-    fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, summary, hypes, platforms, collections, cover.url, dlcs, game_modes, game_status, game_type, genres, language_supports, multiplayer_modes, remakes, remasters, screenshots.image_id, storyline, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.slug, similar_games.cover.image_id, collections.games.name, collections.games.cover.image_id;
+    fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, summary, dlcs, game_type, multiplayer_modes, remakes, remasters, screenshots.image_id, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.cover.image_id, collections.games.name, collections.games.cover.image_id;
     where id = ${id};
     limit 1;
   `;
@@ -75,6 +77,7 @@ async function fetchGameById(id) {
     return Array.isArray(json) && json.length ? json[0] : null;
 }
 
+
 function GameDetails({ route, navigation }) {
     const { gameID: initialGameID } = route.params;
     const [game, setGame] = useState(null);
@@ -89,6 +92,7 @@ function GameDetails({ route, navigation }) {
     const [isWanted, setIsWanted] = useState(false);
     const [isPlayed, setIsPlayed] = useState(false);
     const { t } = useTranslation();
+
     useEffect(() => {
         mountedRef.current = true;
         return () => {
@@ -96,13 +100,13 @@ function GameDetails({ route, navigation }) {
         };
     }, []);
 
-    // --- 2. useEffect لمراقبة حالة المصادقة (كما هو ولكن مهم) ---
+    // --- 2. useEffect لمراقبة حالة المصادقة ---
     useEffect(() => {
         const subscriber = auth().onAuthStateChanged((u) => {
             setUser(u);
             setAuthLoading(false);
         });
-        return subscriber; // unsubscribe
+        return subscriber;
     }, []);
 
 
@@ -112,6 +116,7 @@ function GameDetails({ route, navigation }) {
         }
     }, [initialGameID]);
 
+    // --- التعديل هنا: دمج الكاش مع جلب البيانات ---
     useEffect(() => {
         if (!currentId) {
             setError("No game ID provided");
@@ -122,45 +127,84 @@ function GameDetails({ route, navigation }) {
         let cancelled = false;
         setLoading(true);
         setError(null);
+        const cacheKey = `${CACHE_KEY_PREFIX}${currentId}`; // مفتاح كاش فريد لكل لعبة
 
-        // --- إضافة: إعادة تعيين الحالة عند تغيير اللعبة ---
-        // setIsWanted(false);
-        // setIsPlayed(false);
+        const loadGameData = async () => {
+            let cacheFound = false;
 
-        fetchGameById(currentId)
-            .then((g) => {
+            // 1. محاولة قراءة الكاش
+            try {
+                const cachedString = await AsyncStorage.getItem(cacheKey);
+                if (cachedString && !cancelled) {
+                    const cachedData = JSON.parse(cachedString);
+                    console.log(`📦 Showing Cached Game Details for: ${currentId}`);
+                    setGame(cachedData.data);
+                    setLoading(false); // عرض البيانات فوراً
+                    cacheFound = true;
+
+                    // سكرول للأعلى عند عرض الكاش
+                    setTimeout(() => {
+                        try {
+                            scrollRef.current?.scrollTo({ x: 0, y: 0, animated: true });
+                        } catch (e) { }
+                    }, 50);
+                }
+            } catch (e) {
+                console.error("Cache read error:", e);
+            }
+
+            // 2. جلب البيانات الحديثة من الشبكة (في الخلفية)
+            try {
+                const fetchedGame = await fetchGameById(currentId);
+
                 if (cancelled || !mountedRef.current) return;
-                setGame(g);
-                // بعد التحميل نزّح السكرول للفوق
-                setTimeout(() => {
-                    try {
-                        scrollRef.current?.scrollTo({ x: 0, y: 0, animated: true });
-                    } catch (e) { }
-                }, 50);
-            })
-            .catch((err) => {
+
+                console.log(`🔥 Fresh Game Details received for: ${currentId}`);
+                setGame(fetchedGame);
+                setLoading(false);
+
+                // 3. تحديث الكاش
+                const dataToSave = {
+                    data: fetchedGame,
+                    timestamp: Date.now()
+                };
+                await AsyncStorage.setItem(cacheKey, JSON.stringify(dataToSave));
+
+                // إذا لم يكن هناك كاش، نقوم بالسكرول الآن
+                if (!cacheFound) {
+                    setTimeout(() => {
+                        try {
+                            scrollRef.current?.scrollTo({ x: 0, y: 0, animated: true });
+                        } catch (e) { }
+                    }, 50);
+                }
+
+            } catch (err) {
                 console.error("fetchGameById error:", err);
                 if (cancelled || !mountedRef.current) return;
-                setError(err.message || "Failed to load game");
-                setGame(null);
-            })
-            .finally(() => {
-                if (cancelled || !mountedRef.current) return;
+
+                // لا نعرض رسالة الخطأ إذا كنا نعرض بالفعل بيانات من الكاش
+                if (!cacheFound) {
+                    setError(err.message || "Failed to load game");
+                    setGame(null);
+                }
                 setLoading(false);
-            });
+            }
+        };
+
+        loadGameData();
 
         return () => {
             cancelled = true;
         };
-    }, [currentId]);// <-- سيعمل هذا الـ effect عند تغيير currentId
+    }, [currentId]); // <-- سيعمل هذا الـ effect عند تغيير currentId
+
     useEffect(() => {
         // --- 4. التعديل الأهم: ننتظر انتهاء تحميل المصادقة ---
         if (authLoading || !user || !currentId) {
-            // لو المصادقة لسة بتحمل، أو مفيش مستخدم، أو مفيش لعبة، منعملش حاجة
-            // ونضمن إن الأزرار مطفية
             setIsWanted(false);
             setIsPlayed(false);
-            return; // <-- أهم سطر
+            return;
         }
 
         const gameIdStr = String(currentId);
@@ -173,16 +217,13 @@ function GameDetails({ route, navigation }) {
             .doc(gameIdStr);
 
         const unsubWant = wantRef.onSnapshot(
-            (doc) => { // <-- دالة onNext
+            (doc) => {
                 if (mountedRef.current) {
-                    // --- التعديل هنا ---
-                    // تحقق أن 'doc' موجود قبل قراءة 'doc.exists'
                     setIsWanted(doc && doc.exists);
                 }
             },
-            (error) => { // <-- دالة onError (مهمة)
+            (error) => {
                 console.error("Firestore (wantList) snapshot error: ", error);
-                // يمكنك إضافة منطق هنا لإبلاغ المستخدم بالخطأ
             }
         );
 
@@ -194,26 +235,23 @@ function GameDetails({ route, navigation }) {
             .doc(gameIdStr);
 
         const unsubPlayed = playedRef.onSnapshot(
-            (doc) => { // <-- دالة onNext
+            (doc) => {
                 if (mountedRef.current) {
-                    // --- التعديل هنا ---
-                    // تحقق أن 'doc' موجود قبل قراءة 'doc.exists'
                     setIsPlayed(doc && doc.exists);
                 }
             },
-            (error) => { // <-- دالة onError (مهمة)
+            (error) => {
                 console.error("Firestore (playedList) snapshot error: ", error);
             }
         );
 
-        // إيقاف المراقبة عند الخروج من الشاشة أو تغيير اللعبة
         return () => {
             unsubWant();
             unsubPlayed();
         };
-    }, [currentId, user, authLoading]); // <-- يعمل عند تغيير اللعبة أو المستخدم
+    }, [currentId, user, authLoading]);
 
-
+    console.log(game)
     function getRatingColor(rating) {
         if (rating <= 2) return "#8B0000";
         if (rating <= 4) return "#FF4C4C";
@@ -245,10 +283,9 @@ function GameDetails({ route, navigation }) {
     };
 
     const handleWant = async () => {
-        if (authLoading) return; // لا تفعل شيئاً إذا كانت المصادقة لا تزال قيد التحميل
-        // -----------------------
+        if (authLoading) return;
 
-        if (!user) { // الآن هذا السطر آمن
+        if (!user) {
             Alert.alert("Login required", "Please log in, to be able to add games to your lists.");
             return;
         }
@@ -260,12 +297,9 @@ function GameDetails({ route, navigation }) {
         const playedRef = firestore().collection('users').doc(user.uid).collection('playedList').doc(gameIdStr);
 
         if (isWanted) {
-            // إذا كانت موجودة، احذفها
             await wantRef.delete();
         } else {
-            // إذا لم تكن موجودة، أضفها
             await wantRef.set(gameData);
-            // وإذا كانت في قائمة Played، احذفها من هناك
             if (isPlayed) {
                 await playedRef.delete();
             }
@@ -273,10 +307,8 @@ function GameDetails({ route, navigation }) {
     };
 
     const handlePlayed = async () => {
-        if (authLoading) return; // لا تفعل شيئاً إذا كانت المصادقة لا تزال قيد التحميل
-        // -----------------------
-
-        if (!user) { // الآن هذا السطر آمن
+        if (authLoading) return;
+        if (!user) {
             Alert.alert("Login required", "Please log in, to be able to add games to your lists.");
             return;
         }
@@ -288,18 +320,18 @@ function GameDetails({ route, navigation }) {
         const playedRef = firestore().collection('users').doc(user.uid).collection('playedList').doc(gameIdStr);
 
         if (isPlayed) {
-            // إذا كانت موجودة، احذفها
             await playedRef.delete();
         } else {
-            // إذا لم تكن موجودة، أضفها
             await playedRef.set(gameData);
-            // وإذا كانت في قائمة Want، احذفها من هناك
             if (isWanted) {
                 await wantRef.delete();
             }
         }
     };
 
+    const isReleased = game?.first_release_date
+        ? (game?.first_release_date * 1000) <= Date.now()
+        : true;
     let images = [];
     if (!loading && !error && game?.cover?.image_id) {
         images.push(`https://images.igdb.com/igdb/image/upload/t_720p/${game.cover.image_id}.jpg`);
@@ -405,14 +437,16 @@ function GameDetails({ route, navigation }) {
                         <View style={styles.playContainer}>
                             <TouchableOpacity style={[styles.wantBtn, isWanted && styles.wantBtnActive]} onPress={handleWant}>
                                 <Text style={styles.wantBtnText}>
-                                    <Ionicons name={isWanted ? "bookmark" : "bookmark-outline"} size={20} color="white" /> {t('games.details.buttons.played')}
+                                    <Ionicons name={isWanted ? "bookmark" : "bookmark-outline"} size={20} color="white" /> {t('games.details.buttons.want')}
                                 </Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={[styles.playedBtn, isPlayed && styles.playedBtnActive]} onPress={handlePlayed}>
-                                <Text style={styles.playedBtnText}>
-                                    <Ionicons name={isPlayed ? "checkmark-done" : "checkmark-sharp"} size={24} color="white" /> {t('games.details.buttons.played')}
-                                </Text>
-                            </TouchableOpacity>
+                            {isReleased && (
+                                <TouchableOpacity style={[styles.playedBtn, isPlayed && styles.playedBtnActive]} onPress={handlePlayed}>
+                                    <Text style={styles.playedBtnText}>
+                                        <Ionicons name={isPlayed ? "checkmark-done" : "checkmark-sharp"} size={24} color="white" /> {t('games.details.buttons.played')}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                         {/* About Section */}
                         <View>

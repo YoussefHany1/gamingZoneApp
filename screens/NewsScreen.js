@@ -15,7 +15,6 @@ function normalized(input) {
     .toLowerCase();
 }
 
-// News Route Component
 const NewsRoute = ({ rssFeeds }) => {
   const [selected, setSelected] = useState(rssFeeds.news?.[0]);
   console.log("NewsRoute selected:", selected);
@@ -38,7 +37,6 @@ const NewsRoute = ({ rssFeeds }) => {
   );
 };
 
-// Reviews Route Component
 const ReviewsRoute = ({ rssFeeds }) => {
   const [selected, setSelected] = useState(rssFeeds.reviews?.[0]);
   useEffect(() => {
@@ -79,7 +77,6 @@ const EsportsRoute = ({ rssFeeds }) => {
   );
 };
 
-// Hardware Route Component
 const HardwareRoute = ({ rssFeeds }) => {
   const [selected, setSelected] = useState(rssFeeds.hardware?.[0]);
   useEffect(() => {
@@ -100,38 +97,12 @@ const HardwareRoute = ({ rssFeeds }) => {
   );
 };
 
-// Standalone Hardware Component (for backward compatibility)
-export const Hardware = () => {
-  return (
-    <View style={styles.standaloneContainer}>
-      <Text style={styles.standaloneTitle}>Hardware</Text>
-      <Text style={styles.standaloneSubtitle}>
-        Latest hardware news and reviews here.
-      </Text>
-    </View>
-  );
-};
-
-// Standalone Reviews Component (for backward compatibility)
-export const Reviews = () => {
-  return (
-    <View style={styles.standaloneContainer}>
-      <Text style={styles.standaloneTitle}>Reviews</Text>
-      <Text style={styles.standaloneSubtitle}>
-        Latest game reviews will appear here.
-      </Text>
-    </View>
-  );
-};
-
-// Main Tab View Component
 export default function TabViewExample() {
   const { t } = useTranslation();
   const layout = useWindowDimensions();
   const [index, setIndex] = useState(0);
 
-  // ✅ الخطوات الجديدة لجلب البيانات
-  const [rssFeeds, setRssFeeds] = useState({}); // 1. نستخدم State
+  const [rssFeeds, setRssFeeds] = useState({});
   const [loading, setLoading] = useState(true);
   const [routes] = useState([
     { key: "news", title: `${t('news.tabs.news')}` },
@@ -215,24 +186,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0c1a33",
     alignItems: "center",
     justifyContent: "center",
-
-  },
-  standaloneContainer: {
-    flex: 1,
-    backgroundColor: "#0c1a33",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16
-  },
-  standaloneTitle: {
-    color: "#ffffff",
-    fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 8
-  },
-  standaloneSubtitle: {
-    color: "#a9b7d0",
-    fontSize: 14
+    paddingTop: 30
   },
   tabBar: {
     backgroundColor: "#0a0f1c",

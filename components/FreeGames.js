@@ -3,32 +3,63 @@ import { useState, useEffect } from "react"
 import { EpicFreeGames } from 'epic-free-games';
 import Loading from "../Loading";
 import { useTranslation } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const CACHE_KEY = 'EPIC_GAMES_CACHE';
 function FreeGames() {
     const { t } = useTranslation();
     const [game, setGame] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const epicFreeGames = new EpicFreeGames({
-            country: "US",
-            locale: "en-US",
-            includeAll: true,
-        });
-
-        epicFreeGames
-            .getGames()
-            .then((res) => {
-                setGame(res);
-                setLoading(false);
-            })
-            .catch((err) => {
-                console.error("Error fetching games:", err);
-                setLoading(false);
-            });
-    }, []);
-
     const [timeLeft, setTimeLeft] = useState(getTimeUntilNextThursday());
+    useEffect(() => {
+        loadGames();
+    }, []);
+    const loadGames = async () => {
+        // 1. استراتيجية الكاش أولاً (عرض فوري)
+        try {
+            const cachedString = await AsyncStorage.getItem(CACHE_KEY);
+            if (cachedString) {
+                console.log("📦 Showing Cached Games immediately");
+                const cachedObject = JSON.parse(cachedString);
+                setGame(cachedObject.data);
+                setLoading(false); // إخفاء اللودينج لأن البيانات ظهرت
+            }
+        } catch (error) {
+            console.error("Cache loading error:", error);
+        }
+
+        // 2. جلب البيانات الجديدة من الـ API في الخلفية (Sync)
+        try {
+            const epicFreeGames = new EpicFreeGames({
+                country: "US",
+                locale: "en-US",
+                includeAll: true,
+            });
+
+            const res = await epicFreeGames.getGames();
+
+            // تحديث الواجهة بالبيانات الحقيقية
+            console.log("🔥 API update received - Syncing...");
+            setGame(res);
+            setLoading(false);
+
+            // حفظ البيانات الجديدة في الكاش للمرات القادمة
+            const dataToSave = {
+                data: res,
+                timestamp: Date.now()
+            };
+            await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(dataToSave));
+
+        } catch (err) {
+            console.error("Error fetching games from API:", err);
+            // في حالة الفشل، لو مفيش كاش أصلاً، نوقف اللودينج عشان ميفضلش يلف
+            if (!game) {
+                setLoading(false);
+            }
+        }
+    };
+
+
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -170,8 +201,9 @@ const styles = StyleSheet.create({
     },
     cover: {
         width: 150,
-        height: 150,
+        height: 200,
         borderRadius: 10,
+        backgroundColor: "#516996"
     },
     title: {
         color: "white",

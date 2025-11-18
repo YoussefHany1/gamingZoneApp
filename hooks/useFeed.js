@@ -1,10 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import firestore from '@react-native-firebase/firestore';
 
 export default function useFeed(category, siteName) {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(Date.now());
+
+  // 2. دالة Refetch تسمح بتشغيل useEffect يدوياً
+  const refetch = useCallback(() => {
+    setError(null); // لإزالة أي أخطاء سابقة
+    setLoading(true); // لإظهار مؤشر التحميل
+    setRefreshTrigger(Date.now()); // تغيير هذه القيمة تعيد تشغيل الـ useEffect
+  }, []);
 
   useEffect(() => {
     const colRef = firestore()
@@ -26,7 +34,7 @@ export default function useFeed(category, siteName) {
     );
 
     return () => unsub();
-  }, [category, siteName]);
+  }, [category, siteName, refreshTrigger]);
 
-  return { articles, loading, error };
+  return { articles, loading, error, refetch };
 }

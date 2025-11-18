@@ -1,16 +1,13 @@
 import { ScrollView, StyleSheet, View, TextInput, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import FreeGames from "../components/FreeGames";
 import GamesList from "../components/GamesList";
 import { Ionicons } from "@expo/vector-icons";
-import Loading from '../Loading'
 import { useTranslation } from 'react-i18next';
 
 function GamesScreen() {
     const { t } = useTranslation();
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(''); // store the currently typed text
     const [submittedQuery, setSubmittedQuery] = useState(''); // save the text after clicking enter
 
@@ -30,10 +27,6 @@ function GamesScreen() {
     return (
         <>
             <SafeAreaView style={styles.container}>
-                {/* {loading ? (
-                    <Loading />
-                ) : ( */}
-
                 <View  >
                     {/* <Text style={styles.header}>{t('games.screen.header')}</Text> */}
                     <View style={styles.searchContainer}>
@@ -54,7 +47,7 @@ function GamesScreen() {
                     </View>
                     {submittedQuery === '' ? (
                         <>
-                            <ScrollView >
+                            <ScrollView showsVerticalScrollIndicator={false} >
                                 {/* if search is empty show the defult lists */}
                                 <View style={{ paddingBottom: 120 }}>
                                     <FreeGames />
@@ -73,7 +66,6 @@ function GamesScreen() {
 
                     )}
                 </View>
-                {/* )} */}
             </SafeAreaView >
         </>
     );
@@ -103,11 +95,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: "center",
+        backgroundColor: "#1e2a45",
         marginHorizontal: 10,
         marginBottom: 20,
-        backgroundColor: "#1e2a45",
         paddingHorizontal: 15,
-        paddingVertical: 6,
+        paddingBottom: 2,
+        paddingTop: 10,
         borderRadius: 24,
         marginHorizontal: 50,
         borderWidth: 1,
@@ -116,10 +109,9 @@ const styles = StyleSheet.create({
     searchBar: {
         color: "white",
         fontSize: 16,
-        flex: 1
+        flex: 1,
     },
-    searchText: {
-        color: 'white',
-        fontSize: 18,
-    },
+    clearTextBtn: {
+        marginBottom: 10,
+    }
 });

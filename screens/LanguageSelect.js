@@ -19,6 +19,7 @@ function LanguageSelect({ visible, onClose }) {
 
     const toggleLanguage = async () => {
         const currentLang = i18n.language;
+
         const nextLang = currentLang === 'ar' ? 'en' : 'ar';
         const isRTL = nextLang === 'ar';
 
@@ -41,41 +42,58 @@ function LanguageSelect({ visible, onClose }) {
             }
         }
     };
-
     return (
-        <Modal
-            animationType="slide"
-            backdropColor="#0c1a33"
-            visible={visible}
-            onRequestClose={onClose} style={styles.modalContainer}>
-            <View style={styles.header}>
-
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#0c1a33" }}>
+            <View style={styles.container}>
                 <TouchableOpacity
                     style={styles.categoryHeader}
                     onPress={toggleLanguage}
                 >
                     <View style={styles.categoryHeaderLeft}>
-                        <Ionicons
-                            name="language"
-                            size={20}
-                            color="#779bdd"
-                            style={styles.chevronIcon}
-                        />
-                        {/* العنوان المترجم */}
-                        <Text style={styles.categoryTitle}>{t('settings.language')}</Text>
-                    </View>
+                        <Text style={styles.categoryTitle}>English</Text>
+                        {i18n.language === 'en' && <Ionicons name="checkmark-sharp" size={24} color="#779bdd" />}
 
-                    {/* عرض اللغة الحالية في الجهة المقابلة */}
-                    <Text style={{ color: "#779bdd", fontWeight: "bold" }}>
-                        {t('settings.currentLang')}
-                    </Text>
+                    </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={styles.categoryHeader}
+                    onPress={toggleLanguage}
+                >
+                    <View style={styles.categoryHeaderLeft}>
+                        <Text style={styles.categoryTitle}>العربية</Text>
+                        {i18n.language === 'ar' && <Ionicons name="checkmark-sharp" size={24} color="#779bdd" />}
+                    </View>
                 </TouchableOpacity>
             </View>
-        </Modal>
+        </SafeAreaView>
     )
 }
 export default LanguageSelect;
 
 const styles = StyleSheet.create({
-    header: { padding: 40 }
+    container: { padding: 40, },
+    categoryHeader: {
+        marginVertical: 15,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: 16,
+        backgroundColor: "rgba(119, 155, 221, 0.2)",
+        borderRadius: 12,
+    },
+    categoryHeaderLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flex: 1,
+    },
+    chevronIcon: {
+        marginRight: 8,
+    },
+    categoryTitle: {
+        fontSize: 18,
+        fontWeight: "600",
+        color: "#fff",
+        marginRight: 8,
+    },
 })

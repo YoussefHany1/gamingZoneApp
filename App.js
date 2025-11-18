@@ -13,6 +13,7 @@ import NotificationSettings from "./components/Notification";
 import Profile from "./components/Profile";
 import WantListScreen from './screens/WantListScreen';
 import PlayedListScreen from './screens/PlayedListScreen';
+import LanguageScreen from './screens/LanguageSelect';
 import { useEffect, useState } from "react";
 import messaging from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
@@ -27,6 +28,9 @@ import {
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 import Loading from './Loading';
 
 const Stack = createNativeStackNavigator();
@@ -74,6 +78,7 @@ function SettingsStack() {
       <Stack.Screen name="Profile" component={Profile} options={{ title: t('navigation.titles.accountSettings') }} />
       <Stack.Screen name="WantListScreen" component={WantListScreen} options={{ title: t('navigation.titles.wantList') }} />
       <Stack.Screen name="PlayedListScreen" component={PlayedListScreen} options={{ title: t('navigation.titles.playedList') }} />
+      <Stack.Screen name="LanguageScreen" component={LanguageScreen} options={{ title: t('settings.menu.changeLanguage') }} />
       <Stack.Screen name="GamesScreen" component={GamesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="GameDetails" component={GameDetails} options={{ headerShown: false }} />
     </Stack.Navigator>
@@ -131,18 +136,31 @@ function AuthStack() {
   );
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // إعدادات الكاش: البيانات تظل "جديدة" (Fresh) لمدة 5 دقائق.
+      // بعد 5 دقائق، إذا تم فتح المكون مرة أخرى، سيتم جلب البيانات في الخلفية (Stale-While-Revalidate).
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      // مدة الاحتفاظ بالبيانات حتى لو لم يتم استخدامها، بعدها يتم حذفها من الكاش.
+      cacheTime: 1000 * 60 * 30, // 30 minutes
+      retry: 2,
+    },
+  },
+});
 
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true); // --- إضافة حالة التحميل ---
 
   useEffect(() => {
-    const unsubscribeAuth = auth().onAuthStateChanged(async (user) => {
-      setUser(user);
-      if (user) {
-        console.log("✅ User authenticated:", user.uid);
+    const unsubscribeAuth = auth().onAuthStateChanged(async (newUser) => {
+      setUser(newUser);
+      setLoading(false);
+      if (newUser) {
+        console.log("✅ User authenticated:", newUser.uid);
         try {
-          await initFcm(user.uid);
+          await initFcm(newUser.uid);
         } catch (error) {
           console.error("❌ Failed to initialize FCM:", error);
         }
@@ -298,19 +316,21 @@ function App() {
 
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" translucent={true} />
-      <NavigationContainer>
-        {/* if user not signed in register screen will show up */}
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {user ? (
-            <Stack.Screen name="MainApp" component={MainAppTabs} />
-          ) : (
-            <Stack.Screen name="Auth" component={AuthStack} />
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <StatusBar style="light" translucent={true} />
+        <NavigationContainer>
+          {/* if user not signed in register screen will show up */}
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {user ? (
+              <Stack.Screen name="MainApp" component={MainAppTabs} />
+            ) : (
+              <Stack.Screen name="Auth" component={AuthStack} />
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
 

@@ -118,7 +118,7 @@ async function fetchGameById(id) {
 
 // دالة مُساعدة لإنشاء الاستعلامات الأساسية
 const currentTimestamp = Math.floor(Date.now() / 1000);
-const BASE_QUERY_FIELDS = 'fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, hypes, platforms, collections, cover, dlcs, game_modes, game_status, game_type, genres, language_supports, multiplayer_modes, remakes, remasters, screenshots.url, storyline, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.slug, similar_games.cover.image_id, collections.games.*';
+const BASE_QUERY_FIELDS = 'fields id, name, cover.image_id, first_release_date, total_rating, game_type';
 const BASE_QUERY_WHERE = `where (cover.image_id != null  & game_type = (0,8,9,10))`;
 
 

@@ -5,6 +5,7 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
+  RefreshControl
 } from "react-native";
 import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
@@ -16,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 
 function LatestNews({ limit, language, category, website, selectedItem, onChangeFeed, showDropdown }) {
   const [activeModal, setActiveModal] = useState(false);
-  const { articles, loading, error } = useFeed(category, website);
+  const { articles, loading, error, isFetching, refetch } = useFeed(category, website);
   const { t } = useTranslation();
   const listData =
     typeof limit === "number" ? articles.slice(0, limit) : articles;
@@ -81,6 +82,10 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
       </>)
   };
 
+  const onRefresh = () => {
+    refetch(); // دالة TanStack Query لجلب البيانات
+  };
+
   if (loading) return <Loading />;
   if (error)
     return (
@@ -97,13 +102,13 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
         keyExtractor={(item, index) => index.toString()}
         ListHeaderComponent={renderHeader}
         showsVerticalScrollIndicator={false}
-      // refreshControl={
-      //   <RefreshControl
-      //     refreshing={refreshing}
-      //     onRefresh={onRefresh}
-      //     tintColor="#516996"
-      //   />
-      // }
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching} // isFetching يكون صحيحاً أثناء التحديث في الخلفية أو اليدوي
+            onRefresh={onRefresh}
+            tintColor="#516996"
+          />
+        }
       />
     </View>
   );
@@ -122,7 +127,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#516996",
     paddingHorizontal: 80,
     paddingVertical: 10,
-    marginVertical: 30,
+    marginBottom: 30,
+    // marginVertical: 30,
     borderRadius: 16,
     color: "white",
   },

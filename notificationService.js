@@ -1,6 +1,5 @@
 import messaging from "@react-native-firebase/messaging";
-import firestore from '@react-native-firebase/firestore'; // ✅
-// ❌ (احذف كل imports الويب بتاعة db, auth, doc, setDoc, collection, getDocs)
+import firestore from '@react-native-firebase/firestore';
 import * as Notifications from "expo-notifications";
 
 /**

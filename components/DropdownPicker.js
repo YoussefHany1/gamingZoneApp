@@ -3,8 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
-  FlatList,
   Image,
   StyleSheet,
   Linking,
@@ -13,12 +11,34 @@ import { Ionicons } from "@expo/vector-icons";
 import firestore from '@react-native-firebase/firestore';
 import RNPickerSelect from 'react-native-picker-select';
 import Loading from "../Loading";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const CACHE_KEY = 'RSS_FEEDS_CACHE';
 const DropdownPicker = (props) => {
-  const [rssFeeds, setRssFeeds] = useState({}); // 1. نستخدم State
+  const [rssFeeds, setRssFeeds] = useState({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { // 2. نستخدم Effect لجلب البيانات
+  useEffect(() => {
+    let isMounted = true;
+
+    // 1. دالة لتحميل الكاش فوراً عند الفتح
+    const loadFromCache = async () => {
+      try {
+        const cachedString = await AsyncStorage.getItem(CACHE_KEY);
+        if (cachedString && isMounted) {
+          console.log("📦 Showing Cached Data immediately");
+          const cachedData = JSON.parse(cachedString);
+          setRssFeeds(cachedData);
+          setLoading(false); // نخفي اللودينج لأن البيانات ظهرت
+        }
+      } catch (error) {
+        console.error("Cache loading error:", error);
+      }
+    };
+
+    loadFromCache();
+
+    // 2. الاستماع للتغييرات في Firestore (Real-time)
     const subscriber = firestore()
       .collection('rss')
       .onSnapshot(
@@ -28,15 +48,27 @@ const DropdownPicker = (props) => {
             const data = doc.data();
             feeds = { ...feeds, ...data };
           });
-          setRssFeeds(feeds);
-          setLoading(false);
+
+          if (isMounted) {
+            // لو حصل تغيير في الداتا، الكود ده هيشتغل ويحدث الواجهة
+            console.log("🔥 Firestore update received - Syncing...");
+            setRssFeeds(feeds);
+            setLoading(false);
+
+            // وحفظ النسخة الجديدة في الكاش للمرة الجاية
+            AsyncStorage.setItem(CACHE_KEY, JSON.stringify(feeds));
+          }
         },
         (error) => {
           console.error("🚨 Error fetching Firestore:", error);
-          setLoading(false);
+          if (isMounted) setLoading(false);
         }
       );
-    return () => subscriber();
+
+    return () => {
+      isMounted = false;
+      subscriber(); // إيقاف الاستماع عند الخروج
+    };
   }, []);
 
   const category = props.category.toLowerCase();
