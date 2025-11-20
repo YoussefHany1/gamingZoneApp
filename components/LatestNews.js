@@ -17,7 +17,9 @@ import { useTranslation } from 'react-i18next';
 
 function LatestNews({ limit, language, category, website, selectedItem, onChangeFeed, showDropdown }) {
   const [activeModal, setActiveModal] = useState(false);
-  const { articles, loading, error, isFetching, refetch } = useFeed(category, website);
+  const feedCategory = typeof category !== "undefined" ? category : undefined;
+  const feedWebsite = typeof website !== "undefined" && website !== null && website !== "" ? website : undefined;
+  const { articles, loading, error, isFetching, refetch } = useFeed(feedCategory, feedWebsite);
   const { t } = useTranslation();
   const listData =
     typeof limit === "number" ? articles.slice(0, limit) : articles;
@@ -30,9 +32,10 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
   }
 
   const renderItem = ({ item }) => {
+    const siteLabel = item?.siteName || website || "";
     return (
       <TouchableOpacity
-        style={styles.NewsContainer}
+        style={[styles.NewsContainer, language === "ar" ? { direction: "rtl" } : { direction: "ltr" }]}
         android_ripple={{ color: "#516996" }}
         onPress={() => {
           setActiveModal(`${item.id}`)
@@ -41,8 +44,11 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
         <NewsDetails article={item} visible={activeModal === `${item.id}`} onClose={() => setActiveModal(null)} />
 
         <View style={styles.textContainer}>
-          <Text style={styles.headline}>{item.title.substring(0, 100)}</Text>
-          <Text numberOfLines={2} style={styles.par}>{item.description}..</Text>
+          <Text style={[styles.headline, language === "ar" ? { marginLeft: 8 } : { marginRight: 8 }]}>{item.title.substring(0, 100)}</Text>
+          {
+            item.description && item.description !== undefined && item.description !== null && item.description !== "" ?
+              <Text numberOfLines={2} style={styles.par}>{item.description}..</Text> : null
+          }
         </View>
 
         <View>
@@ -54,7 +60,7 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
                 : require("../assets/image-not-found.webp")
             }
           />
-          <Text style={styles.website}>{fromSnakeCase(website)}</Text>
+          <Text style={styles.website}>{fromSnakeCase(siteLabel)}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -95,7 +101,7 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
     );
 
   return (
-    <View style={[styles.container, language === "ar" ? { direction: "rtl" } : { direction: "ltr" }]}>
+    <View style={[styles.container]}>
       <FlatList
         data={listData}
         renderItem={renderItem}
@@ -158,6 +164,7 @@ const styles = StyleSheet.create({
     width: 135,
     height: 100,
     borderRadius: 16,
+    backgroundColor: "#516996",
   },
   website: {
     position: "absolute",

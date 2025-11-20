@@ -9,40 +9,11 @@ import {
 } from 'react-native';
 import Loading from '../Loading'
 import { useNavigation } from '@react-navigation/native';
-import { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET } from '@env';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SERVER_URL = 'http://192.168.1.102:3000';
 
-const CLIENT_ID = TWITCH_CLIENT_ID;
-const CLIENT_SECRET = TWITCH_CLIENT_SECRET;
-const IGDB_URL = "https://api.igdb.com/v4/games";
-
-let cachedToken = null;
-async function getAppToken() {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 10000) {
-    return cachedToken.token;
-  }
-  const res = await fetch(`https://id.twitch.tv/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept': 'application/json',
-    },
-    body: `client_id=${encodeURIComponent(CLIENT_ID)}&client_secret=${encodeURIComponent(CLIENT_SECRET)}&grant_type=client_credentials`,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Failed to get token: ${res.status} ${res.statusText} ${text}`);
-  }
-  const data = await res.json();
-  cachedToken = {
-    token: data.access_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
-  };
-  return cachedToken.token;
-}
+const SERVER_URL = 'https://igdb-api-omega.vercel.app';
 
 function formatPath(text) {
   return text
@@ -100,10 +71,14 @@ export default function GamesList({ endpoint, query }) {
     const url = `${SERVER_URL}${ep}`;
     try {
       const res = await fetch(url);
-      if (!res.ok) throw new Error(`Server returned status: ${res.status}`);
+      if (!res.ok) {
+        // محاولة قراءة رسالة الخطأ من السيرفر إن وجدت
+        const errorText = await res.text().catch(() => "");
+        throw new Error(`Server returned status: ${res.status} ${errorText}`);
+      }
       const data = await res.json();
 
-      console.log(`🔥 Server update received for endpoint: ${ep} - Syncing UI...`);
+      // console.log(`🔥 Server update received for endpoint: ${ep} - Syncing UI...`);
       setGames(data); // تحديث الواجهة بالبيانات الجديدة
       setLoading(false);
 
@@ -131,48 +106,23 @@ export default function GamesList({ endpoint, query }) {
     const cacheKey = generateCacheKey('search', q);
     let cacheFound = false;
 
-    // 5.1. محاولة عرض الكاش فوراً
     try {
-      const cachedData = await AsyncStorage.getItem(cacheKey);
-      if (cachedData) {
-        const parsedData = JSON.parse(cachedData);
-        // console.log(`📦 Showing Cached Data immediately for query: ${q}`);
-        setGames(parsedData.data);
-        setLoading(false);
-        cacheFound = true;
-      }
-    } catch (e) {
-      console.error("Error reading cache:", e);
-    }
-
-    // 5.2. جلب البيانات من IGDB في الخلفية
-    try {
-      const token = await getAppToken();
-      const body = `
-                fields id, name, cover.image_id, first_release_date, total_rating, game_type;
-                search "${q}";
-                limit 50;
-            `;
-      const res = await fetch(IGDB_URL, {
-        method: "POST",
-        headers: { "Client-ID": CLIENT_ID, "Authorization": `Bearer ${token}`, "Content-Type": "text/plain", "Accept": "application/json" },
-        body,
-      });
+      // لاحظ: لا نحتاج لتوكن هنا لأن السيرفر هو من يقوم بالمصادقة
+      // استبدل YOUR_VERCEL_URL برابط سيرفرك
+      const res = await fetch(`${SERVER_URL}/search?q=${encodeURIComponent(q)}`);
 
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`IGDB fetch failed: ${res.status} ${res.statusText} ${text}`);
+        throw new Error(`Server fetch failed: ${res.status}`);
       }
 
       const json = await res.json();
-      // console.log(`🔥 IGDB update received for query: ${q} - Syncing UI...`);
+
+      // ... (باقي كود تحديث الـ State وحفظ الكاش يظل كما هو) ...
       setGames(json);
       setLoading(false);
 
-      // حفظ الكاش الجديد
       const cacheData = { data: json, timestamp: Date.now() };
       await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheData));
-
     } catch (err) {
       console.error("Error fetching search results:", err);
       if (!cacheFound) {

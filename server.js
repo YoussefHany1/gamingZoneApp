@@ -1,6 +1,6 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors'); // سنحتاجه للسماح لتطبيق Expo بالوصول للسيرفر
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
 const app = express();
 
 app.use(cors()); // تفعيل CORS لجميع الطلبات
@@ -93,27 +93,6 @@ async function callIgdb(apiEndpoint, queryBody) {
     throw error;
   }
 }
-
-
-async function fetchGameById(id) {
-  const body = `
-    fields 'fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, summary, hypes, platforms, collections, cover, dlcs, game_modes, game_status, game_type, genres, language_supports, multiplayer_modes, remakes, remasters, screenshots, storyline, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.slug, similar_games.cover.image_id, collections.games.*;
-           
-    where id = ${id};
-  `;
-  const res = await fetch(IGDB_URL, {
-    method: 'POST',
-    headers: {
-      'Client-ID': CLIENT_ID,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'text/plain',
-      'Accept': 'application/json',
-    },
-    body
-  });
-}
-
-
 // ----- الـ Endpoints المطلوبة -----
 
 // دالة مُساعدة لإنشاء الاستعلامات الأساسية
@@ -206,7 +185,7 @@ app.get('/popular', async (req, res) => {
 app.get('/nostalgia-corner', async (req, res) => {
   try {
     const query = `
-fields name, first_release_date, total_rating_count, platforms.name, cover.url, cover.image_id;
+fields name, first_release_date, total_rating_count, platforms cover.url, cover.image_id;
 where (platforms = (6, 7, 8, 13) & first_release_date < 1167609600 & total_rating_count > 100);
 sort total_rating_count desc;
 limit 50;
@@ -244,5 +223,6 @@ app.listen(PORT, () => {
   console.log('  /coming-soon');
   console.log('  /most-anticipated');
   console.log('  /popular');
+  console.log('  /nostalgia-corner');
   console.log('  /test-igdb');
 });

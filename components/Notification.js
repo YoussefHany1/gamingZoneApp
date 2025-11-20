@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,21 +6,14 @@ import {
   ScrollView,
   Switch,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Loading from "../Loading";
+import Loading from "../Loading"; // تأكد من المسار الصحيح
 import { Ionicons } from "@expo/vector-icons";
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
-import {
-  subscribeToTopic,
-  unsubscribeFromTopic,
-  saveNotificationPreference,
-  getUserNotificationPreferences,
-  getTopicName,
-  testNotification,
-  testTopicSubscription,
-} from "../notificationService";
+import NotificationService from "../notificationService"; // Import the Class
 import { useTranslation } from 'react-i18next';
 
 const Notification = ({ navigation }) => {
@@ -30,37 +23,38 @@ const Notification = ({ navigation }) => {
   const [expandedCategories, setExpandedCategories] = useState({});
   const { t } = useTranslation();
 
+  // Load RSS Data
   useEffect(() => {
-    // Load RSS feeds from Firestore
     const unsubscribeRss = firestore()
       .collection("rss")
       .onSnapshot(
         (snapshot) => {
           let feeds = {};
           snapshot.docs.forEach((doc) => {
-            const data = doc.data();
-            feeds = { ...feeds, ...data };
+            feeds = { ...feeds, ...doc.data() };
           });
           setRssFeeds(feeds);
         },
-        (error) => {
-          console.error("Error loading RSS feeds:", error);
-        }
+        (error) => console.error("Error loading RSS feeds:", error)
       );
-
-    // Load user preferences
-    const currentUser = auth().currentUser;
-    if (currentUser) {
-      loadUserPreferences(currentUser.uid);
-    }
 
     return () => unsubscribeRss();
   }, []);
 
+  // Load User Preferences
+  useEffect(() => {
+    const currentUser = auth().currentUser;
+    if (currentUser) {
+      loadUserPreferences(currentUser.uid);
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
   const loadUserPreferences = async (userId) => {
     try {
-      const prefs = await getUserNotificationPreferences(userId);
-      setPreferences(prefs);
+      const prefs = await NotificationService.getUserPreferences(userId);
+      setPreferences(prefs || {});
     } catch (error) {
       console.error("Error loading preferences:", error);
     } finally {
@@ -68,113 +62,136 @@ const Notification = ({ navigation }) => {
     }
   };
 
-  const toggleCategory = async (category) => {
-    const userId = auth().currentUser?.uid;
-    if (!userId) return; //  لو المستخدم مش موجود، اخرج
-
-    const categorySources = rssFeeds[category] || [];
-    const allEnabled = categorySources.every(
-      (source) => preferences[`${category}_${source.name}`]
-    );
-
-    const newPreferences = { ...preferences };
-    const promises = [];
-
-    for (const source of categorySources) {
-      const prefId = `${category}_${source.name}`;
-      const topicName = getTopicName(category, source.name);
-      const newValue = !allEnabled;
-
-      newPreferences[prefId] = newValue;
-
-      // Save to Firestore
-      promises.push(
-        saveNotificationPreference(
-          userId,
-          category,
-          source.name,
-          newValue
-        )
-      );
-
-      // Subscribe/unsubscribe from FCM topic
-      if (newValue) {
-        promises.push(subscribeToTopic(topicName));
-      } else {
-        promises.push(unsubscribeFromTopic(topicName));
-      }
-    }
-
-    setPreferences(newPreferences);
-    await Promise.all(promises);
-  };
-
-  const toggleSource = async (category, source) => {
+  /**
+   * Toggle individual source
+   * Uses Optimistic UI Update
+   */
+  const toggleSource = useCallback(async (category, source) => {
     const userId = auth().currentUser?.uid;
     if (!userId) return;
 
-    const prefId = `${category}_${source.name}`;
-    const topicName = getTopicName(category, source.name);
+    const prefId = NotificationService.getTopicName(category, source.name);
     const newValue = !preferences[prefId];
 
+    // 1. Optimistic Update (Instant UI feedback)
+    setPreferences((prev) => ({
+      ...prev,
+      [prefId]: newValue,
+    }));
+
+    // 2. Call Service to handle DB + FCM Logic
+    await NotificationService.toggleNotificationPreference(
+      userId,
+      category,
+      source.name,
+      newValue
+    );
+  }, [preferences]);
+
+  /**
+   * Toggle entire category
+   */
+  const toggleCategory = useCallback(async (category) => {
+    const userId = auth().currentUser?.uid;
+    if (!userId) return;
+
+    const categorySources = rssFeeds[category] || [];
+
+    // Check if all are currently enabled to determine toggle direction
+    const allEnabled = categorySources.every(
+      (source) => {
+        const topic = NotificationService.getTopicName(category, source.name);
+        return preferences[topic];
+      }
+    );
+
+    const newValue = !allEnabled;
     const newPreferences = { ...preferences };
-    newPreferences[prefId] = newValue;
+    const updatePromises = [];
+
+    // Prepare batch updates
+    categorySources.forEach((source) => {
+      const prefId = NotificationService.getTopicName(category, source.name);
+
+      // Only update if the value is changing
+      if (newPreferences[prefId] !== newValue) {
+        newPreferences[prefId] = newValue;
+
+        updatePromises.push(
+          NotificationService.toggleNotificationPreference(
+            userId,
+            category,
+            source.name,
+            newValue
+          )
+        );
+      }
+    });
+
+    // 1. Optimistic Update
     setPreferences(newPreferences);
 
-    // Save to Firestore and FCM
-    await Promise.all([
-      saveNotificationPreference(
-        userId,
-        category,
-        source.name,
-        newValue
-      ),
-      newValue ? subscribeToTopic(topicName) : unsubscribeFromTopic(topicName),
-    ]);
-  };
+    // 2. Execute Service calls in parallel
+    await Promise.all(updatePromises);
 
-  const toggleCategoryExpansion = (category) => {
+  }, [rssFeeds, preferences]);
+
+  const toggleCategoryExpansion = useCallback((category) => {
     setExpandedCategories((prev) => ({
       ...prev,
       [category]: !prev[category],
     }));
-  };
+  }, []);
 
-  const getCategoryToggleValue = (category) => {
+  // Helper: Check category status (All Checked)
+  const getCategoryToggleValue = useCallback((category) => {
     const categorySources = rssFeeds[category] || [];
     if (categorySources.length === 0) return false;
 
-    const enabledCount = categorySources.filter(
-      (source) => preferences[`${category}_${source.name}`]
-    ).length;
+    return categorySources.every(source => {
+      const topic = NotificationService.getTopicName(category, source.name);
+      return preferences[topic];
+    });
+  }, [rssFeeds, preferences]);
 
-    return enabledCount === categorySources.length;
-  };
-
-  const getCategoryToggleIndeterminate = (category) => {
+  // Helper: Check category status (Partially Checked)
+  const getCategoryToggleIndeterminate = useCallback((category) => {
     const categorySources = rssFeeds[category] || [];
     if (categorySources.length === 0) return false;
 
-    const enabledCount = categorySources.filter(
-      (source) => preferences[`${category}_${source.name}`]
-    ).length;
+    const enabledCount = categorySources.filter(source => {
+      const topic = NotificationService.getTopicName(category, source.name);
+      return preferences[topic];
+    }).length;
 
     return enabledCount > 0 && enabledCount < categorySources.length;
+  }, [rssFeeds, preferences]);
+
+  // Test Handlers
+  const handleTestSubscription = async () => {
+    Alert.alert("Testing", "Subscribing to 'test_topic' for 5 seconds...");
+    await NotificationService.subscribeToTopic("test_topic");
+
+    setTimeout(async () => {
+      await NotificationService.unsubscribeFromTopic("test_topic");
+      Alert.alert("Done", "Unsubscribed from 'test_topic'");
+    }, 5000);
   };
 
   const renderCategorySection = (category, title) => {
     const sources = rssFeeds[category] || [];
+    if (sources.length === 0) return null;
+
     const isExpanded = expandedCategories[category];
     const allEnabled = getCategoryToggleValue(category);
     const isIndeterminate = getCategoryToggleIndeterminate(category);
-
-    if (sources.length === 0) return null;
 
     return (
       <View key={category} style={styles.categorySection}>
         <TouchableOpacity
           style={styles.categoryHeader}
           onPress={() => toggleCategoryExpansion(category)}
+          activeOpacity={0.7}
         >
           <View style={styles.categoryHeaderLeft}>
             <Ionicons
@@ -186,26 +203,30 @@ const Notification = ({ navigation }) => {
             <Text style={styles.categoryTitle}>{title}</Text>
             <Text style={styles.sourceCount}>({sources.length})</Text>
           </View>
-          <Switch
-            value={allEnabled}
-            onValueChange={() => toggleCategory(category)}
-            trackColor={{ false: "#3e3e3e", true: "#779bdd" }}
-            thumbColor={allEnabled ? "#ffffff" : "#f4f3f4"}
-            style={[
-              styles.categorySwitch,
-              isIndeterminate && styles.indeterminateSwitch,
-            ]}
-          />
+
+          {/* Stop propagation to prevent expanding when clicking switch */}
+          <TouchableOpacity onPress={() => toggleCategory(category)}>
+            <Switch
+              value={allEnabled}
+              onValueChange={() => toggleCategory(category)}
+              trackColor={{ false: "#3e3e3e", true: "#779bdd" }}
+              thumbColor={allEnabled ? "#ffffff" : "#f4f3f4"}
+              style={[
+                styles.categorySwitch,
+                isIndeterminate && styles.indeterminateSwitch,
+              ]}
+            />
+          </TouchableOpacity>
         </TouchableOpacity>
 
         {isExpanded && (
           <View style={styles.sourcesList}>
             {sources.map((source, index) => {
-              const prefId = `${category}_${source.name}`;
+              const prefId = NotificationService.getTopicName(category, source.name);
               const isEnabled = preferences[prefId] || false;
 
               return (
-                <View key={index} style={styles.sourceItem}>
+                <View key={`${category}-${index}`} style={styles.sourceItem}>
                   <View style={styles.sourceInfo}>
                     <Text style={styles.sourceName}>{source.name}</Text>
                     {source.language && (
@@ -250,7 +271,7 @@ const Notification = ({ navigation }) => {
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.testButton}
-            onPress={testNotification}
+            onPress={NotificationService.testLocalNotification}
           >
             <Ionicons name="notifications" size={20} color="#ffffff" />
             <Text style={styles.testButtonText}>Test Local Notification</Text>
@@ -258,7 +279,7 @@ const Notification = ({ navigation }) => {
 
           <TouchableOpacity
             style={[styles.testButton, styles.testButtonSecondary]}
-            onPress={testTopicSubscription}
+            onPress={handleTestSubscription}
           >
             <Ionicons name="wifi" size={20} color="#ffffff" />
             <Text style={styles.testButtonText}>Test FCM Subscription</Text>

@@ -5,22 +5,19 @@ import LatestNews from "../components/LatestNews";
 // import Loading from "../Loading";
 
 const sections = [
-  <Slideshow website="arab_hardware" category="news" />,
-  <LatestNews website="ign" category="news" limit={5} showDropdown={false} />,
+  <Slideshow website="vg247" category="news" />,
+  <LatestNews category="news" limit={5} showDropdown={false} />,
   <LatestNews
-    website="true_gaming"
     category="reviews"
     limit={5}
     showDropdown={false}
   />,
   <LatestNews
-    website="dot_esports"
     category="esports"
     limit={5}
     showDropdown={false}
   />,
   <LatestNews
-    website="tom_s_hardware"
     category="hardware"
     limit={5}
     showDropdown={false}

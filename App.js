@@ -1,38 +1,52 @@
+import React, { Suspense } from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import HomeScreen from "./screens/HomeScreen";
-import NewsScreen from "./screens/NewsScreen";
-import GamesScreen from "./screens/GamesScreen";
-import SettingsScreen from "./screens/SettingsScreen";
-import GameDetails from "./components/GameDetails";
-import NotificationSettings from "./components/Notification";
-import Profile from "./components/Profile";
-import WantListScreen from './screens/WantListScreen';
-import PlayedListScreen from './screens/PlayedListScreen';
-import LanguageScreen from './screens/LanguageSelect';
 import { useEffect, useState } from "react";
 import messaging from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
 import './i18n';
 import { useTranslation } from 'react-i18next';
 import auth from '@react-native-firebase/auth';
-import {
-  saveFCMToken,
-  getUserNotificationPreferences,
-  syncUserPreferences,
-} from "./notificationService";
-import LoginScreen from './screens/LoginScreen';
-import RegisterScreen from './screens/RegisterScreen';
-import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
-
+import NotificationService from "./notificationService";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
 import Loading from './Loading';
+import HomeScreen from "./screens/HomeScreen";
+import NewsScreen from "./screens/NewsScreen";
+import GamesScreen from "./screens/GamesScreen";
+import SettingsScreen from "./screens/SettingsScreen";
+// import GameDetails from "./components/GameDetails";
+// import NotificationSettings from "./components/Notification";
+// import Profile from "./components/Profile";
+// import WantListScreen from './screens/WantListScreen';
+// import PlayedListScreen from './screens/PlayedListScreen';
+// import LanguageScreen from './screens/LanguageSelect';
+// import NotificationService from "./notificationService";
+// import LoginScreen from './screens/LoginScreen';
+// import RegisterScreen from './screens/RegisterScreen';
+// import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+// import SourceSelectionScreen from './screens/SourceSelectionScreen';
 
+
+// const NewsScreen = React.lazy(() => import("./screens/NewsScreen"));
+// const GamesScreen = React.lazy(() => import("./screens/GamesScreen"));
+// const SettingsScreen = React.lazy(() => import("./screens/SettingsScreen"));
+const GameDetails = React.lazy(() => import("./components/GameDetails"));
+const NotificationSettings = React.lazy(() => import("./components/Notification"));
+const Profile = React.lazy(() => import("./components/Profile"));
+const WantListScreen = React.lazy(() => import("./screens/WantListScreen"));
+const PlayedListScreen = React.lazy(() => import("./screens/PlayedListScreen"));
+const LanguageScreen = React.lazy(() => import("./screens/LanguageSelect"));
+const SourceSelectionScreen = React.lazy(() => import("./screens/SourceSelectionScreen"));
+const LoginScreen = React.lazy(() => import("./screens/LoginScreen"));
+const RegisterScreen = React.lazy(() => import("./screens/RegisterScreen"));
+const ForgotPasswordScreen = React.lazy(() => import("./screens/ForgotPasswordScreen"));
+
+
+globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -79,6 +93,7 @@ function SettingsStack() {
       <Stack.Screen name="WantListScreen" component={WantListScreen} options={{ title: t('navigation.titles.wantList') }} />
       <Stack.Screen name="PlayedListScreen" component={PlayedListScreen} options={{ title: t('navigation.titles.playedList') }} />
       <Stack.Screen name="LanguageScreen" component={LanguageScreen} options={{ title: t('settings.menu.changeLanguage') }} />
+      <Stack.Screen name="SourceSelectionScreen" component={SourceSelectionScreen} options={{ headerShown: false }} />
       <Stack.Screen name="GamesScreen" component={GamesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="GameDetails" component={GameDetails} options={{ headerShown: false }} />
     </Stack.Navigator>
@@ -103,17 +118,13 @@ function MainAppTabs() {
         tabBarInactiveTintColor: "#779bdd",
         tabBarLabel: t(`navigation.tabs.${route.name.toLowerCase()}`),
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-
-          if (route.name === "Home") {
-            iconName = focused ? "home" : "home-outline";
-          } else if (route.name === "News") {
-            iconName = focused ? "newspaper" : "newspaper-outline";
-          } else if (route.name === "Settings") {
-            iconName = focused ? "settings" : "settings-outline";
-          } else if (route.name === "Games") {
-            iconName = focused ? "game-controller" : "game-controller-outline";
-          }
+          const iconMap = {
+            "Home": focused ? "home" : "home-outline",
+            "News": focused ? "newspaper" : "newspaper-outline",
+            "Settings": focused ? "settings" : "settings-outline",
+            "Games": focused ? "game-controller" : "game-controller-outline",
+          };
+          const iconName = iconMap[route.name];
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -151,7 +162,7 @@ const queryClient = new QueryClient({
 
 function App() {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // --- إضافة حالة التحميل ---
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribeAuth = auth().onAuthStateChanged(async (newUser) => {
@@ -165,36 +176,17 @@ function App() {
           console.error("❌ Failed to initialize FCM:", error);
         }
       } else {
-        console.log("❌ User not authenticated, signing in anonymously...");
-
+        console.log("❌ User not authenticated, showing Auth stack.");
       }
+      // Set loading false only after initial auth check and FCM init attempt (if user exists)
       setLoading(false);
     });
 
     return () => unsubscribeAuth();
   }, []);
-  // console.log(user)
+
   const initFcm = async (userId) => {
     try {
-      // Request OS notification permission (Android 13+ & iOS)
-      // const expoPerms = await Notifications.requestPermissionsAsync({
-      //   ios: {
-      //     allowAlert: true,
-      //     allowBadge: true,
-      //     allowSound: true,
-      //     allowAnnouncements: true,
-      //   },
-      // });
-
-      // if (expoPerms.status !== "granted") {
-      //   console.log(
-      //     "❌ OS notification permission not granted:",
-      //     expoPerms.status
-      //   );
-      //   return;
-      // }
-      // console.log("✅ OS notification permission granted");
-
       // Create notification channel for Android
       await Notifications.setNotificationChannelAsync("news_notifications", {
         name: "News Notifications",
@@ -234,7 +226,18 @@ function App() {
         provisional: false,
         sound: true,
       });
-
+      messaging().onNotificationOpenedApp(remoteMessage => {
+        console.log('Notification opened app from background:', remoteMessage.notification);
+      });
+      messaging()
+        .getInitialNotification()
+        .then(remoteMessage => {
+          if (remoteMessage) {
+            console.log('Notification opened app from quit state:', remoteMessage.notification);
+            // ✅ حذفنا دالة handleNotificationNavigation
+            // النتيجة: التطبيق سيفتح ويبدأ من الشاشة الرئيسية (Home)
+          }
+        });
       const enabled =
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
         authStatus === messaging.AuthorizationStatus.PROVISIONAL;
@@ -248,12 +251,12 @@ function App() {
       const token = await messaging().getToken();
       console.log("📱 FCM token:", token);
 
-      // Save FCM token to user profile
-      await saveFCMToken(userId, token);
+      // ✅ Updated: Save FCM token using the Service
+      await NotificationService.saveFCMToken(userId, token);
 
-      // Load and sync user notification preferences
-      const preferences = await getUserNotificationPreferences(userId);
-      await syncUserPreferences(userId, preferences);
+      // ✅ Updated: Load and sync user notification preferences using the Service
+      const preferences = await NotificationService.getUserPreferences(userId);
+      await NotificationService.syncUserPreferences(userId, preferences);
 
       const unsubscribeOnMessage = messaging().onMessage(
         async (remoteMessage) => {
@@ -261,11 +264,8 @@ function App() {
             "📨 FCM foreground message received:",
             remoteMessage?.messageId
           );
-          console.log("📨 Message data:", remoteMessage?.data);
-          console.log("📨 Message notification:", remoteMessage?.notification);
 
           try {
-            // Show a local notification when app is in foreground
             const title =
               remoteMessage?.notification?.title ||
               remoteMessage?.data?.title ||
@@ -275,19 +275,35 @@ function App() {
               remoteMessage?.data?.body ||
               "";
 
+            // ✅ استخراج الصورة من الإشعار أو البيانات
+            const image =
+              remoteMessage?.notification?.android?.imageUrl ||
+              remoteMessage?.notification?.imageUrl ||
+              remoteMessage?.data?.thumbnail;
+
+            // إعداد محتوى الإشعار
+            const notificationContent = {
+              title,
+              body,
+              data: remoteMessage?.data || {},
+              sound: "default",
+              badge: 1,
+              categoryIdentifier: "news_notifications",
+            };
+
+            // ✅ إذا وجدت صورة، أضفها للمرفقات
+            if (image) {
+              notificationContent.attachments = [
+                { url: image, identifier: 'news-image', typeHint: 'image' }
+              ];
+            }
+
             await Notifications.scheduleNotificationAsync({
-              content: {
-                title,
-                body,
-                data: remoteMessage?.data || {},
-                sound: "default",
-                badge: 1,
-                categoryIdentifier: "news_notifications",
-              },
+              content: notificationContent,
               trigger: null, // immediate
             });
 
-            console.log("✅ Local notification scheduled");
+            console.log("✅ Local notification scheduled with image check");
           } catch (err) {
             console.error("❌ Failed to present foreground notification:", err);
           }
@@ -297,7 +313,8 @@ function App() {
       const unsubscribeTokenRefresh = messaging().onTokenRefresh(
         async (newToken) => {
           console.log("FCM token refreshed:", newToken);
-          await saveFCMToken(userId, newToken);
+          // ✅ Updated: Save new FCM token using the Service
+          await NotificationService.saveFCMToken(userId, newToken);
         }
       );
 
@@ -314,20 +331,29 @@ function App() {
     return <Loading />;
   }
 
+  const MyTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: '#0c1a33', // <--- هذا هو اللون الذي سيظهر خلف الـ Suspense
+    },
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <StatusBar style="light" translucent={true} />
-        <NavigationContainer>
-          {/* if user not signed in register screen will show up */}
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {user ? (
-              <Stack.Screen name="MainApp" component={MainAppTabs} />
-            ) : (
-              <Stack.Screen name="Auth" component={AuthStack} />
-            )}
-          </Stack.Navigator>
+        <NavigationContainer theme={MyTheme}>
+          <Suspense fallback={<Loading />}>
+            {/* if user not signed in register screen will show up */}
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+              {user ? (
+                <Stack.Screen name="MainApp" component={MainAppTabs} />
+              ) : (
+                <Stack.Screen name="Auth" component={AuthStack} />
+              )}
+            </Stack.Navigator>
+          </Suspense>
         </NavigationContainer>
       </SafeAreaProvider>
     </QueryClientProvider>

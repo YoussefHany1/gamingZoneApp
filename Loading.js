@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 function Loading() {
   const { t } = useTranslation();
@@ -13,7 +14,8 @@ function Loading() {
 export default Loading;
 const styles = StyleSheet.create({
   loadingContainer: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#0c1a33",

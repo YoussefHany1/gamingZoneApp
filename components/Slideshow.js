@@ -3,11 +3,12 @@ import { Linking, Text, StyleSheet, Image, Pressable } from "react-native";
 import Swiper from "react-native-swiper";
 import { LinearGradient } from "expo-linear-gradient";
 import useFeed from "../hooks/useFeed";
+import Loading from "../Loading";
 
-function Slideshow() {
-  const { articles, loading, error } = useFeed("news", "games_mix");
+function Slideshow({ website, category }) {
+  const { articles, loading, error } = useFeed(category, website);
 
-  if (loading) return <Text>Loading...</Text>;
+  if (loading) return <Loading />;
   if (error) return <Text>Error: {error.message}</Text>;
   return (
     <>

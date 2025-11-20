@@ -18,63 +18,31 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Loading from '../Loading'
-import { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET } from '@env';
 import { useTranslation } from 'react-i18next';
 
-const CLIENT_ID = TWITCH_CLIENT_ID;
-const CLIENT_SECRET = TWITCH_CLIENT_SECRET;
-const IGDB_URL = "https://api.igdb.com/v4/games";
+const SERVER_URL = "https://igdb-api-omega.vercel.app";
 const CACHE_KEY_PREFIX = 'GAME_DETAILS_CACHE_';
-
-let cachedToken = null;
-async function getAppToken() {
-    if (cachedToken && cachedToken.expiresAt > Date.now() + 10000) {
-        return cachedToken.token;
-    }
-    const res = await fetch(`https://id.twitch.tv/oauth2/token`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json',
-        },
-        body: `client_id=${encodeURIComponent(CLIENT_ID)}&client_secret=${encodeURIComponent(CLIENT_SECRET)}&grant_type=client_credentials`,
-    });
-    if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Failed to get token: ${res.status} ${res.statusText} ${text}`);
-    }
-    const data = await res.json();
-    cachedToken = {
-        token: data.access_token,
-        expiresAt: Date.now() + data.expires_in * 1000,
-    };
-    return cachedToken.token;
-}
 
 async function fetchGameById(id) {
     if (!id) throw new Error("fetchGameById: missing id");
-    const token = await getAppToken();
-    const body = `
-    fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, summary, dlcs, game_type, multiplayer_modes, remakes, remasters, screenshots.image_id, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.cover.image_id, collections.games.name, collections.games.cover.image_id;
-    where id = ${id};
-    limit 1;
-  `;
-    const res = await fetch(IGDB_URL, {
-        method: "POST",
-        headers: {
-            "Client-ID": CLIENT_ID,
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "text/plain",
-            "Accept": "application/json",
-        },
-        body,
-    });
-    if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`IGDB fetch failed: ${res.status} ${res.statusText} ${text}`);
+
+    try {
+        // الاتصال بالسيرفر الجديد
+        const res = await fetch(`${SERVER_URL}/game-details?id=${id}`);
+
+        if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            throw new Error(`Server fetch failed: ${res.status} ${text}`);
+        }
+
+        // السيرفر بيرجع الـ Game Object مباشرة أو null
+        const json = await res.json();
+        return json;
+
+    } catch (error) {
+        console.error("Error fetching game details:", error);
+        throw error;
     }
-    const json = await res.json();
-    return Array.isArray(json) && json.length ? json[0] : null;
 }
 
 
@@ -443,7 +411,7 @@ function GameDetails({ route, navigation }) {
                             {isReleased && (
                                 <TouchableOpacity style={[styles.playedBtn, isPlayed && styles.playedBtnActive]} onPress={handlePlayed}>
                                     <Text style={styles.playedBtnText}>
-                                        <Ionicons name={isPlayed ? "checkmark-done" : "checkmark-sharp"} size={24} color="white" /> {t('games.details.buttons.played')}
+                                        <Ionicons name={isPlayed ? "game-controller" : "game-controller-outline"} size={24} color="white" /> {t('games.details.buttons.played')}
                                     </Text>
                                 </TouchableOpacity>
                             )}

@@ -43,3 +43,4 @@ firebase.js
 firestore.rules
 # firebase
 firebase-*.json
+serviceAccountKey.json

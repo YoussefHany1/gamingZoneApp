@@ -1,5 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
-import firestore from '@react-native-firebase/firestore';
+import {
+  getFirestore,
+  collection,
+  collectionGroup,
+  query,
+  orderBy,
+  where,
+  onSnapshot
+} from '@react-native-firebase/firestore';
+// أو من firebase/firestore لو انت مستخدم SDK بتاع الويب مع Expo
 
 export default function useFeed(category, siteName) {
   const [articles, setArticles] = useState([]);
@@ -7,20 +16,56 @@ export default function useFeed(category, siteName) {
   const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(Date.now());
 
-  // 2. دالة Refetch تسمح بتشغيل useEffect يدوياً
   const refetch = useCallback(() => {
-    setError(null); // لإزالة أي أخطاء سابقة
-    setLoading(true); // لإظهار مؤشر التحميل
-    setRefreshTrigger(Date.now()); // تغيير هذه القيمة تعيد تشغيل الـ useEffect
+    setError(null);
+    setLoading(true);
+    setRefreshTrigger(Date.now());
   }, []);
 
   useEffect(() => {
-    const colRef = firestore()
-      .collection("articles")
-      .doc(category)
-      .collection(siteName);
+    // لو مفيش كاتيجوري أصلاً، ما نعملش subscribe
+    if (!category) {
+      setArticles([]);
+      setLoading(false);
+      return;
+    }
 
-    const unsub = colRef.onSnapshot(
+    const db = getFirestore();
+    let q;
+
+    // ✅ الحالة 1: فيه category و siteName → نفس الكود القديم
+    if (category && siteName) {
+      const postsCollectionRef = collection(
+        db,
+        "articles",
+        category,
+        "sources",
+        siteName,
+        "posts"
+      );
+
+      q = query(postsCollectionRef, orderBy("pubDate", "desc"));
+    }
+
+    // ✅ الحالة 2: فيه category بس ومفيش siteName → كل المواقع في الكاتيجوري ده
+    if (category && !siteName) {
+      // لازم يكون جوه كل post حقل category بنفس القيمة
+      const postsCollectionGroup = collectionGroup(db, "posts");
+
+      q = query(
+        postsCollectionGroup,
+        where("category", "==", category),
+        orderBy("pubDate", "desc")
+      );
+    }
+
+    if (!q) {
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      q,
       (snapshot) => {
         const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
         setArticles(data);
@@ -33,8 +78,10 @@ export default function useFeed(category, siteName) {
       }
     );
 
-    return () => unsub();
+    return () => unsubscribe();
   }, [category, siteName, refreshTrigger]);
 
-  return { articles, loading, error, refetch };
+  const isFetching = loading; // لو محتاج تستخدمه في الـ UI زي ما كنت عامل في LatestNews
+
+  return { articles, loading, error, isFetching, refetch };
 }

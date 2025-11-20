@@ -1,226 +1,243 @@
 import messaging from "@react-native-firebase/messaging";
-import firestore from '@react-native-firebase/firestore';
+import firestore, {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  getDocs,
+  serverTimestamp,
+} from '@react-native-firebase/firestore';
 import * as Notifications from "expo-notifications";
+globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+// Constants to avoid magic strings and ensure consistency
+const COLLECTIONS = {
+  USERS: "users",
+  PREFERENCES: "notificationPreferences",
+};
 
-/**
- * Generate consistent topic name for FCM
- * @param {string} category - Category name (news, reviews, hardware)
- * @param {string} sourceName - Source name
- * @returns {string} Topic name
- */
-export function getTopicName(category, sourceName) {
-  const sanitizedSource = sourceName
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_|_$/g, "");
+const ERRORS = {
+  MISSING_PARAMS: "⚠️ Missing required parameters: userId or token/topic.",
+  FCM_FAIL: "❌ FCM Operation Failed:",
+};
 
-  return `${category}_${sanitizedSource}`;
-}
+class NotificationService {
+  /**
+   * Generate consistent topic name for FCM strictly adhering to regex
+   * Allowed: [a-zA-Z0-9-_.~%]+
+   * @param {string} category
+   * @param {string} sourceName
+   * @returns {string}
+   */
+  static getTopicName(category, sourceName) {
+    if (!category || !sourceName) return "";
 
-/**
- * Subscribe FCM token to a topic
- * @param {string} topicName - Topic name to subscribe to
- * @returns {Promise<boolean>} Success status
- */
-export async function subscribeToTopic(topicName) {
-  try {
-    console.log(`🔄 Attempting to subscribe to topic: ${topicName}`);
-    await messaging().subscribeToTopic(topicName);
-    console.log(`✅ Successfully subscribed to topic: ${topicName}`);
-    return true;
-  } catch (error) {
-    console.error(`❌ Failed to subscribe to topic ${topicName}:`, error);
-    return false;
+    const sanitizedSource = sourceName
+      .toLowerCase()
+      .replace(/[^a-z0-9-_.~%]/g, "_") // Replace invalid chars
+      .replace(/_+/g, "_")             // Remove duplicate underscores
+      .replace(/^_|_$/g, "");          // Trim leading/trailing underscores
+
+    return `${category}_${sanitizedSource}`;
   }
-}
 
-/**
- * Unsubscribe FCM token from a topic
- * @param {string} topicName - Topic name to unsubscribe from
- * @returns {Promise<boolean>} Success status
- */
-export async function unsubscribeFromTopic(topicName) {
-  try {
-    console.log(`🔄 Attempting to unsubscribe from topic: ${topicName}`);
-    await messaging().unsubscribeFromTopic(topicName);
-    console.log(`✅ Successfully unsubscribed from topic: ${topicName}`);
-    return true;
-  } catch (error) {
-    console.error(`❌ Failed to unsubscribe from topic ${topicName}:`, error);
-    return false;
-  }
-}
+  /**
+   * Handle Topic Subscription (Subscribe/Unsubscribe)
+   * @param {string} topicName
+   * @param {boolean} subscribe - true to subscribe, false to unsubscribe
+   * @returns {Promise<boolean>}
+   */
+  static async _handleTopicSubscription(topicName, subscribe) {
+    if (!topicName) return false;
 
-/**
- * Save user notification preference to Firestore
- * @param {string} userId - User ID
- * @param {string} category - Category name
- * @param {string} sourceName - Source name
- * @param {boolean} enabled - Whether notifications are enabled
- */
-export async function saveNotificationPreference(
-  userId,
-  category,
-  sourceName,
-  enabled
-) {
-  try {
-    const prefId = getTopicName(category, sourceName);
-    const prefRef = firestore()
-      .collection("users")
-      .doc(userId)
-      .collection("notificationPreferences")
-      .doc(prefId);
+    const action = subscribe ? "subscribeToTopic" : "unsubscribeFromTopic";
+    const logPrefix = subscribe ? "✅ Subscribed to" : "🚫 Unsubscribed from";
 
-    await prefRef.set({
-      category,
-      sourceName,
-      enabled,
-      updatedAt: new Date(),
-    });
-
-    console.log(`✅ Saved preference: ${prefId} = ${enabled}`);
-  } catch (error) {
-    console.error("❌ Failed to save notification preference:", error);
-  }
-}
-
-/**
- * Get user notification preferences from Firestore
- * @param {string} userId - User ID
- * @returns {Promise<Object>} Preferences object
- */
-export async function getUserNotificationPreferences(userId) {
-  try {
-    if (!userId) {
-      console.warn("⚠️ Missing userId");
-      return {};
-    }
-
-    const prefsRef = firestore()
-      .collection("users")
-      .doc(userId)
-      .collection("notificationPreferences");
-    const snapshot = await prefsRef.get();
-
-    const preferences = {};
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      preferences[doc.id] = data.enabled;
-    });
-
-    return preferences;
-  } catch (error) {
-    console.error("❌ Failed to get notification preferences:", error);
-    return {};
-  }
-}
-
-/**
- * Sync user preferences with FCM topics
- * @param {string} userId - User ID
- * @param {Object} preferences - User preferences object
- */
-export async function syncUserPreferences(userId, preferences) {
-  try {
-    console.log("🔄 Syncing user preferences with FCM topics...");
-    console.log("📋 Preferences to sync:", preferences);
-
-    const promises = [];
-
-    for (const [prefId, enabled] of Object.entries(preferences)) {
-      console.log(`🔄 Processing preference: ${prefId} = ${enabled}`);
-      if (enabled) {
-        promises.push(subscribeToTopic(prefId));
+    try {
+      if (subscribe) {
+        await messaging().subscribeToTopic(topicName); // خطأ 1: (E:49)
       } else {
-        promises.push(unsubscribeFromTopic(prefId));
+        await messaging().unsubscribeFromTopic(topicName);
       }
+      console.log(`${logPrefix}: ${topicName}`);
+      return true;
+    } catch (error) {
+      console.error(`${ERRORS.FCM_FAIL} ${action} ${topicName}`, error);
+      return false;
     }
-
-    const results = await Promise.all(promises);
-    console.log(
-      "✅ Synced user preferences with FCM topics. Results:",
-      results
-    );
-  } catch (error) {
-    console.error("❌ Failed to sync user preferences:", error);
   }
-}
 
-/**
- * Save FCM token to user profile
- * @param {string} userId - User ID
- * @param {string} fcmToken - FCM token
- */
-export async function saveFCMToken(userId, fcmToken) {
-  try {
-    if (!userId || !fcmToken) {
-      console.warn("⚠️ Missing userId or fcmToken");
+  /**
+   * Subscribe to a specific topic
+   */
+  static async subscribeToTopic(topicName) {
+    return this._handleTopicSubscription(topicName, true);
+  }
+
+  /**
+   * Unsubscribe from a specific topic
+   */
+  static async unsubscribeFromTopic(topicName) {
+    return this._handleTopicSubscription(topicName, false);
+  }
+
+  /**
+   * Save user preference and immediately sync with FCM
+   * Optimistic UI updates should call this.
+   * @param {string} userId
+   * @param {string} category
+   * @param {string} sourceName
+   * @param {boolean} enabled
+   */
+  static async toggleNotificationPreference(userId, category, sourceName, enabled) {
+    if (!userId) {
+      console.warn(ERRORS.MISSING_PARAMS);
       return;
     }
 
-    const userRef = firestore().collection("users").doc(userId); // ✅
-    await userRef.set(
-      {
-        fcmToken,
-        lastActive: new Date(),
-        createdAt: new Date(),
-      },
-      { merge: true }
-    );
+    const topicId = this.getTopicName(category, sourceName);
 
-    console.log("✅ Saved FCM token to user profile");
-  } catch (error) {
-    console.error("❌ Failed to save FCM token:", error);
-    // Don't throw the error, just log it to prevent app crashes
-  }
-}
+    try {
+      // 1. Perform FCM operation first (Critical Path)
+      const fcmSuccess = await this._handleTopicSubscription(topicId, enabled);
 
-/**
- * Test notification function for debugging
- */
-export async function testNotification() {
-  try {
-    console.log("🧪 Testing local notification...");
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "🧪 Test Notification",
-        body: "This is a test notification to verify the system is working",
-        sound: "default",
-        badge: 1,
-        categoryIdentifier: "news_notifications",
-      },
-      trigger: null, // immediate
-    });
-    console.log("✅ Test notification scheduled");
-  } catch (error) {
-    console.error("❌ Failed to schedule test notification:", error);
-  }
-}
-
-/**
- * Test FCM topic subscription
- */
-export async function testTopicSubscription() {
-  try {
-    console.log("🧪 Testing FCM topic subscription...");
-
-    // Subscribe to a test topic
-    const testTopic = "test_topic";
-    await messaging().subscribeToTopic(testTopic);
-    console.log(`✅ Subscribed to test topic: ${testTopic}`);
-
-    // Wait a moment then unsubscribe
-    setTimeout(async () => {
-      try {
-        await messaging().unsubscribeFromTopic(testTopic);
-        console.log(`✅ Unsubscribed from test topic: ${testTopic}`);
-      } catch (error) {
-        console.error("❌ Failed to unsubscribe from test topic:", error);
+      if (!fcmSuccess) {
+        throw new Error("FCM Subscription failed, aborting Firestore write.");
       }
-    }, 5000);
-  } catch (error) {
-    console.error("❌ Failed to test topic subscription:", error);
+
+      // 2. Save to Firestore
+      const prefRef = doc(
+        collection(
+          doc(firestore(), COLLECTIONS.USERS, userId),
+          COLLECTIONS.PREFERENCES
+        ),
+        topicId
+      );
+
+      await setDoc(prefRef, {
+        category,
+        sourceName,
+        enabled,
+        topicId,
+        updatedAt: serverTimestamp(),
+      });
+
+    } catch (error) {
+      console.error("❌ Failed to toggle preference:", error);
+      // Here you might want to trigger a UI toast or rollback state
+    }
+  }
+
+  /**
+   * Fetch all user preferences
+   * @param {string} userId
+   * @returns {Promise<Object>} { topicId: boolean }
+   */
+  static async getUserPreferences(userId) {
+    if (!userId) return {};
+
+    try {
+      const preferencesRef = collection(
+        doc(firestore(), COLLECTIONS.USERS, userId),
+        COLLECTIONS.PREFERENCES
+      );
+      const snapshot = await getDocs(preferencesRef);
+      if (snapshot.empty) return {};
+
+      const preferences = {};
+      snapshot.forEach((doc) => {
+        // Optimization: Read directly from doc.data() to avoid prototype overhead
+        preferences[doc.id] = doc.data().enabled;
+      });
+
+      return preferences;
+    } catch (error) {
+      console.error("❌ Failed to fetch preferences:", error);
+      return {};
+    }
+  }
+
+  /**
+   * Bulk Sync Preferences (Useful for App Start or Restore)
+   * Uses Promise.allSettled for better fault tolerance
+   */
+  static async syncUserPreferences(userId, preferences) {
+    console.log("🔄 Starting Bulk Sync...");
+
+    const operations = Object.entries(preferences).map(([topic, enabled]) => {
+      // Return the promise so Promise.allSettled can track it
+      return enabled
+        ? this.subscribeToTopic(topic)
+        : this.unsubscribeFromTopic(topic);
+    });
+
+    const results = await Promise.allSettled(operations);
+
+    // Optional: Log failures only
+    const failures = results.filter(r => r.status === 'rejected');
+    if (failures.length > 0) {
+      console.warn(`⚠️ ${failures.length} sync operations failed.`);
+    } else {
+      console.log("✅ Bulk Sync Completed Successfully");
+    }
+  }
+
+  /**
+   * Save or Update User FCM Token
+   * @param {string} userId
+   * @param {string} fcmToken
+   */
+  static async saveFCMToken(userId, fcmToken) {
+    if (!userId || !fcmToken) {
+      console.warn(ERRORS.MISSING_PARAMS);
+      return;
+    }
+
+    try {
+      // 7. التعديل هنا: استخدام الدوال المستوردة doc و collection و setDoc
+      const userRef = doc(firestore(), COLLECTIONS.USERS, userId); // خطأ E:184 سابقاً تم حله هنا أيضاً
+
+      await setDoc(userRef,
+        {
+          fcmToken,
+          lastActive: serverTimestamp(), // خطأ E:187 سابقاً تم حله هنا أيضاً
+          // Only set createdAt if it doesn't exist (handled by merge: true, but createdAt usually shouldn't update)
+        },
+        { merge: true }
+      );
+      console.log("✅ FCM Token Synced");
+    } catch (error) {
+      console.error("❌ Token Sync Error:", error);
+    }
+  }
+
+  /**
+   * Debugging: Schedule a local notification
+   */
+  static async testLocalNotification() {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🧪 Test Notification",
+          body: "System Check: Local notifications are working.",
+          sound: "default",
+          categoryIdentifier: "news_notifications",
+          badge: 1,
+          // إضافة مرفقات للصورة (تعمل بشكل أساسي مع iOS، وفي أندرويد تعتمد على نسخة النظام)
+          attachments: [
+            {
+              // صورة تجريبية
+              url: 'https://static.wikia.nocookie.net/euphoria-hbo/images/8/8e/Zendaya.2.jpg',
+              identifier: 'test-image',
+              typeHint: 'image'
+            }
+          ],
+        },
+        trigger: null, // immediate
+      });
+    } catch (error) {
+      console.error("❌ Local Notification Failed:", error);
+    }
   }
 }
+
+export default NotificationService;

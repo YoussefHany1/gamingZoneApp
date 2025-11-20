@@ -49,8 +49,13 @@ function NewsDetails({ article, visible, onClose }) {
 
                     </View>
                     <Text style={styles.date}>{String(article.pubDate.toDate()).replace(/GMT.*/, '').trim()}</Text>
-                    <Text style={styles.description}>{article.description.substring(0, 400)}..</Text>
-
+                    <View style={styles.description}>
+                        {
+                            article.description && article.description !== undefined && article.description !== null && article.description !== ""
+                                ? <Text style={styles.description}> {article.description.substring(0, 400)}..</Text>
+                                : <Text style={styles.description}>{t('news.details.noDescription')}</Text>
+                        }
+                    </View>
                     <TouchableOpacity
                         style={styles.button}
                         android_ripple={{ color: "#779bdd" }}
