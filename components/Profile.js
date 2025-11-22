@@ -17,13 +17,14 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import RNPickerSelect from 'react-native-picker-select';
 import Loading from '../Loading';
 import { useTranslation } from 'react-i18next';
-
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import COLORS from '../constants/colors';
 // Cloudinary
 const CLOUDINARY_CLOUD_NAME = 'dewusw0db';
 const CLOUDINARY_API_KEY = '848952698676177';
 const CLOUDINARY_UPLOAD_PRESET = 'Gaming Zone';
 
-function SettingsScreen() {
+function ProfileScreen() {
     const [name, setName] = useState('');
     const [imageUri, setImageUri] = useState(null);
     const [dob, setDob] = useState('');
@@ -32,7 +33,7 @@ function SettingsScreen() {
     const [loading, setLoading] = useState(false);
     const [currentUser, setCurrentUser] = useState(auth().currentUser);
     const { t } = useTranslation();
-
+    const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-4635812020796700~2053599689';
     useEffect(() => {
         if (currentUser) {
             // جلب البيانات الأساسية من Auth (سريع)
@@ -158,16 +159,6 @@ function SettingsScreen() {
             Alert.alert('Error!', 'The changes failed to save.');
         }
     };
-
-    const handleSignOut = async () => {
-        try {
-            await auth().signOut();
-            console.log('✅ User signed out');
-        } catch (error) {
-            console.error('❌ Sign out error:', error);
-        }
-    };
-
     const handleChange = (event, selectedDate) => {
         setShowPicker(false);
         if (selectedDate) {
@@ -228,7 +219,15 @@ function SettingsScreen() {
                             ]}
                         />
                     </View>
-
+                    <View style={{ alignItems: 'center', width: '100%' }}>
+                        <BannerAd
+                            unitId={adUnitId}
+                            size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+                            requestOptions={{
+                                requestNonPersonalizedAdsOnly: true,
+                            }}
+                        />
+                    </View>
                     <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
                         <Text style={styles.saveText}>{t('common.saveChanges')}</Text>
                     </TouchableOpacity>
@@ -241,12 +240,12 @@ function SettingsScreen() {
     );
 }
 
-export default SettingsScreen;
+export default ProfileScreen;
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0c1a33',
+        backgroundColor: COLORS.primary
     },
     subContainer: {
         padding: 20,
@@ -294,7 +293,7 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(119, 155, 221, 0.2)",
     },
     saveBtn: {
-        backgroundColor: "#516996",
+        backgroundColor: COLORS.secondary,
         borderRadius: 12,
         alignSelf: "center",
         padding: 15

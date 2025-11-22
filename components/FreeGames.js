@@ -4,7 +4,7 @@ import { EpicFreeGames } from 'epic-free-games';
 import Loading from "../Loading";
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import COLORS from '../constants/colors';
 const CACHE_KEY = 'EPIC_GAMES_CACHE';
 function FreeGames() {
     const { t } = useTranslation();
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     },
     gameCard: {
         borderWidth: 1,
-        borderColor: "#516996",
+        borderColor: COLORS.secondary,
         padding: 10,
         borderRadius: 16,
         margin: 10,
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
         width: 150,
         height: 200,
         borderRadius: 10,
-        backgroundColor: "#516996"
+        backgroundColor: COLORS.secondary,
     },
     title: {
         color: "white",
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     },
     discout: {
         color: "white",
-        backgroundColor: "#516996",
+        backgroundColor: COLORS.secondary,
         position: "absolute",
         textAlign: "center",
         borderBottomLeftRadius: 16,

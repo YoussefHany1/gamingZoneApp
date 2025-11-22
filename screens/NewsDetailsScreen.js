@@ -10,13 +10,16 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from 'react-i18next';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import COLORS from '../constants/colors';
 
 function NewsDetails({ article, visible, onClose }) {
     const { t } = useTranslation();
+    const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-4635812020796700~2053599689';
     return (
         <Modal
             animationType="slide"
-            backdropColor="#0c1a33"
+            backdropColor={COLORS.primary}
             visible={visible}
             onRequestClose={onClose} style={styles.modalContainer}>
             {/* Close Button */}
@@ -56,6 +59,15 @@ function NewsDetails({ article, visible, onClose }) {
                                 : <Text style={styles.description}>{t('news.details.noDescription')}</Text>
                         }
                     </View>
+                    <View style={styles.ad}>
+                        <BannerAd
+                            unitId={adUnitId}
+                            size={BannerAdSize.MEDIUM_RECTANGLE}
+                            requestOptions={{
+                                requestNonPersonalizedAdsOnly: true,
+                            }}
+                        />
+                    </View>
                     <TouchableOpacity
                         style={styles.button}
                         android_ripple={{ color: "#779bdd" }}
@@ -73,7 +85,7 @@ function NewsDetails({ article, visible, onClose }) {
 const styles = StyleSheet.create({
     modalContainer: {
         flex: 1,
-        //   backgroundColor: "#0c1a33",
+        //   backgroundColor: COLORS.primary
     },
     header: {
         position: "absolute",
@@ -140,11 +152,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "#b7becb",
         lineHeight: 26,
-        marginBottom: 30,
+        // marginBottom: 30,
         textAlign: "center",
     },
+    ad: {
+        alignItems: 'center', width: '100%', marginVertical: 55
+    },
     button: {
-        backgroundColor: "#516996",
+        backgroundColor: COLORS.secondary,
         padding: 15,
         borderRadius: 12,
         alignItems: "center",

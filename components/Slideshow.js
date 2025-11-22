@@ -4,6 +4,7 @@ import Swiper from "react-native-swiper";
 import { LinearGradient } from "expo-linear-gradient";
 import useFeed from "../hooks/useFeed";
 import Loading from "../Loading";
+import COLORS from "../constants/colors";
 
 function Slideshow({ website, category }) {
   const { articles, loading, error } = useFeed(category, website);
@@ -35,18 +36,19 @@ function Slideshow({ website, category }) {
               style={styles.thumbnail}
               source={
                 item.thumbnail
-                  ?
-                  {
-                    uri: item.thumbnail,
-                  }
+                  ? {
+                      uri: item.thumbnail,
+                    }
                   : require("../assets/image-not-found.webp")
               }
             />
             <LinearGradient
-              colors={["transparent", "#0c1a33"]}
+              colors={["transparent", COLORS.primary]}
               style={styles.gradient}
             />
-            <Text style={styles.headline} numberOfLines={3}>{item.title}</Text>
+            <Text style={styles.headline} numberOfLines={3}>
+              {item.title}
+            </Text>
           </Pressable>
         ))}
       </Swiper>
@@ -58,7 +60,7 @@ export default Slideshow;
 const styles = StyleSheet.create({
   swiper: {
     height: 400,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   thumbnail: {
     // flex: 1,

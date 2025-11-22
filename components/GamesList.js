@@ -11,9 +11,26 @@ import Loading from '../Loading'
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import { useQuery } from '@tanstack/react-query';
+import COLORS from '../constants/colors';
 
 const SERVER_URL = 'https://igdb-api-omega.vercel.app';
+
+
+const fetchGames = async ({ queryKey }) => {
+  const [_, endpoint, query] = queryKey;
+  let url = SERVER_URL; // تأكد من استيراد SERVER_URL أو وضعه في ملف constants
+
+  if (endpoint) {
+    url += endpoint;
+  } else if (query) {
+    url += `/search?q=${encodeURIComponent(query)}`;
+  }
+
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Network response was not ok');
+  return res.json();
+};
 
 function formatPath(text) {
   return text
@@ -40,11 +57,13 @@ const generateCacheKey = (type, value) => `games_cache:${type}:${value}`;
 
 export default function GamesList({ endpoint, query }) {
   const navigation = useNavigation();
-  const [loading, setLoading] = useState(true);
-  const [games, setGames] = useState([]);
-  const [error, setError] = useState(null);
   const { t } = useTranslation();
-
+  const { data: games, isLoading, error } = useQuery({
+    queryKey: ['games', endpoint, query],
+    queryFn: fetchGames,
+    staleTime: 1000 * 60 * 5, // كاش لمدة 5 دقائق
+    cacheTime: 1000 * 60 * 30, // الاحتفاظ في الذاكرة 30 دقيقة
+  });
   // 4. fetch data from localhost
   const fetchGamesFromServer = useCallback(async (ep) => {
     setLoading(true);
@@ -190,15 +209,15 @@ export default function GamesList({ endpoint, query }) {
     <View style={styles.container}>
       {headerText && <Text style={styles.header}>{headerText}</Text>}
 
-      {loading && <Loading />}
+      {isLoading && <Loading />}
 
       {error && <Text style={styles.error}>{error}</Text>}
 
-      {!loading && !error && games.length === 0 && (query || endpoint) && (
+      {!isLoading && !error && games.length === 0 && (query || endpoint) && (
         <Text style={styles.noResults}>{t('games.list.noResults')}</Text>
       )}
 
-      {!loading && !error && games.length > 0 && (
+      {!isLoading && !error && games.length > 0 && (
         <FlatList
           data={games}
           horizontal={!!endpoint}
@@ -225,7 +244,7 @@ const styles = StyleSheet.create({
   header: { fontSize: 28, color: 'white', margin: 12, fontWeight: 'bold' },
   gameCard: {
     borderWidth: 1,
-    borderColor: "#516996",
+    borderColor: COLORS.secondary,
     padding: 10,
     borderRadius: 16,
     margin: 10,
@@ -236,7 +255,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 200,
     borderRadius: 10,
-    backgroundColor: "#516996",
+    backgroundColor: COLORS.secondary,
   },
   gameType: {
     position: "absolute",

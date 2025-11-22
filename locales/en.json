@@ -152,7 +152,6 @@
             "wantList": "Want to Play List",
             "playedList": "Played Games List",
             "changeLanguage": "Change Language",
-            "newsSources": "News Sources",
             "rateUs": "Rate Us",
             "supportUs": "Support Us",
             "feedback": "Feedback",
@@ -179,11 +178,10 @@
             "description": "Choose which news sources you want to receive notifications from\nMake sure to allow notifications for this app",
             "footer": "Notifications will be sent when new articles are published from enabled sources."
         },
-        "newsSources": {
-            "title": "News Source Management",
-            "subtitle": "Choose the sources you would like to see on the homepage.",
-            "alertTitle": "alert",
-            "alertMessage": "At least one source must be chosen."
+        "userGames": {
+            "emptyText": "Your list is empty",
+            "emptySubText": "Add the games you want.",
+            "findButton": "Find Your Game"
         }
     }
 }

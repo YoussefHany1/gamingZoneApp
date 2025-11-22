@@ -14,6 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { useTranslation } from 'react-i18next';
+import COLORS from '../constants/colors';
 
 // هذا Component داخلي لعرض كل لعبة في القائمة
 function GameItem({ game, onRemove }) {
@@ -37,12 +39,13 @@ function GameItem({ game, onRemove }) {
 }
 
 
-function WantListScreen() {
+function UserGamesScreen({ route, navigation }) {
+    const { collection } = route.params;
     const [games, setGames] = useState([]);
     const [loading, setLoading] = useState(true);
     const currentUser = auth().currentUser;
     const mountedRef = useRef(true); // للمساعدة في تجنب تحديث الحالة بعد unmount
-    const navigation = useNavigation();
+    const { t } = useTranslation();
     useEffect(() => {
         mountedRef.current = true;
         if (!currentUser) {
@@ -54,7 +57,7 @@ function WantListScreen() {
         const collectionRef = firestore()
             .collection('users')
             .doc(currentUser.uid)
-            .collection('wantList');
+            .collection(collection);
 
         const unsubscribe = collectionRef.onSnapshot(querySnapshot => {
             if (!mountedRef.current) return; // لا تقم بالتحديث إذا تم unmount
@@ -96,7 +99,7 @@ function WantListScreen() {
                         const gameRef = firestore()
                             .collection('users')
                             .doc(currentUser.uid)
-                            .collection('wantList')
+                            .collection(collection)
                             .doc(gameIdStr);
 
                         try {
@@ -113,11 +116,11 @@ function WantListScreen() {
 
     const renderEmptyList = () => (
         <View style={styles.emptyContainer}>
-            <Ionicons name="bookmark-outline" size={80} color="#516996" />
-            <Text style={styles.emptyText}>Your list is empty</Text>
-            <Text style={styles.emptySubText}>Add the games you want to play.</Text>
+            <Ionicons name="bookmark-outline" size={80} color={COLORS.primary} />
+            <Text style={styles.emptyText}>{t('settings.userGames.emptyText')}</Text>
+            <Text style={styles.emptySubText}>{t('settings.userGames.emptySubText')}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('GamesScreen')} style={styles.findGameButton}>
-                <Text style={styles.findGameText}>Find Your New Game</Text>
+                <Text style={styles.findGameText}>{t('settings.userGames.findButton')}</Text>
             </TouchableOpacity>
         </View>
     );
@@ -147,13 +150,13 @@ function WantListScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#0c1a33",
+        backgroundColor: COLORS.primary
     },
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: 100, // لإعطائه مساحة من الأعلى
+        paddingTop: 100,
     },
     emptyText: {
         color: 'white',
@@ -169,7 +172,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     findGameButton: {
-        backgroundColor: "#516996",
+        backgroundColor: COLORS.secondary,
         padding: 10,
         borderRadius: 16,
         marginTop: 28,
@@ -194,7 +197,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     gameInfo: {
-        flex: 1, // يأخذ المساحة المتبقية
+        flex: 1,
         marginLeft: 12,
     },
     gameName: {
@@ -208,9 +211,9 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     removeButton: {
-        padding: 8, // لزيادة مساحة الضغط
+        padding: 8,
         marginLeft: 8,
     },
 });
 
-export default WantListScreen;
+export default UserGamesScreen;

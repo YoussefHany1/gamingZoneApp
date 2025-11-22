@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import auth from '@react-native-firebase/auth';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import LanguageSelect from "./LanguageSelect";
+import COLORS from '../constants/colors';
 
 function SettingsScreen() {
   const navigation = useNavigation();
@@ -32,7 +32,7 @@ function SettingsScreen() {
   };
   return (
     <>
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'right', 'left']}>
         {/* <Image source={require('../assets/logo.png')} style={styles.logo} /> */}
         <ScrollView showsVerticalScrollIndicator={false}>
           {currentUser?._user &&
@@ -59,7 +59,7 @@ function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.categoryHeader}
-            onPress={() => navigation.navigate('WantListScreen')}
+            onPress={() => navigation.navigate('UserGamesScreen', { collection: 'wantList' })}
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons
@@ -73,7 +73,7 @@ function SettingsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.categoryHeader}
-            onPress={() => navigation.navigate('PlayedListScreen')}
+            onPress={() => navigation.navigate('UserGamesScreen', { collection: 'playedList' })}
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons
@@ -145,7 +145,6 @@ function SettingsScreen() {
               <Text style={styles.categoryTitle}>{t('settings.menu.feedback')}</Text>
             </View>
           </TouchableOpacity>
-          {/* <Button title="تسجيل الخروج" onPress={handleSignOut} /> */}
 
           <TouchableOpacity
             style={[styles.categoryHeader, styles.categoryHeaderSignout]}
@@ -163,7 +162,6 @@ function SettingsScreen() {
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
-
     </>
   );
 }
@@ -171,7 +169,7 @@ function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0c1a33",
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 16,
   },
   userContainer: {
@@ -229,7 +227,7 @@ const styles = StyleSheet.create({
   },
   categoryHeaderSignout: {
     backgroundColor: "rgba(221, 119, 119, 0.2)",
-    marginBottom: 80
+    marginBottom: 20
   }
 });
 

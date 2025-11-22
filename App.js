@@ -1,6 +1,6 @@
 import React, { Suspense } from "react";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -8,21 +8,27 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import messaging from "@react-native-firebase/messaging";
 import * as Notifications from "expo-notifications";
-import './i18n';
-import { useTranslation } from 'react-i18next';
-import auth from '@react-native-firebase/auth';
+import "./i18n";
+import { useTranslation } from "react-i18next";
+import auth from "@react-native-firebase/auth";
 import NotificationService from "./notificationService";
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import Loading from './Loading';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  BannerAd,
+  BannerAdSize,
+  TestIds,
+} from "react-native-google-mobile-ads";
+import { View } from "react-native";
+import COLORS from "./constants/colors";
+import Loading from "./Loading";
 import HomeScreen from "./screens/HomeScreen";
 import NewsScreen from "./screens/NewsScreen";
 import GamesScreen from "./screens/GamesScreen";
 import SettingsScreen from "./screens/SettingsScreen";
-// import GameDetails from "./components/GameDetails";
+import GameDetails from "./components/GameDetails";
+import UserGamesScreen from "./screens/UserGamesScreen";
 // import NotificationSettings from "./components/Notification";
 // import Profile from "./components/Profile";
-// import WantListScreen from './screens/WantListScreen';
-// import PlayedListScreen from './screens/PlayedListScreen';
 // import LanguageScreen from './screens/LanguageSelect';
 // import NotificationService from "./notificationService";
 // import LoginScreen from './screens/LoginScreen';
@@ -30,21 +36,21 @@ import SettingsScreen from "./screens/SettingsScreen";
 // import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 // import SourceSelectionScreen from './screens/SourceSelectionScreen';
 
-
 // const NewsScreen = React.lazy(() => import("./screens/NewsScreen"));
 // const GamesScreen = React.lazy(() => import("./screens/GamesScreen"));
 // const SettingsScreen = React.lazy(() => import("./screens/SettingsScreen"));
-const GameDetails = React.lazy(() => import("./components/GameDetails"));
-const NotificationSettings = React.lazy(() => import("./components/Notification"));
+// const GameDetails = React.lazy(() => import("./components/GameDetails"));
+const NotificationSettings = React.lazy(() =>
+  import("./components/Notification")
+);
 const Profile = React.lazy(() => import("./components/Profile"));
-const WantListScreen = React.lazy(() => import("./screens/WantListScreen"));
-const PlayedListScreen = React.lazy(() => import("./screens/PlayedListScreen"));
+// const UserGamesScreen = React.lazy(() => import("./screens/UserGamesScreen"));
 const LanguageScreen = React.lazy(() => import("./screens/LanguageSelect"));
-const SourceSelectionScreen = React.lazy(() => import("./screens/SourceSelectionScreen"));
 const LoginScreen = React.lazy(() => import("./screens/LoginScreen"));
 const RegisterScreen = React.lazy(() => import("./screens/RegisterScreen"));
-const ForgotPasswordScreen = React.lazy(() => import("./screens/ForgotPasswordScreen"));
-
+const ForgotPasswordScreen = React.lazy(() =>
+  import("./screens/ForgotPasswordScreen")
+);
 
 globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
 const Stack = createNativeStackNavigator();
@@ -61,7 +67,7 @@ function HomeStack() {
 function NewsStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="News" component={NewsScreen} />
+      <Stack.Screen name="NewsScreen" component={NewsScreen} />
     </Stack.Navigator>
   );
 }
@@ -78,36 +84,65 @@ function GamesStack() {
 function SettingsStack() {
   const { t } = useTranslation();
   return (
-    <Stack.Navigator screenOptions={{
-      headerStyle: {
-        backgroundColor: '#0c1a33'
-      },
-      headerTintColor: '#fff',
-      headerTitleStyle: {
-        fontWeight: 'bold'
-      },
-    }}>
-      <Stack.Screen name="Settings" component={SettingsScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="NotificationSettings" component={NotificationSettings} options={{ title: t('navigation.titles.notificationSettings') }} />
-      <Stack.Screen name="Profile" component={Profile} options={{ title: t('navigation.titles.accountSettings') }} />
-      <Stack.Screen name="WantListScreen" component={WantListScreen} options={{ title: t('navigation.titles.wantList') }} />
-      <Stack.Screen name="PlayedListScreen" component={PlayedListScreen} options={{ title: t('navigation.titles.playedList') }} />
-      <Stack.Screen name="LanguageScreen" component={LanguageScreen} options={{ title: t('settings.menu.changeLanguage') }} />
-      <Stack.Screen name="SourceSelectionScreen" component={SourceSelectionScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="GamesScreen" component={GamesScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="GameDetails" component={GameDetails} options={{ headerShown: false }} />
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.background,
+        },
+        headerTintColor: "#fff",
+        headerTitleStyle: {
+          fontWeight: "bold",
+        },
+      }}
+    >
+      <Stack.Screen
+        name="SettingsScreen"
+        component={SettingsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="NotificationSettings"
+        component={NotificationSettings}
+        options={{ title: t("navigation.titles.notificationSettings") }}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={Profile}
+        options={{ title: t("navigation.titles.accountSettings") }}
+      />
+      <Stack.Screen
+        name="UserGamesScreen"
+        component={UserGamesScreen}
+        options={{ title: t("navigation.titles.wantList") }}
+      />
+      <Stack.Screen
+        name="LanguageScreen"
+        component={LanguageScreen}
+        options={{ title: t("settings.menu.changeLanguage") }}
+      />
+      <Stack.Screen
+        name="GamesScreen"
+        component={GamesScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="GameDetails"
+        component={GameDetails}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
 
 function MainAppTabs() {
   const { t } = useTranslation();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          position: "absolute",
+          // position: "absolute",
           backgroundColor: "#00001c",
           borderWidth: 0,
           borderTopWidth: 0,
@@ -119,10 +154,10 @@ function MainAppTabs() {
         tabBarLabel: t(`navigation.tabs.${route.name.toLowerCase()}`),
         tabBarIcon: ({ focused, color, size }) => {
           const iconMap = {
-            "Home": focused ? "home" : "home-outline",
-            "News": focused ? "newspaper" : "newspaper-outline",
-            "Settings": focused ? "settings" : "settings-outline",
-            "Games": focused ? "game-controller" : "game-controller-outline",
+            Home: focused ? "home" : "home-outline",
+            News: focused ? "newspaper" : "newspaper-outline",
+            Settings: focused ? "settings" : "settings-outline",
+            Games: focused ? "game-controller" : "game-controller-outline",
           };
           const iconName = iconMap[route.name];
 
@@ -226,14 +261,20 @@ function App() {
         provisional: false,
         sound: true,
       });
-      messaging().onNotificationOpenedApp(remoteMessage => {
-        console.log('Notification opened app from background:', remoteMessage.notification);
+      messaging().onNotificationOpenedApp((remoteMessage) => {
+        console.log(
+          "Notification opened app from background:",
+          remoteMessage.notification
+        );
       });
       messaging()
         .getInitialNotification()
-        .then(remoteMessage => {
+        .then((remoteMessage) => {
           if (remoteMessage) {
-            console.log('Notification opened app from quit state:', remoteMessage.notification);
+            console.log(
+              "Notification opened app from quit state:",
+              remoteMessage.notification
+            );
             // ✅ حذفنا دالة handleNotificationNavigation
             // النتيجة: التطبيق سيفتح ويبدأ من الشاشة الرئيسية (Home)
           }
@@ -294,7 +335,7 @@ function App() {
             // ✅ إذا وجدت صورة، أضفها للمرفقات
             if (image) {
               notificationContent.attachments = [
-                { url: image, identifier: 'news-image', typeHint: 'image' }
+                { url: image, identifier: "news-image", typeHint: "image" },
               ];
             }
 
@@ -335,26 +376,39 @@ function App() {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      background: '#0c1a33', // <--- هذا هو اللون الذي سيظهر خلف الـ Suspense
+      background: COLORS.background, // <--- هذا هو اللون الذي سيظهر خلف الـ Suspense
     },
   };
-
+  const adUnitId = __DEV__
+    ? TestIds.BANNER
+    : "ca-app-pub-4635812020796700~2053599689";
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <StatusBar style="light" translucent={true} />
-        <NavigationContainer theme={MyTheme}>
-          <Suspense fallback={<Loading />}>
-            {/* if user not signed in register screen will show up */}
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-              {user ? (
-                <Stack.Screen name="MainApp" component={MainAppTabs} />
-              ) : (
-                <Stack.Screen name="Auth" component={AuthStack} />
-              )}
-            </Stack.Navigator>
-          </Suspense>
-        </NavigationContainer>
+        <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+          <StatusBar style="light" translucent={true} />
+          <NavigationContainer theme={MyTheme}>
+            <Suspense fallback={<Loading />}>
+              {/* if user not signed in register screen will show up */}
+              <Stack.Navigator screenOptions={{ headerShown: false }}>
+                {user ? (
+                  <Stack.Screen name="MainApp" component={MainAppTabs} />
+                ) : (
+                  <Stack.Screen name="Auth" component={AuthStack} />
+                )}
+              </Stack.Navigator>
+            </Suspense>
+          </NavigationContainer>
+          <View style={{ alignItems: "center", width: "100%" }}>
+            <BannerAd
+              unitId={adUnitId}
+              size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+              requestOptions={{
+                requestNonPersonalizedAdsOnly: true,
+              }}
+            />
+          </View>
+        </View>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

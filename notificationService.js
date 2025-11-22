@@ -217,16 +217,15 @@ class NotificationService {
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "🧪 Test Notification",
-          body: "System Check: Local notifications are working.",
+          title: "GTAV: Available Free on the Epic Games Store Until May 21st",
+          body: "System Check: notifications are working.",
           sound: "default",
           categoryIdentifier: "news_notifications",
           badge: 1,
           // إضافة مرفقات للصورة (تعمل بشكل أساسي مع iOS، وفي أندرويد تعتمد على نسخة النظام)
           attachments: [
             {
-              // صورة تجريبية
-              url: 'https://static.wikia.nocookie.net/euphoria-hbo/images/8/8e/Zendaya.2.jpg',
+              url: 'https://media.rockstargames.com/rockstargames-newsite/uploads/b4546f96a016d9da31a9353e9b38d6aafe984436.jpg',
               identifier: 'test-image',
               typeHint: 'image'
             }

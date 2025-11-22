@@ -19,6 +19,8 @@ import firestore from '@react-native-firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Loading from '../Loading'
 import { useTranslation } from 'react-i18next';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import COLORS from '../constants/colors';
 
 const SERVER_URL = "https://igdb-api-omega.vercel.app";
 const CACHE_KEY_PREFIX = 'GAME_DETAILS_CACHE_';
@@ -60,7 +62,7 @@ function GameDetails({ route, navigation }) {
     const [isWanted, setIsWanted] = useState(false);
     const [isPlayed, setIsPlayed] = useState(false);
     const { t } = useTranslation();
-
+    const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-4635812020796700~2053599689';
     useEffect(() => {
         mountedRef.current = true;
         return () => {
@@ -326,13 +328,13 @@ function GameDetails({ route, navigation }) {
             {loading && <Loading />}
 
             {!loading && error && (
-                <View style={{ padding: 20, backgroundColor: "#0c1a33" }}>
+                <View style={{ padding: 20, backgroundColor: COLORS.primary }}>
                     <Text style={{ color: "red", textAlign: "center" }}>Error: {error}</Text>
                 </View>
             )}
 
             {!loading && !error && !game && (
-                <View style={{ padding: 20, backgroundColor: "#0c1a33" }}>
+                <View style={{ padding: 20, backgroundColor: COLORS.primary }}>
                     <Text style={{ color: "white", textAlign: "center" }}>No data to display</Text>
                 </View>
             )}
@@ -351,13 +353,13 @@ function GameDetails({ route, navigation }) {
                     }
                     <View style={styles.backgroundContainer}>
                         <LinearGradient
-                            colors={["transparent", "#0c1a33"]}
+                            colors={["transparent", COLORS.primary]}
                             style={styles.gradient}
                             start={{ x: 1, y: 0.5 }}
                             end={{ x: 0, y: 0.5 }}
                         />
                         <LinearGradient
-                            colors={["#0c1a33", "transparent"]}
+                            colors={[COLORS.primary, "transparent"]}
                             style={styles.gradient}
                             start={{ x: 1, y: 0.5 }}
                             end={{ x: 0, y: 0.5 }}
@@ -385,7 +387,7 @@ function GameDetails({ route, navigation }) {
                                     {Math.round(game.total_rating) / 10}
                                 </Text>
                             ) : (
-                                <Text style={[styles.rating, { backgroundColor: "#516996" }]}>N/A</Text>
+                                <Text style={[styles.rating, { backgroundColor: COLORS.secondary, }]}>N/A</Text>
                             )}
                         </View>
                         {/* stores section */}
@@ -508,6 +510,15 @@ function GameDetails({ route, navigation }) {
                                 </View>
                             )}
                         </View>
+                        <View style={{ alignItems: 'center', width: '100%' }}>
+                            <BannerAd
+                                unitId={adUnitId}
+                                size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+                                requestOptions={{
+                                    requestNonPersonalizedAdsOnly: true,
+                                }}
+                            />
+                        </View>
                         {/* Game Trailer section */}
                         {game.videos && (
                             <View style={styles.trailerContainer}>
@@ -596,7 +607,7 @@ function GameDetails({ route, navigation }) {
                         source={
                             game.cover.image_id ? { uri: `https://images.igdb.com/igdb/image/upload/t_720p/${game.cover.image_id}.jpg` } : null
                         }
-                        style={{ height: "100%", width: "100%", opacity: .4, position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: -100, backgroundColor: "#0c1a33", marginTop: 350 }} imageStyle={{
+                        style={{ height: "100%", width: "100%", opacity: .4, position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: -100, backgroundColor: COLORS.primary, marginTop: 350 }} imageStyle={{
                             resizeMode: "cover",
                         }}
                     />
@@ -611,8 +622,8 @@ export default GameDetails;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#0c1a33",
-        marginBottom: 20
+        backgroundColor: COLORS.primary
+        // marginBottom: 20
     },
     backgroundContainer: {
         flexDirection: "row",
@@ -705,7 +716,7 @@ const styles = StyleSheet.create({
         flexWrap: "wrap"
     },
     storesBtn: {
-        backgroundColor: "#516996",
+        backgroundColor: COLORS.secondary,
         borderWidth: 1,
         borderColor: "#779bdd",
         borderRadius: 12,
@@ -730,7 +741,7 @@ const styles = StyleSheet.create({
     },
     wantBtn: {
         flex: 1,
-        backgroundColor: "#516996",
+        backgroundColor: COLORS.secondary,
         borderRadius: 8,
         marginRight: 10,
         padding: 8
@@ -747,7 +758,7 @@ const styles = StyleSheet.create({
     playedBtn: {
         flex: 1,
         borderWidth: 1,
-        borderColor: "#516996",
+        borderColor: COLORS.secondary,
         borderRadius: 8,
         padding: 8
     },

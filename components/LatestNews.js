@@ -7,15 +7,17 @@ import {
   TouchableOpacity,
   RefreshControl
 } from "react-native";
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
 import Loading from "../Loading";
 import NewsDetails from "../screens/NewsDetailsScreen";
 import { useState } from "react";
 import { useTranslation } from 'react-i18next';
-
+import COLORS from '../constants/colors';
 
 function LatestNews({ limit, language, category, website, selectedItem, onChangeFeed, showDropdown }) {
+  const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-4635812020796700~2053599689';
   const [activeModal, setActiveModal] = useState(false);
   const feedCategory = typeof category !== "undefined" ? category : undefined;
   const feedWebsite = typeof website !== "undefined" && website !== null && website !== "" ? website : undefined;
@@ -31,38 +33,57 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
       .join(" ");
   }
 
-  const renderItem = ({ item }) => {
+
+
+  const renderItem = ({ item, index }) => {
     const siteLabel = item?.siteName || website || "";
+    // 2. نقوم بحساب ما إذا كان يجب إظهار الإعلان (كل 10 عناصر)
+    // (index + 1) لأن الـ index يبدأ من 0
+    const shouldShowAd = (index + 1) % 10 === 0;
     return (
-      <TouchableOpacity
-        style={[styles.NewsContainer, language === "ar" ? { direction: "rtl" } : { direction: "ltr" }]}
-        android_ripple={{ color: "#516996" }}
-        onPress={() => {
-          setActiveModal(`${item.id}`)
-        }}
-      >
-        <NewsDetails article={item} visible={activeModal === `${item.id}`} onClose={() => setActiveModal(null)} />
+      <View style={styles.container}>
+        <TouchableOpacity
+          style={[styles.NewsContainer, language === "ar" ? { direction: "rtl" } : { direction: "ltr" }]}
+          android_ripple={{ color: COLORS.secondary }}
+          onPress={() => {
+            setActiveModal(`${item.id}`)
+          }}
+        >
+          <NewsDetails article={item} visible={activeModal === `${item.id}`} onClose={() => setActiveModal(null)} />
 
-        <View style={styles.textContainer}>
-          <Text style={[styles.headline, language === "ar" ? { marginLeft: 8 } : { marginRight: 8 }]}>{item.title.substring(0, 100)}</Text>
-          {
-            item.description && item.description !== undefined && item.description !== null && item.description !== "" ?
-              <Text numberOfLines={2} style={styles.par}>{item.description}..</Text> : null
-          }
-        </View>
-
-        <View>
-          <Image
-            style={styles.thumbnail}
-            source={
-              item.thumbnail
-                ? { uri: item.thumbnail }
-                : require("../assets/image-not-found.webp")
+          <View style={styles.textContainer}>
+            <Text style={[styles.headline, language === "ar" ? { marginLeft: 8 } : { marginRight: 8 }]}>{item.title.substring(0, 100)}</Text>
+            {
+              item.description && item.description !== undefined && item.description !== null && item.description !== "" ?
+                <Text numberOfLines={2} style={styles.par}>{item.description}..</Text> : null
             }
-          />
-          <Text style={styles.website}>{fromSnakeCase(siteLabel)}</Text>
-        </View>
-      </TouchableOpacity>
+          </View>
+
+          <View>
+            <Image
+              style={styles.thumbnail}
+              source={
+                item.thumbnail
+                  ? { uri: item.thumbnail }
+                  : require("../assets/image-not-found.webp")
+              }
+            />
+            <Text style={styles.website}>{fromSnakeCase(siteLabel)}</Text>
+          </View>
+        </TouchableOpacity>
+        {shouldShowAd && (
+          <View style={styles.ad}>
+            {/* تأكد من أن مكتبة BannerAd مستوردة بشكل صحيح */}
+            <BannerAd
+              unitId={adUnitId}
+              size={BannerAdSize.MEDIUM_RECTANGLE}
+              requestOptions={{
+                requestNonPersonalizedAdsOnly: true,
+              }}
+            />
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -101,7 +122,7 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
     );
 
   return (
-    <View style={[styles.container]}>
+    <View style={styles.container}>
       <FlatList
         data={listData}
         renderItem={renderItem}
@@ -112,7 +133,7 @@ function LatestNews({ limit, language, category, website, selectedItem, onChange
           <RefreshControl
             refreshing={isFetching} // isFetching يكون صحيحاً أثناء التحديث في الخلفية أو اليدوي
             onRefresh={onRefresh}
-            tintColor="#516996"
+            tintColor={COLORS.secondary}
           />
         }
       />
@@ -123,14 +144,14 @@ export default LatestNews;
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 40
+    // marginBottom: 40
   },
   header: {
     textAlign: "center",
     alignSelf: "center",
     fontSize: 28,
     fontWeight: "bold",
-    backgroundColor: "#516996",
+    backgroundColor: COLORS.secondary,
     paddingHorizontal: 80,
     paddingVertical: 10,
     marginBottom: 30,
@@ -164,7 +185,7 @@ const styles = StyleSheet.create({
     width: 135,
     height: 100,
     borderRadius: 16,
-    backgroundColor: "#516996",
+    backgroundColor: COLORS.secondary,
   },
   website: {
     position: "absolute",
@@ -177,4 +198,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     borderRadius: 6,
   },
+  ad: {
+    alignItems: 'center', width: '100%', marginVertical: 55
+  }
 });

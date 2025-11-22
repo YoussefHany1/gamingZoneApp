@@ -2,21 +2,20 @@ import {
     View,
     Text,
     StyleSheet,
-    Image,
-    ScrollView,
-    Linking,
-    Modal,
-    TouchableOpacity
+    TouchableOpacity,
+    ScrollView
 } from "react-native";
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { useTranslation } from 'react-i18next';
 import { I18nManager } from 'react-native';
 import * as Updates from 'expo-updates'; // لتحديث التطبيق عند تغيير اتجاه اللغة
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import COLORS from '../constants/colors';
 
-function LanguageSelect({ visible, onClose }) {
+function LanguageSelect() {
     const { t, i18n } = useTranslation(); // <--- تفعيل الترجمة والوصول للكائن i18n
-
+    const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-4635812020796700~2053599689';
     const toggleLanguage = async () => {
         const currentLang = i18n.language;
 
@@ -43,8 +42,8 @@ function LanguageSelect({ visible, onClose }) {
         }
     };
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#0c1a33" }}>
-            <View style={styles.container}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.primary }}>
+            <ScrollView style={styles.container}>
                 <TouchableOpacity
                     style={styles.categoryHeader}
                     onPress={toggleLanguage}
@@ -64,7 +63,16 @@ function LanguageSelect({ visible, onClose }) {
                         {i18n.language === 'ar' && <Ionicons name="checkmark-sharp" size={24} color="#779bdd" />}
                     </View>
                 </TouchableOpacity>
-            </View>
+                <View style={styles.ad}>
+                    <BannerAd
+                        unitId={adUnitId}
+                        size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+                        requestOptions={{
+                            requestNonPersonalizedAdsOnly: true,
+                        }}
+                    />
+                </View>
+            </ScrollView>
         </SafeAreaView>
     )
 }
@@ -95,5 +103,8 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         color: "#fff",
         marginRight: 8,
+    },
+    ad: {
+        alignItems: 'center', width: '100%', marginVertical: 55
     },
 })

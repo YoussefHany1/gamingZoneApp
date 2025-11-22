@@ -6,135 +6,80 @@ import {
   ScrollView,
   Switch,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Loading from "../Loading"; // تأكد من المسار الصحيح
 import { Ionicons } from "@expo/vector-icons";
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import auth from "@react-native-firebase/auth";
 import NotificationService from "../notificationService"; // Import the Class
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
+import {
+  BannerAd,
+  BannerAdSize,
+  TestIds,
+} from "react-native-google-mobile-ads";
+import { useNotificationPreferences } from "../hooks/useNotificationPreferences";
+import useRssFeeds from "../hooks/useRssFeeds";
+import COLORS from "../constants/colors";
 
-const Notification = ({ navigation }) => {
-  const [rssFeeds, setRssFeeds] = useState({});
-  const [preferences, setPreferences] = useState({});
-  const [loading, setLoading] = useState(true);
+const Notification = () => {
+  const { rssFeeds, loading: loadingRss } = useRssFeeds();
   const [expandedCategories, setExpandedCategories] = useState({});
   const { t } = useTranslation();
+  const adUnitId = __DEV__
+    ? TestIds.BANNER
+    : "ca-app-pub-4635812020796700~2053599689";
 
-  // Load RSS Data
-  useEffect(() => {
-    const unsubscribeRss = firestore()
-      .collection("rss")
-      .onSnapshot(
-        (snapshot) => {
-          let feeds = {};
-          snapshot.docs.forEach((doc) => {
-            feeds = { ...feeds, ...doc.data() };
-          });
-          setRssFeeds(feeds);
-        },
-        (error) => console.error("Error loading RSS feeds:", error)
-      );
-
-    return () => unsubscribeRss();
-  }, []);
-
-  // Load User Preferences
-  useEffect(() => {
-    const currentUser = auth().currentUser;
-    if (currentUser) {
-      loadUserPreferences(currentUser.uid);
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const loadUserPreferences = async (userId) => {
-    try {
-      const prefs = await NotificationService.getUserPreferences(userId);
-      setPreferences(prefs || {});
-    } catch (error) {
-      console.error("Error loading preferences:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Toggle individual source
-   * Uses Optimistic UI Update
-   */
-  const toggleSource = useCallback(async (category, source) => {
-    const userId = auth().currentUser?.uid;
-    if (!userId) return;
-
-    const prefId = NotificationService.getTopicName(category, source.name);
-    const newValue = !preferences[prefId];
-
-    // 1. Optimistic Update (Instant UI feedback)
-    setPreferences((prev) => ({
-      ...prev,
-      [prefId]: newValue,
-    }));
-
-    // 2. Call Service to handle DB + FCM Logic
-    await NotificationService.toggleNotificationPreference(
-      userId,
-      category,
-      source.name,
-      newValue
-    );
-  }, [preferences]);
+  const { preferences, loadingPreferences, toggleSource, setPreferences } =
+    useNotificationPreferences();
 
   /**
    * Toggle entire category
    */
-  const toggleCategory = useCallback(async (category) => {
-    const userId = auth().currentUser?.uid;
-    if (!userId) return;
+  const toggleCategory = useCallback(
+    async (category) => {
+      const userId = auth().currentUser?.uid;
+      if (!userId) return;
 
-    const categorySources = rssFeeds[category] || [];
+      const categorySources = rssFeeds[category] || [];
 
-    // Check if all are currently enabled to determine toggle direction
-    const allEnabled = categorySources.every(
-      (source) => {
+      // Check if all are currently enabled to determine toggle direction
+      const allEnabled = categorySources.every((source) => {
         const topic = NotificationService.getTopicName(category, source.name);
         return preferences[topic];
-      }
-    );
+      });
 
-    const newValue = !allEnabled;
-    const newPreferences = { ...preferences };
-    const updatePromises = [];
+      const newValue = !allEnabled;
+      const newPreferences = { ...preferences };
+      const updatePromises = [];
 
-    // Prepare batch updates
-    categorySources.forEach((source) => {
-      const prefId = NotificationService.getTopicName(category, source.name);
+      // Prepare batch updates
+      categorySources.forEach((source) => {
+        const prefId = NotificationService.getTopicName(category, source.name);
 
-      // Only update if the value is changing
-      if (newPreferences[prefId] !== newValue) {
-        newPreferences[prefId] = newValue;
+        // Only update if the value is changing
+        if (newPreferences[prefId] !== newValue) {
+          newPreferences[prefId] = newValue;
 
-        updatePromises.push(
-          NotificationService.toggleNotificationPreference(
-            userId,
-            category,
-            source.name,
-            newValue
-          )
-        );
-      }
-    });
+          updatePromises.push(
+            NotificationService.toggleNotificationPreference(
+              userId,
+              category,
+              source.name,
+              newValue
+            )
+          );
+        }
+      });
 
-    // 1. Optimistic Update
-    setPreferences(newPreferences);
+      // 1. Optimistic Update
+      setPreferences(newPreferences);
 
-    // 2. Execute Service calls in parallel
-    await Promise.all(updatePromises);
-
-  }, [rssFeeds, preferences]);
+      // 2. Execute Service calls in parallel
+      await Promise.all(updatePromises);
+    },
+    [rssFeeds, preferences, setPreferences]
+  );
 
   const toggleCategoryExpansion = useCallback((category) => {
     setExpandedCategories((prev) => ({
@@ -144,39 +89,34 @@ const Notification = ({ navigation }) => {
   }, []);
 
   // Helper: Check category status (All Checked)
-  const getCategoryToggleValue = useCallback((category) => {
-    const categorySources = rssFeeds[category] || [];
-    if (categorySources.length === 0) return false;
+  const getCategoryToggleValue = useCallback(
+    (category) => {
+      const categorySources = rssFeeds[category] || [];
+      if (categorySources.length === 0) return false;
 
-    return categorySources.every(source => {
-      const topic = NotificationService.getTopicName(category, source.name);
-      return preferences[topic];
-    });
-  }, [rssFeeds, preferences]);
+      return categorySources.every((source) => {
+        const topic = NotificationService.getTopicName(category, source.name);
+        return preferences[topic];
+      });
+    },
+    [rssFeeds, preferences]
+  );
 
   // Helper: Check category status (Partially Checked)
-  const getCategoryToggleIndeterminate = useCallback((category) => {
-    const categorySources = rssFeeds[category] || [];
-    if (categorySources.length === 0) return false;
+  const getCategoryToggleIndeterminate = useCallback(
+    (category) => {
+      const categorySources = rssFeeds[category] || [];
+      if (categorySources.length === 0) return false;
 
-    const enabledCount = categorySources.filter(source => {
-      const topic = NotificationService.getTopicName(category, source.name);
-      return preferences[topic];
-    }).length;
+      const enabledCount = categorySources.filter((source) => {
+        const topic = NotificationService.getTopicName(category, source.name);
+        return preferences[topic];
+      }).length;
 
-    return enabledCount > 0 && enabledCount < categorySources.length;
-  }, [rssFeeds, preferences]);
-
-  // Test Handlers
-  const handleTestSubscription = async () => {
-    Alert.alert("Testing", "Subscribing to 'test_topic' for 5 seconds...");
-    await NotificationService.subscribeToTopic("test_topic");
-
-    setTimeout(async () => {
-      await NotificationService.unsubscribeFromTopic("test_topic");
-      Alert.alert("Done", "Unsubscribed from 'test_topic'");
-    }, 5000);
-  };
+      return enabledCount > 0 && enabledCount < categorySources.length;
+    },
+    [rssFeeds, preferences]
+  );
 
   const renderCategorySection = (category, title) => {
     const sources = rssFeeds[category] || [];
@@ -222,7 +162,10 @@ const Notification = ({ navigation }) => {
         {isExpanded && (
           <View style={styles.sourcesList}>
             {sources.map((source, index) => {
-              const prefId = NotificationService.getTopicName(category, source.name);
+              const prefId = NotificationService.getTopicName(
+                category,
+                source.name
+              );
               const isEnabled = preferences[prefId] || false;
 
               return (
@@ -237,7 +180,7 @@ const Notification = ({ navigation }) => {
                   </View>
                   <Switch
                     value={isEnabled}
-                    onValueChange={() => toggleSource(category, source)}
+                    onValueChange={() => toggleSource(category, source.name)}
                     trackColor={{ false: "#3e3e3e", true: "#779bdd" }}
                     thumbColor={isEnabled ? "#ffffff" : "#f4f3f4"}
                   />
@@ -250,16 +193,16 @@ const Notification = ({ navigation }) => {
     );
   };
 
-  if (loading) {
+  if (loadingPreferences || loadingRss) {
     return <Loading />;
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["right", "left"]}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.Textheader}>
           <Text style={styles.subtitle}>
-            {t('settings.notifications.description')}
+            {t("settings.notifications.description")}
           </Text>
         </View>
 
@@ -267,6 +210,16 @@ const Notification = ({ navigation }) => {
         {renderCategorySection("reviews", "Reviews")}
         {renderCategorySection("esports", "Esports")}
         {renderCategorySection("hardware", "Hardware")}
+
+        <View style={{ alignItems: "center", width: "100%" }}>
+          <BannerAd
+            unitId={adUnitId}
+            size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+            requestOptions={{
+              requestNonPersonalizedAdsOnly: true,
+            }}
+          />
+        </View>
 
         <View style={styles.footer}>
           <TouchableOpacity
@@ -277,16 +230,8 @@ const Notification = ({ navigation }) => {
             <Text style={styles.testButtonText}>Test Local Notification</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.testButton, styles.testButtonSecondary]}
-            onPress={handleTestSubscription}
-          >
-            <Ionicons name="wifi" size={20} color="#ffffff" />
-            <Text style={styles.testButtonText}>Test FCM Subscription</Text>
-          </TouchableOpacity>
-
           <Text style={styles.footerText}>
-            {t('settings.notifications.footer')}
+            {t("settings.notifications.footer")}
           </Text>
         </View>
       </ScrollView>
@@ -297,7 +242,7 @@ const Notification = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0c1a33",
+    backgroundColor: COLORS.primary,
   },
   title: {
     color: "white",
@@ -309,8 +254,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   Textheader: {
-    paddingTop: 10,
-    marginBottom: 20,
+    paddingTop: 20,
+    marginBottom: 30,
   },
   subtitle: {
     fontSize: 16,

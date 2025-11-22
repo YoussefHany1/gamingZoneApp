@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import COLORS from './constants/colors';
 import { useTranslation } from 'react-i18next';
+
 function Loading() {
   const { t } = useTranslation();
   return (
@@ -18,7 +19,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#0c1a33",
+    backgroundColor: COLORS.background
   },
   loadingText: {
     color: "#779bdd",

@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react"; // ✅
+import { useState, useEffect } from "react";
 import { useWindowDimensions, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TabView, SceneMap, TabBar } from "react-native-tab-view";
 import LatestNews from "../components/LatestNews.js";
-import firestore from '@react-native-firebase/firestore';
+import firestore from "@react-native-firebase/firestore";
 import Loading from "../Loading.js";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
+import COLORS from "../constants/colors";
 
 function normalized(input) {
   return input
@@ -26,13 +27,15 @@ const NewsRoute = ({ rssFeeds }) => {
 
   return (
     <View style={styles.scene}>
-      <LatestNews
-        website={normalized(selected?.name || "")}
-        category="news"
-        selectedItem={selected}
-        language={selected?.language}
-        onChangeFeed={(item) => setSelected(item)}
-      />
+      <View style={styles.sceneSub}>
+        <LatestNews
+          website={normalized(selected?.name || "")}
+          category="news"
+          selectedItem={selected}
+          language={selected?.language}
+          onChangeFeed={(item) => setSelected(item)}
+        />
+      </View>
     </View>
   );
 };
@@ -46,13 +49,15 @@ const ReviewsRoute = ({ rssFeeds }) => {
   }, [rssFeeds.reviews, selected]);
   return (
     <View style={styles.scene}>
-      <LatestNews
-        website={normalized(selected?.name || "")}
-        category="reviews"
-        selectedItem={selected}
-        language={selected?.language}
-        onChangeFeed={(item) => setSelected(item)}
-      />
+      <View style={styles.sceneSub}>
+        <LatestNews
+          website={normalized(selected?.name || "")}
+          category="reviews"
+          selectedItem={selected}
+          language={selected?.language}
+          onChangeFeed={(item) => setSelected(item)}
+        />
+      </View>
     </View>
   );
 };
@@ -66,13 +71,15 @@ const EsportsRoute = ({ rssFeeds }) => {
   }, [rssFeeds.esports, selected]);
   return (
     <View style={styles.scene}>
-      <LatestNews
-        website={normalized(selected?.name || "")}
-        category="esports"
-        selectedItem={selected}
-        language={selected?.language}
-        onChangeFeed={(item) => setSelected(item)}
-      />
+      <View style={styles.sceneSub}>
+        <LatestNews
+          website={normalized(selected?.name || "")}
+          category="esports"
+          selectedItem={selected}
+          language={selected?.language}
+          onChangeFeed={(item) => setSelected(item)}
+        />
+      </View>
     </View>
   );
 };
@@ -86,13 +93,15 @@ const HardwareRoute = ({ rssFeeds }) => {
   }, [rssFeeds.hardware, selected]);
   return (
     <View style={styles.scene}>
-      <LatestNews
-        website={normalized(selected?.name || "")}
-        category="hardware"
-        selectedItem={selected}
-        language={selected?.language}
-        onChangeFeed={(item) => setSelected(item)}
-      />
+      <View style={styles.sceneSub}>
+        <LatestNews
+          website={normalized(selected?.name || "")}
+          category="hardware"
+          selectedItem={selected}
+          language={selected?.language}
+          onChangeFeed={(item) => setSelected(item)}
+        />
+      </View>
     </View>
   );
 };
@@ -105,16 +114,16 @@ export default function TabViewExample() {
   const [rssFeeds, setRssFeeds] = useState({});
   const [loading, setLoading] = useState(true);
   const [routes] = useState([
-    { key: "news", title: `${t('news.tabs.news')}` },
-    { key: "reviews", title: `${t('news.tabs.reviews')}` },
-    { key: "esports", title: `${t('news.tabs.esports')}` },
-    { key: "hardware", title: `${t('news.tabs.hardware')}` },
+    { key: "news", title: `${t("news.tabs.news")}` },
+    { key: "reviews", title: `${t("news.tabs.reviews")}` },
+    { key: "esports", title: `${t("news.tabs.esports")}` },
+    { key: "hardware", title: `${t("news.tabs.hardware")}` },
   ]);
 
   // ✅ 2. نستخدم Effect لجلب البيانات (باستخدام مكتبة الـ Native)
   useEffect(() => {
     const subscriber = firestore()
-      .collection('rss')
+      .collection("rss")
       .onSnapshot(
         (snapshot) => {
           let feeds = {};
@@ -136,26 +145,24 @@ export default function TabViewExample() {
   // ✅ 3. لازم نغير SceneMap علشان نقدر نمرر الـ props
   const renderScene = ({ route }) => {
     switch (route.key) {
-      case 'news':
-        return <NewsRoute rssFeeds={rssFeeds} />; // بنمرر الـ prop هنا
-      case 'reviews':
+      case "news":
+        return <NewsRoute rssFeeds={rssFeeds} />;
+      case "reviews":
         return <ReviewsRoute rssFeeds={rssFeeds} />;
-      case 'esports':
+      case "esports":
         return <EsportsRoute rssFeeds={rssFeeds} />;
-      case 'hardware':
+      case "hardware":
         return <HardwareRoute rssFeeds={rssFeeds} />;
       default:
         return null;
     }
   };
   if (loading) {
-    return (
-      <Loading />
-    );
+    return <Loading />;
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
       <TabView
         navigationState={{ index, routes }}
         renderScene={renderScene}
@@ -167,7 +174,7 @@ export default function TabViewExample() {
             style={styles.tabBar}
             indicatorStyle={styles.tabIndicator}
             labelStyle={styles.tabLabel}
-            activeColor="#516996"
+            activeColor={COLORS.secondary}
             inactiveColor="#a9b7d0"
           />
         )}
@@ -179,24 +186,26 @@ export default function TabViewExample() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#00001c"
+    backgroundColor: "#00001c",
   },
   scene: {
     flex: 1,
-    backgroundColor: "#0c1a33",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 30
+  },
+  sceneSub: {
+    marginTop: 30,
   },
   tabBar: {
     backgroundColor: "#0a0f1c",
   },
   tabIndicator: {
-    backgroundColor: "#516996"
+    backgroundColor: COLORS.secondary,
   },
   tabLabel: {
     color: "#a9b7d0",
     fontSize: 16,
-    fontWeight: "600"
+    fontWeight: "600",
   },
 });

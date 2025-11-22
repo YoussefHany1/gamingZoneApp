@@ -5,12 +5,14 @@ import FreeGames from "../components/FreeGames";
 import GamesList from "../components/GamesList";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from 'react-i18next';
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import COLORS from '../constants/colors';
 
 function GamesScreen() {
     const { t } = useTranslation();
     const [searchQuery, setSearchQuery] = useState(''); // store the currently typed text
     const [submittedQuery, setSubmittedQuery] = useState(''); // save the text after clicking enter
-
+    const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-4635812020796700~2053599689';
 
     const handleSearchTextChange = (text) => {
         setSearchQuery(text);
@@ -53,8 +55,26 @@ function GamesScreen() {
                                     <FreeGames />
                                     <GamesList endpoint="/popular" />
                                     <GamesList endpoint="/recently-released" />
+                                    <View style={{ alignItems: 'center', width: '100%' }}>
+                                        <BannerAd
+                                            unitId={adUnitId}
+                                            size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+                                            requestOptions={{
+                                                requestNonPersonalizedAdsOnly: true,
+                                            }}
+                                        />
+                                    </View>
                                     <GamesList endpoint="/top-rated" />
                                     <GamesList endpoint="/coming-soon" />
+                                    <View style={{ alignItems: 'center', width: '100%' }}>
+                                        <BannerAd
+                                            unitId={adUnitId}
+                                            size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+                                            requestOptions={{
+                                                requestNonPersonalizedAdsOnly: true,
+                                            }}
+                                        />
+                                    </View>
                                     <GamesList endpoint="/most-anticipated" />
                                     <GamesList endpoint="/nostalgia-corner" />
                                 </View>
@@ -76,7 +96,7 @@ export default GamesScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#0c1a33"
+        backgroundColor: COLORS.primary
     },
     // header: {
     //     color: "white",
@@ -84,7 +104,7 @@ const styles = StyleSheet.create({
     //     textAlign: "center",
     //     alignSelf: "center",
     //     fontWeight: "bold",
-    //     backgroundColor: "#516996",
+    //     backgroundColor: COLORS.secondary,
     //     paddingHorizontal: 15,
     //     paddingVertical: 8,
     //     margin: 30,
@@ -104,7 +124,7 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         marginHorizontal: 50,
         borderWidth: 1,
-        borderColor: "#516996",
+        borderColor: COLORS.secondary,
     },
     searchBar: {
         color: "white",

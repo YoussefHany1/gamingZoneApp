@@ -3,6 +3,7 @@ import { TextInput, TouchableOpacity, StyleSheet, Text, Alert, Image } from 'rea
 import auth from '@react-native-firebase/auth';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from 'react-i18next';
+import COLORS from '../constants/colors';
 
 function ForgotPasswordScreen({ navigation }) {
     const { t } = useTranslation();
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         padding: 20,
-        backgroundColor: '#0c1a33',
+        backgroundColor: COLORS.primary
     },
     logo: {
         width: 250,
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
         fontSize: 16
     },
     button: {
-        backgroundColor: "#516996",
+        backgroundColor: COLORS.secondary,
         padding: 15,
         borderRadius: 12,
         alignItems: "center",
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
     },
     backButton: {
         borderWidth: 2,
-        borderColor: "#516996",
+        borderColor: COLORS.secondary,
         padding: 15,
         borderRadius: 12,
         textAlign: "center",
