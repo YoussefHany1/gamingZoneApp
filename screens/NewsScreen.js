@@ -186,7 +186,7 @@ export default function TabViewExample() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#00001c",
+    backgroundColor: COLORS.darkBackground,
   },
   scene: {
     flex: 1,
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     marginTop: 30,
   },
   tabBar: {
-    backgroundColor: "#0a0f1c",
+    backgroundColor: COLORS.darkBackground,
   },
   tabIndicator: {
     backgroundColor: COLORS.secondary,

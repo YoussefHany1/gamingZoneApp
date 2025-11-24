@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Loading from "../Loading"; // تأكد من المسار الصحيح
+import Loading from "../Loading";
 import { Ionicons } from "@expo/vector-icons";
 import auth from "@react-native-firebase/auth";
-import NotificationService from "../notificationService"; // Import the Class
+import NotificationService from "../notificationService";
 import { useTranslation } from "react-i18next";
 import {
   BannerAd,

@@ -27,25 +27,25 @@ import GamesScreen from "./screens/GamesScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import GameDetails from "./components/GameDetails";
 import UserGamesScreen from "./screens/UserGamesScreen";
-// import NotificationSettings from "./components/Notification";
-// import Profile from "./components/Profile";
-// import LanguageScreen from './screens/LanguageSelect';
+import NotificationSettings from "./components/Notification";
+import Profile from "./components/Profile";
+import LanguageScreen from "./screens/LanguageSelect";
+import GameNewsScreen from "./screens/GameNewsScreen";
 // import NotificationService from "./notificationService";
 // import LoginScreen from './screens/LoginScreen';
 // import RegisterScreen from './screens/RegisterScreen';
 // import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
-// import SourceSelectionScreen from './screens/SourceSelectionScreen';
 
 // const NewsScreen = React.lazy(() => import("./screens/NewsScreen"));
 // const GamesScreen = React.lazy(() => import("./screens/GamesScreen"));
 // const SettingsScreen = React.lazy(() => import("./screens/SettingsScreen"));
 // const GameDetails = React.lazy(() => import("./components/GameDetails"));
-const NotificationSettings = React.lazy(() =>
-  import("./components/Notification")
-);
-const Profile = React.lazy(() => import("./components/Profile"));
+// const NotificationSettings = React.lazy(() =>
+//   import("./components/Notification")
+// );
+// const Profile = React.lazy(() => import("./components/Profile"));
 // const UserGamesScreen = React.lazy(() => import("./screens/UserGamesScreen"));
-const LanguageScreen = React.lazy(() => import("./screens/LanguageSelect"));
+// const LanguageScreen = React.lazy(() => import("./screens/LanguageSelect"));
 const LoginScreen = React.lazy(() => import("./screens/LoginScreen"));
 const RegisterScreen = React.lazy(() => import("./screens/RegisterScreen"));
 const ForgotPasswordScreen = React.lazy(() =>
@@ -77,6 +77,7 @@ function GamesStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="GamesScreen" component={GamesScreen} />
       <Stack.Screen name="GameDetails" component={GameDetails} />
+      <Stack.Screen name="GameNewsScreen" component={GameNewsScreen} />
     </Stack.Navigator>
   );
 }
@@ -87,7 +88,7 @@ function SettingsStack() {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: COLORS.background,
+          backgroundColor: COLORS.primary,
         },
         headerTintColor: "#fff",
         headerTitleStyle: {
@@ -142,8 +143,7 @@ function MainAppTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          // position: "absolute",
-          backgroundColor: "#00001c",
+          backgroundColor: COLORS.darkBackground,
           borderWidth: 0,
           borderTopWidth: 0,
           paddingTop: 5,
@@ -301,10 +301,10 @@ function App() {
 
       const unsubscribeOnMessage = messaging().onMessage(
         async (remoteMessage) => {
-          console.log(
-            "📨 FCM foreground message received:",
-            remoteMessage?.messageId
-          );
+          // console.log(
+          //   "📨 FCM foreground message received:",
+          //   remoteMessage?.messageId
+          // );
 
           try {
             const title =
@@ -344,7 +344,7 @@ function App() {
               trigger: null, // immediate
             });
 
-            console.log("✅ Local notification scheduled with image check");
+            // console.log("✅ Local notification scheduled with image check");
           } catch (err) {
             console.error("❌ Failed to present foreground notification:", err);
           }
@@ -376,7 +376,7 @@ function App() {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      background: COLORS.background, // <--- هذا هو اللون الذي سيظهر خلف الـ Suspense
+      background: COLORS.primary, // <--- هذا هو اللون الذي سيظهر خلف الـ Suspense
     },
   };
   const adUnitId = __DEV__
@@ -385,7 +385,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <View style={{ flex: 1, backgroundColor: COLORS.primary }}>
           <StatusBar style="light" translucent={true} />
           <NavigationContainer theme={MyTheme}>
             <Suspense fallback={<Loading />}>

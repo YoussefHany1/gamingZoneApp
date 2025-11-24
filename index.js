@@ -23,8 +23,8 @@ registerRootComponent(App);
 
 // Background/quit state messages handler
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-  console.log("📨 Background message received:", remoteMessage?.messageId);
-  console.log("📨 Background message data:", remoteMessage?.data);
+  // console.log("📨 Background message received:", remoteMessage?.messageId);
+  // console.log("📨 Background message data:", remoteMessage?.data);
   console.log(
     "📨 Background message notification:",
     remoteMessage?.notification

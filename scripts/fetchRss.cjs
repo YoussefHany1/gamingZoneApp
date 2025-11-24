@@ -10,9 +10,9 @@ const he = require("he");
 const CONFIG = {
   COLLECTION_RSS: "rss",
   COLLECTION_ARTICLES: "articles",
-  MAX_CONCURRENCY: 5,          // عدد المصادر التي تتم معالجتها في وقت واحد
-  BATCH_SIZE: 400,             // حجم الدفعة للكتابة في Firestore
-  RECENT_IDS_LIMIT: 50,        // عدد المعرفات المحفوظة في مستند المصدر لمنع التكرار
+  MAX_CONCURRENCY: 5, // عدد المصادر التي تتم معالجتها في وقت واحد
+  BATCH_SIZE: 400, // حجم الدفعة للكتابة في Firestore
+  RECENT_IDS_LIMIT: 50, // عدد المعرفات المحفوظة في مستند المصدر لمنع التكرار
   AXIOS_TIMEOUT: 20000,
   USER_AGENT: "RSS-Fetcher/2.0 (+mailto:youssefhany.2005.yh@gmail.com)",
 };
@@ -36,7 +36,9 @@ const initFirebase = () => {
       serviceAccount = require("../serviceAccountKey.json");
     }
   } catch (e) {
-    console.warn("⚠️ Warning: Service account not found, trying default credentials.");
+    console.warn(
+      "⚠️ Warning: Service account not found, trying default credentials."
+    );
   }
 
   const options = { projectId: process.env.FIREBASE_PROJECT_ID };
@@ -55,7 +57,11 @@ const db = initFirebase();
 // --- UTILS ---
 
 /** Generates a SHA1 hash for consistency. */
-const sha1 = (input) => crypto.createHash("sha1").update(String(input || "")).digest("hex");
+const sha1 = (input) =>
+  crypto
+    .createHash("sha1")
+    .update(String(input || ""))
+    .digest("hex");
 
 /** Sanitizes strings for Firestore IDs. */
 const safeId = (input) => {
@@ -128,13 +134,17 @@ function normalizeItems(parsedData) {
       const description = item.description
         ? he.decode(striptags(String(item.description))).trim()
         : "";
-      const guidContent = (typeof item.guid === "string" ? item.guid : item.guid?._) || link;
+      const guidContent =
+        (typeof item.guid === "string" ? item.guid : item.guid?._) || link;
 
       return {
         title,
         link,
         description: description.replace(/\s+/g, " "),
-        pubDate: item.pubDate || item["dc:date"] ? new Date(item.pubDate || item["dc:date"]) : null,
+        pubDate:
+          item.pubDate || item["dc:date"]
+            ? new Date(item.pubDate || item["dc:date"])
+            : null,
         thumbnail: extractThumbnail(item),
         guid: guidContent,
         docId: sha1(guidContent), // Unique ID based on content
@@ -148,51 +158,65 @@ function normalizeItems(parsedData) {
  */
 async function sendNotifications(articles, summary) {
   if (!articles.length) return;
+  console.log(`🔔 Sending ${articles.length} notifications...`);
+  const BATCH_SIZE = 20;
 
-  const promises = articles.map(async (article) => {
-    const imageLink = article.thumbnail || "";
+  for (let i = 0; i < articles.length; i += BATCH_SIZE) {
+    const chunk = articles.slice(i, i + BATCH_SIZE);
+    const promises = chunk.map(async (article) => {
+      const imageLink = article.thumbnail || "";
+      const safeSiteName = safeId(article.siteName);
+      const safeCategory = safeId(article.category);
+      const topicName = `${safeCategory}_${safeSiteName}`;
 
-    const message = {
-      topic: article.topicName,
-      notification: {
-        title: article.title.substring(0, 100),
-        body: article.description.substring(0, 100),
-        ...(imageLink && { imageUrl: imageLink }),
-      },
-      data: {
-        articleId: article.docId,
-        link: article.link,
-        image: imageLink || "",
-        category: article.category || "",
-        siteName: article.siteName || "",
-        pubDate: article.pubDate ? article.pubDate.toISOString() : new Date().toISOString(),
-        clickAction: "FLUTTER_NOTIFICATION_CLICK",
-      },
-      android: {
+      const message = {
+        topic: article.topicName,
         notification: {
+          title: article.title.substring(0, 100),
+          body: article.description.substring(0, 100),
+          ...(imageLink && { imageUrl: imageLink }),
+        },
+        data: {
+          articleId: article.docId,
+          link: article.link,
+          image: imageLink || "",
+          // category: article.category || "",
+          // siteName: article.siteName || "",
+          // pubDate: article.pubDate ? article.pubDate.toISOString() : new Date().toISOString(),
           clickAction: "FLUTTER_NOTIFICATION_CLICK",
-          channelId: "news_notifications",
-          ...(imageLink ? { imageUrl: imageLink } : {})
-        }
-      },
-      apns: {
-        payload: { aps: { "mutable-content": 1 } },
-        fcm_options: { ...(imageLink && { image: imageLink }) }
+        },
+        android: {
+          notification: {
+            clickAction: "FLUTTER_NOTIFICATION_CLICK",
+            channelId: "news_notifications",
+            ...(imageLink ? { imageUrl: imageLink } : {}),
+          },
+        },
+        apns: {
+          payload: { aps: { "mutable-content": 1 } },
+          fcm_options: { ...(imageLink && { image: imageLink }) },
+        },
+      };
+
+      try {
+        await admin.messaging().send(message);
+        summary.notificationsSent++;
+      } catch (error) {
+        console.error(
+          `❌ Notification Error (${article.siteName}):`,
+          error.message
+        );
+        summary.errors.push({
+          type: "notification",
+          msg: error.message,
+          site: article.siteName,
+        });
       }
-    };
+    });
 
-    try {
-      await admin.messaging().send(message);
-      summary.notificationsSent++;
-    } catch (error) {
-      console.error(`❌ Notification Error (${article.siteName}):`, error.message);
-      summary.errors.push({ type: "notification", msg: error.message, site: article.siteName });
-    }
-  });
-
-  await Promise.allSettled(promises);
+    await Promise.allSettled(promises);
+  }
 }
-
 /**
  * Helper: Get recent IDs.
  * Optimization: First check `source.recentIds` (in-memory).
@@ -206,7 +230,9 @@ async function getExistingIds(sourceDocData, category, siteName) {
 
   // 2. Slow Path (Fallback): Query the articles sub-collection
   // This only happens once per source until the new 'recentIds' field is populated.
-  console.log(`⚠️ [Migration] Fetching legacy IDs from Firestore for ${siteName}...`);
+  console.log(
+    `⚠️ [Migration] Fetching legacy IDs from Firestore for ${siteName}...`
+  );
   const ids = new Set();
   try {
     const snapshot = await db
@@ -243,7 +269,11 @@ async function processSource(sourceData, summary) {
     if (!items.length) return;
 
     // 2. Deduplication (Optimized)
-    const existingIds = await getExistingIds(rawSourceData, categorySanitized, siteNameSanitized);
+    const existingIds = await getExistingIds(
+      rawSourceData,
+      categorySanitized,
+      siteNameSanitized
+    );
     const newItems = items.filter((item) => !existingIds.has(item.docId));
 
     if (newItems.length === 0) {
@@ -263,7 +293,7 @@ async function processSource(sourceData, summary) {
 
     // Prepare list of IDs to save back to Source Doc (for future caching)
     // Merge new IDs with existing IDs, keep top N
-    const allIds = [...newItems.map(i => i.docId), ...existingIds];
+    const allIds = [...newItems.map((i) => i.docId), ...existingIds];
     const updatedRecentIds = allIds.slice(0, CONFIG.RECENT_IDS_LIMIT);
 
     newItems.forEach((item) => {
@@ -277,7 +307,9 @@ async function processSource(sourceData, summary) {
 
       const payload = {
         ...item,
-        pubDate: item.pubDate ? admin.firestore.Timestamp.fromDate(item.pubDate) : null,
+        pubDate: item.pubDate
+          ? admin.firestore.Timestamp.fromDate(item.pubDate)
+          : null,
         fetchedAt: admin.firestore.FieldValue.serverTimestamp(),
         siteName: name,
         category: category,
@@ -286,7 +318,9 @@ async function processSource(sourceData, summary) {
       };
 
       // Remove keys undefined to avoid Firestore errors
-      Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+      Object.keys(payload).forEach(
+        (key) => payload[key] === undefined && delete payload[key]
+      );
 
       batch.set(docRef, payload, { merge: true });
 
@@ -311,7 +345,6 @@ async function processSource(sourceData, summary) {
 
     // 5. Send Notifications
     await sendNotifications(articlesForNotify, summary);
-
   } catch (error) {
     console.error(`❌ Error processing ${name}: ${error.message}`);
     summary.errors.push({ site: rssUrl, msg: error.message });
@@ -322,7 +355,12 @@ async function processSource(sourceData, summary) {
 
 async function run() {
   console.log("🚀 Starting RSS Fetcher...");
-  const summary = { sourcesProcessed: 0, articlesUpserted: 0, notificationsSent: 0, errors: [] };
+  const summary = {
+    sourcesProcessed: 0,
+    articlesUpserted: 0,
+    notificationsSent: 0,
+    errors: [],
+  };
 
   try {
     // 1. Read All Sources
@@ -352,12 +390,12 @@ async function run() {
 
       // Handle Arrays or Objects inside the RSS doc
       if (Array.isArray(data)) {
-        data.forEach(e => extract(e, null));
+        data.forEach((e) => extract(e, null));
       } else {
-        Object.keys(data).forEach(key => {
+        Object.keys(data).forEach((key) => {
           if (key === "recentIds" || key === "lastFetchedAt") return; // Skip metadata
           const val = data[key];
-          if (Array.isArray(val)) val.forEach(v => extract(v, key));
+          if (Array.isArray(val)) val.forEach((v) => extract(v, key));
           else if (typeof val === "object") extract(val, key);
         });
         // Direct root check
@@ -371,9 +409,8 @@ async function run() {
     // Split sources into chunks to respect concurrency
     for (let i = 0; i < sources.length; i += CONFIG.MAX_CONCURRENCY) {
       const chunk = sources.slice(i, i + CONFIG.MAX_CONCURRENCY);
-      await Promise.all(chunk.map(source => processSource(source, summary)));
+      await Promise.all(chunk.map((source) => processSource(source, summary)));
     }
-
   } catch (error) {
     console.error("Fatal Error:", error);
     process.exit(1);

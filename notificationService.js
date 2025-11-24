@@ -6,7 +6,7 @@ import firestore, {
   setDoc,
   getDocs,
   serverTimestamp,
-} from '@react-native-firebase/firestore';
+} from "@react-native-firebase/firestore";
 import * as Notifications from "expo-notifications";
 globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
 // Constants to avoid magic strings and ensure consistency
@@ -34,8 +34,8 @@ class NotificationService {
     const sanitizedSource = sourceName
       .toLowerCase()
       .replace(/[^a-z0-9-_.~%]/g, "_") // Replace invalid chars
-      .replace(/_+/g, "_")             // Remove duplicate underscores
-      .replace(/^_|_$/g, "");          // Trim leading/trailing underscores
+      .replace(/_+/g, "_") // Remove duplicate underscores
+      .replace(/^_|_$/g, ""); // Trim leading/trailing underscores
 
     return `${category}_${sanitizedSource}`;
   }
@@ -58,7 +58,7 @@ class NotificationService {
       } else {
         await messaging().unsubscribeFromTopic(topicName);
       }
-      console.log(`${logPrefix}: ${topicName}`);
+      // console.log(`${logPrefix}: ${topicName}`);
       return true;
     } catch (error) {
       console.error(`${ERRORS.FCM_FAIL} ${action} ${topicName}`, error);
@@ -88,7 +88,12 @@ class NotificationService {
    * @param {string} sourceName
    * @param {boolean} enabled
    */
-  static async toggleNotificationPreference(userId, category, sourceName, enabled) {
+  static async toggleNotificationPreference(
+    userId,
+    category,
+    sourceName,
+    enabled
+  ) {
     if (!userId) {
       console.warn(ERRORS.MISSING_PARAMS);
       return;
@@ -120,7 +125,6 @@ class NotificationService {
         topicId,
         updatedAt: serverTimestamp(),
       });
-
     } catch (error) {
       console.error("❌ Failed to toggle preference:", error);
       // Here you might want to trigger a UI toast or rollback state
@@ -173,7 +177,7 @@ class NotificationService {
     const results = await Promise.allSettled(operations);
 
     // Optional: Log failures only
-    const failures = results.filter(r => r.status === 'rejected');
+    const failures = results.filter((r) => r.status === "rejected");
     if (failures.length > 0) {
       console.warn(`⚠️ ${failures.length} sync operations failed.`);
     } else {
@@ -196,7 +200,8 @@ class NotificationService {
       // 7. التعديل هنا: استخدام الدوال المستوردة doc و collection و setDoc
       const userRef = doc(firestore(), COLLECTIONS.USERS, userId); // خطأ E:184 سابقاً تم حله هنا أيضاً
 
-      await setDoc(userRef,
+      await setDoc(
+        userRef,
         {
           fcmToken,
           lastActive: serverTimestamp(), // خطأ E:187 سابقاً تم حله هنا أيضاً
@@ -225,10 +230,10 @@ class NotificationService {
           // إضافة مرفقات للصورة (تعمل بشكل أساسي مع iOS، وفي أندرويد تعتمد على نسخة النظام)
           attachments: [
             {
-              url: 'https://media.rockstargames.com/rockstargames-newsite/uploads/b4546f96a016d9da31a9353e9b38d6aafe984436.jpg',
-              identifier: 'test-image',
-              typeHint: 'image'
-            }
+              url: "https://media.rockstargames.com/rockstargames-newsite/uploads/b4546f96a016d9da31a9353e9b38d6aafe984436.jpg",
+              identifier: "test-image",
+              typeHint: "image",
+            },
           ],
         },
         trigger: null, // immediate
