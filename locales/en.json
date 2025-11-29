@@ -104,6 +104,14 @@
             "discount": "100%\nOFF"
         },
         "list": {
+                        "gamesNews": "Game News",
+
+            "popular": "Popular Right now",
+            "recentlyReleased": "Recently Released",
+            "topRated": "Top Rated",
+            "comingSoon": "Coming Soon",
+            "mostAnticipated": "Most Anticipated",
+            "nostalgiaCorner": "Nostalgia Corner",
             "searchResults": "Search Results",
             "noResults": "No games found.",
             "serverError": "The connection to the server failed. Please ensure the server is running."
@@ -111,7 +119,7 @@
         "details": {
             "availableStores": "Available at these stores",
             "buttons": {
-                "want": "Want",
+                "want": "Want to Play",
                 "played": "Played"
             },
             "about": "About",
@@ -126,6 +134,13 @@
                 "interface": "Interface"
             },
             "engines": "Game Engines",
+            "howLongToBeat": {
+                "title": "How Long to Beat",
+                "main": "Main Story",
+                "mainExtra": "Main + Extra",
+                "completionist": "Completionist",
+                "hours": "Hours"
+            },
             "trailer": "Game Trailer",
             "series": "Game series",
             "similar": "Similar Games"
@@ -154,7 +169,7 @@
             "changeLanguage": "Change Language",
             "rateUs": "Rate Us",
             "supportUs": "Support Us",
-            "feedback": "Feedback",
+            "privacyPolicy": "Privacy Policy",
             "signOut": "Sign Out"
         },
         "profile": {

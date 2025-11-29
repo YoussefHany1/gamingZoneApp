@@ -104,6 +104,13 @@
             "discount": "خصم\n100%"
         },
         "list": {
+            "gamesNews": "أخبار الألعاب",
+                        "popular": "الأكثر شعبية حالياً",
+            "recentlyReleased": "صدرت حديثاً",
+            "topRated": "الأعلى تقييماً",
+            "comingSoon": "ستصدر قريباً",
+            "mostAnticipated": "الأكثر ترقباً",
+            "nostalgiaCorner": "ركن الماضي",
             "searchResults": "نتائج البحث",
             "noResults": "لم يتم العثور على ألعاب.",
             "serverError": "فشل الاتصال بالخادم. يرجى التأكد من أن الخادم يعمل."
@@ -111,7 +118,7 @@
         "details": {
             "availableStores": "متاح في هذه المتاجر",
             "buttons": {
-                "want": "أريدها",
+                "want": "أريد لعبها",
                 "played": "لعبتها"
             },
             "about": "عن اللعبة",
@@ -126,6 +133,13 @@
                 "interface": "الواجهة"
             },
             "engines": "محركات اللعبة",
+                      "howLongToBeat": {
+                "title": "مدة اللعب",
+                "main": "القصة الرئيسية",
+                "mainExtra": "القصة الرئيسية + إضافات",
+                "completionist": "اللعبة كاملة",
+                "hours": "ساعات"
+            },
             "trailer": "فيديو تشويقي",
             "series": "سلسلة اللعبة",
             "similar": "ألعاب مشابهة"
@@ -149,12 +163,12 @@
         "currentLang": "العربية",
         "menu": {
             "notifications": "إعدادات الإشعارات",
-            "wantList": "قائمة \"أريد لعبها\"",
-            "playedList": "قائمة \"ألعاب لعبتها\"",
+            "wantList": "قائمة اللعاب أريد لعبها",
+            "playedList": "قائمة ألعاب تم لعبها",
             "changeLanguage": "تغيير اللغة",
             "rateUs": "قيمنا",
             "supportUs": "ادعمنا",
-            "feedback": "ملاحظات وآراء",
+            "privacyPolicy": "سياسة الخصوصية",
             "signOut": "تسجيل الخروج"
         },
         "profile": {

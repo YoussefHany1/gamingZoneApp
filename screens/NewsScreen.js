@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
-import { useWindowDimensions, StyleSheet, Text, View } from "react-native";
+import { useState, useEffect, useCallback } from "react";
+import { useWindowDimensions, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { TabView, SceneMap, TabBar } from "react-native-tab-view";
+import { TabView, TabBar } from "react-native-tab-view";
 import LatestNews from "../components/LatestNews.js";
-import firestore from "@react-native-firebase/firestore";
 import Loading from "../Loading.js";
 import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
+import useRssFeeds from "../hooks/useRssFeeds";
+import SkeletonDropdown from "../skeleton/SkeletonDropdown";
 
 function normalized(input) {
   return input
@@ -18,7 +19,7 @@ function normalized(input) {
 
 const NewsRoute = ({ rssFeeds }) => {
   const [selected, setSelected] = useState(rssFeeds.news?.[0]);
-  console.log("NewsRoute selected:", selected);
+  // console.log("NewsRoute selected:", selected);
   useEffect(() => {
     if (!selected && rssFeeds.news?.length > 0) {
       setSelected(rssFeeds.news[0]);
@@ -27,15 +28,14 @@ const NewsRoute = ({ rssFeeds }) => {
 
   return (
     <View style={styles.scene}>
-      <View style={styles.sceneSub}>
-        <LatestNews
-          website={normalized(selected?.name || "")}
-          category="news"
-          selectedItem={selected}
-          language={selected?.language}
-          onChangeFeed={(item) => setSelected(item)}
-        />
-      </View>
+      <LatestNews
+        website={normalized(selected?.name || "")}
+        category="news"
+        selectedItem={selected}
+        language={selected?.language}
+        websitesList={rssFeeds.news}
+        onChangeFeed={(item) => setSelected(item)}
+      />
     </View>
   );
 };
@@ -49,15 +49,14 @@ const ReviewsRoute = ({ rssFeeds }) => {
   }, [rssFeeds.reviews, selected]);
   return (
     <View style={styles.scene}>
-      <View style={styles.sceneSub}>
-        <LatestNews
-          website={normalized(selected?.name || "")}
-          category="reviews"
-          selectedItem={selected}
-          language={selected?.language}
-          onChangeFeed={(item) => setSelected(item)}
-        />
-      </View>
+      <LatestNews
+        website={normalized(selected?.name || "")}
+        category="reviews"
+        selectedItem={selected}
+        language={selected?.language}
+        websitesList={rssFeeds.reviews}
+        onChangeFeed={(item) => setSelected(item)}
+      />
     </View>
   );
 };
@@ -71,15 +70,14 @@ const EsportsRoute = ({ rssFeeds }) => {
   }, [rssFeeds.esports, selected]);
   return (
     <View style={styles.scene}>
-      <View style={styles.sceneSub}>
-        <LatestNews
-          website={normalized(selected?.name || "")}
-          category="esports"
-          selectedItem={selected}
-          language={selected?.language}
-          onChangeFeed={(item) => setSelected(item)}
-        />
-      </View>
+      <LatestNews
+        website={normalized(selected?.name || "")}
+        category="esports"
+        selectedItem={selected}
+        language={selected?.language}
+        websitesList={rssFeeds.esports}
+        onChangeFeed={(item) => setSelected(item)}
+      />
     </View>
   );
 };
@@ -93,15 +91,14 @@ const HardwareRoute = ({ rssFeeds }) => {
   }, [rssFeeds.hardware, selected]);
   return (
     <View style={styles.scene}>
-      <View style={styles.sceneSub}>
-        <LatestNews
-          website={normalized(selected?.name || "")}
-          category="hardware"
-          selectedItem={selected}
-          language={selected?.language}
-          onChangeFeed={(item) => setSelected(item)}
-        />
-      </View>
+      <LatestNews
+        website={normalized(selected?.name || "")}
+        category="hardware"
+        selectedItem={selected}
+        language={selected?.language}
+        websitesList={rssFeeds.hardware}
+        onChangeFeed={(item) => setSelected(item)}
+      />
     </View>
   );
 };
@@ -111,8 +108,7 @@ export default function TabViewExample() {
   const layout = useWindowDimensions();
   const [index, setIndex] = useState(0);
 
-  const [rssFeeds, setRssFeeds] = useState({});
-  const [loading, setLoading] = useState(true);
+  const { rssFeeds, loading } = useRssFeeds();
   const [routes] = useState([
     { key: "news", title: `${t("news.tabs.news")}` },
     { key: "reviews", title: `${t("news.tabs.reviews")}` },
@@ -120,46 +116,27 @@ export default function TabViewExample() {
     { key: "hardware", title: `${t("news.tabs.hardware")}` },
   ]);
 
-  // ✅ 2. نستخدم Effect لجلب البيانات (باستخدام مكتبة الـ Native)
-  useEffect(() => {
-    const subscriber = firestore()
-      .collection("rss")
-      .onSnapshot(
-        (snapshot) => {
-          let feeds = {};
-          snapshot.docs.forEach((doc) => {
-            const data = doc.data();
-            feeds = { ...feeds, ...data };
-          });
-          setRssFeeds(feeds);
-          setLoading(false);
-        },
-        (error) => {
-          console.error("🚨 Error fetching Firestore:", error);
-          setLoading(false);
-        }
-      );
-    return () => subscriber();
-  }, []);
-
   // ✅ 3. لازم نغير SceneMap علشان نقدر نمرر الـ props
-  const renderScene = ({ route }) => {
-    switch (route.key) {
-      case "news":
-        return <NewsRoute rssFeeds={rssFeeds} />;
-      case "reviews":
-        return <ReviewsRoute rssFeeds={rssFeeds} />;
-      case "esports":
-        return <EsportsRoute rssFeeds={rssFeeds} />;
-      case "hardware":
-        return <HardwareRoute rssFeeds={rssFeeds} />;
-      default:
-        return null;
-    }
-  };
-  if (loading) {
-    return <Loading />;
-  }
+  const renderScene = useCallback(
+    ({ route }) => {
+      switch (route.key) {
+        case "news":
+          return <NewsRoute rssFeeds={rssFeeds} />;
+        case "reviews":
+          return <ReviewsRoute rssFeeds={rssFeeds} />;
+        case "esports":
+          return <EsportsRoute rssFeeds={rssFeeds} />;
+        case "hardware":
+          return <HardwareRoute rssFeeds={rssFeeds} />;
+        default:
+          return null;
+      }
+    },
+    [rssFeeds]
+  );
+  // if (loading) {
+  //   return <SkeletonDropdown />;
+  // }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
@@ -167,6 +144,7 @@ export default function TabViewExample() {
         navigationState={{ index, routes }}
         renderScene={renderScene}
         onIndexChange={setIndex}
+        lazy={true}
         initialLayout={{ width: layout.width }}
         renderTabBar={(props) => (
           <TabBar
@@ -195,7 +173,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sceneSub: {
-    marginTop: 30,
+    // marginTop: 30,
   },
   tabBar: {
     backgroundColor: COLORS.darkBackground,

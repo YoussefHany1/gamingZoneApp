@@ -1,20 +1,20 @@
 import {
   Text,
-  View,
   StyleSheet,
   TouchableOpacity,
   Image,
   ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-
+import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
 
 function GamesNews() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   return (
     <>
-      <Text style={styles.header}>Follow your fav game news</Text>
+      <Text style={styles.header}>{t("games.list.gamesNews")}</Text>
       <ScrollView
         horizontal={true}
         showsHorizontalScrollIndicator={false}

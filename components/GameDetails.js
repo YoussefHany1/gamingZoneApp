@@ -20,12 +20,10 @@ import firestore from "@react-native-firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Loading from "../Loading";
 import { useTranslation } from "react-i18next";
-import {
-  BannerAd,
-  BannerAdSize,
-  TestIds,
-} from "react-native-google-mobile-ads";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import { adUnitId } from "../constants/config";
 import COLORS from "../constants/colors";
+import Svg, { Circle, Text as SvgText, Path } from "react-native-svg";
 import { SERVER_URL } from "../constants/config";
 
 const CACHE_KEY_PREFIX = "GAME_DETAILS_CACHE_";
@@ -73,9 +71,7 @@ function GameDetails({ route, navigation }) {
   const [isWanted, setIsWanted] = useState(false);
   const [isPlayed, setIsPlayed] = useState(false);
   const { t } = useTranslation();
-  const adUnitId = __DEV__
-    ? TestIds.BANNER
-    : "ca-app-pub-4635812020796700~2053599689";
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -232,7 +228,6 @@ function GameDetails({ route, navigation }) {
     };
   }, [currentId, user, authLoading]);
 
-  console.log(game);
   function getRatingColor(rating) {
     if (rating <= 2) return "#8B0000";
     if (rating <= 4) return "#FF4C4C";
@@ -251,6 +246,28 @@ function GameDetails({ route, navigation }) {
     12: require("../assets/play-store.png"),
     10: require("../assets/apple-store.png"),
   };
+
+  // Language Supports
+  const languageTypes = [
+    { key: "Audio", label: t("games.details.languages.audio") },
+    { key: "Subtitles", label: t("games.details.languages.subtitles") },
+    { key: "Interface", label: t("games.details.languages.interface") },
+  ];
+
+  // How long to beat calc function
+  let main, mainExtra, completionist, showHowLongToBeat;
+  if (game?.game_time_to_beats) {
+    main = game?.game_time_to_beats?.hastily
+      ? Math.floor(game?.game_time_to_beats?.hastily / 60 / 60)
+      : null;
+    mainExtra = game?.game_time_to_beats?.normally
+      ? Math.floor(game?.game_time_to_beats?.normally / 60 / 60)
+      : null;
+    completionist = game?.game_time_to_beats?.completely
+      ? Math.floor(game?.game_time_to_beats?.completely / 60 / 60)
+      : null;
+    showHowLongToBeat = !!(main || mainExtra || completionist);
+  }
 
   // --- دوال جديدة للضغط على الأزرار ---
   const getGameData = () => {
@@ -351,7 +368,7 @@ function GameDetails({ route, navigation }) {
   }
   console.log(game);
   return (
-    <SafeAreaView edges={["right", "bottom", "left"]} style={styles.container}>
+    <SafeAreaView edges={["right", "left"]} style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -476,7 +493,9 @@ function GameDetails({ route, navigation }) {
               >
                 <Text style={styles.wantBtnText}>
                   <Ionicons
-                    name={isWanted ? "bookmark" : "bookmark-outline"}
+                    name={
+                      isWanted ? "game-controller" : "game-controller-outline"
+                    }
                     size={20}
                     color="white"
                   />{" "}
@@ -491,7 +510,7 @@ function GameDetails({ route, navigation }) {
                   <Text style={styles.playedBtnText}>
                     <Ionicons
                       name={
-                        isPlayed ? "game-controller" : "game-controller-outline"
+                        isPlayed ? "checkmark-done-sharp" : "checkmark-sharp"
                       }
                       size={24}
                       color="white"
@@ -582,15 +601,14 @@ function GameDetails({ route, navigation }) {
                     <Text style={styles.detailsHeader}>
                       {t("games.details.languages.title")}
                     </Text>
-                    {["Audio", "Subtitles", "Interface"].map((type) => {
+                    {languageTypes.map(({ key, label }) => {
                       const langs = game.language_supports
-                        ?.filter((l) => l.language_support_type.name === type)
+                        ?.filter((l) => l.language_support_type.name === key)
                         .map((l) => l.language.name);
 
                       return langs.length ? (
-                        <Text key={type} style={styles.langs}>
-                          {/* {type}: {langs.join(", ")} */}
-                          <Text style={styles.detailsText}>{type}:</Text>{" "}
+                        <Text key={key} style={styles.langs}>
+                          <Text style={styles.detailsText}>{label}:</Text>{" "}
                           {langs.join(", ")}
                         </Text>
                       ) : null;
@@ -612,7 +630,137 @@ function GameDetails({ route, navigation }) {
                 </View>
               )}
             </View>
-            <View style={{ alignItems: "center", width: "100%" }}>
+
+            {/* How long to beat section */}
+            {showHowLongToBeat && (
+              <>
+                <View style={{ marginTop: 30 }}>
+                  <Text style={styles.detailsHeader}>
+                    {t("games.details.howLongToBeat.title")}
+                  </Text>
+                </View>
+                <View style={styles.howLongToBeatContainer}>
+                  {main && (
+                    <View style={styles.howLongToBeat}>
+                      <Text style={styles.howLongToBeatHeader}>
+                        {t("games.details.howLongToBeat.main")}
+                      </Text>
+                      <Svg height="85" width="85">
+                        <Path
+                          d="
+    M 40 4
+    A 36 36 0 0 1 76 40
+  "
+                          stroke={COLORS.secondary}
+                          strokeWidth={5}
+                          fill="none"
+                          strokeLinecap="round"
+                        />
+                        <SvgText
+                          x={40}
+                          y={40}
+                          textAnchor="middle"
+                          alignmentBaseline="middle"
+                          fontSize={styles.howLongToBeatText.fontSize}
+                          dy={38 * 0.1}
+                          fontWeight={styles.howLongToBeatText.fontWeight}
+                          fill={styles.howLongToBeatText.color}
+                        >
+                          {main}
+                        </SvgText>
+                      </Svg>
+                      <Text style={{ color: "#9f9f9f" }}>
+                        {t("games.details.howLongToBeat.hours")}
+                      </Text>
+                    </View>
+                  )}
+
+                  {mainExtra && (
+                    <View style={styles.howLongToBeat}>
+                      <Text style={styles.howLongToBeatHeader}>
+                        {t("games.details.howLongToBeat.mainExtra")}
+                      </Text>
+                      <Svg
+                        width={80}
+                        height={80}
+                        viewBox="0 0 80 80"
+                        preserveAspectRatio="xMidYMid meet"
+                        style={{ alignSelf: "center" }}
+                      >
+                        <Path
+                          d="
+      M 40 4
+      A 36 36 0 0 1 40 76
+    "
+                          stroke={COLORS.secondary}
+                          strokeWidth={5}
+                          fill="none"
+                          strokeLinecap="round"
+                        />
+
+                        <SvgText
+                          x={40}
+                          y={40}
+                          textAnchor="middle"
+                          alignmentBaseline="middle"
+                          fontSize={styles.howLongToBeatText.fontSize}
+                          dy={38 * 0.1}
+                          fontWeight={styles.howLongToBeatText.fontWeight}
+                          fill={styles.howLongToBeatText.color}
+                        >
+                          {mainExtra}
+                        </SvgText>
+                      </Svg>
+                      <Text style={{ color: "#9f9f9f" }}>
+                        {t("games.details.howLongToBeat.hours")}
+                      </Text>
+                    </View>
+                  )}
+
+                  {completionist && (
+                    <View style={styles.howLongToBeat}>
+                      <Text style={styles.howLongToBeatHeader}>
+                        {t("games.details.howLongToBeat.completionist")}
+                      </Text>
+                      <Svg
+                        width={80}
+                        height={80}
+                        viewBox="0 0 80 80"
+                        preserveAspectRatio="xMidYMid meet"
+                        style={{ alignSelf: "center" }}
+                      >
+                        <Circle
+                          cx={40}
+                          cy={40}
+                          r={36}
+                          stroke={COLORS.secondary}
+                          strokeWidth={5}
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <SvgText
+                          x={40}
+                          y={40}
+                          textAnchor="middle"
+                          alignmentBaseline="middle"
+                          fontSize={styles.howLongToBeatText.fontSize}
+                          dy={38 * 0.1}
+                          fontWeight={styles.howLongToBeatText.fontWeight}
+                          fill={styles.howLongToBeatText.color}
+                        >
+                          {completionist}
+                        </SvgText>
+                      </Svg>
+                      <Text style={{ color: "#9f9f9f" }}>
+                        {t("games.details.howLongToBeat.hours")}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
+            <View style={styles.ad}>
               <BannerAd
                 unitId={adUnitId}
                 size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
@@ -878,7 +1026,7 @@ const styles = StyleSheet.create({
   playContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     margin: 10,
     marginTop: 20,
   },
@@ -937,6 +1085,48 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 3,
     flexWrap: "wrap",
+  },
+  howLongToBeatTitle: {
+    color: "white",
+    fontSize: 24,
+    // textAlign
+    fontWeight: "600",
+    textDecorationLine: "underline",
+    marginBottom: 10,
+  },
+  howLongToBeatContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 40,
+    width: "100%",
+    padding: 10,
+  },
+  howLongToBeat: {
+    marginHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  howLongToBeatHeader: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  howLongToBeatText: {
+    color: "#fff",
+    fontSize: 34,
+    fontWeight: "bold",
+    borderRadius: 50,
+    textAlign: "center",
+    textAlignVertical: "center",
+  },
+  ad: {
+    alignItems: "center",
+    width: "100%",
+    marginVertical: 20,
   },
   summary: {
     color: "#c1c1c1",

@@ -5,40 +5,56 @@ import {
   StyleSheet,
   Switch,
   LayoutAnimation,
-  Platform,
-  UIManager,
   ActivityIndicator,
-  FlatList, // إضافة ScrollView
-  Linking,
   ScrollView,
+  Linking,
+  InteractionManager,
 } from "react-native";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { XMLParser } from "fast-xml-parser";
 import axios from "axios";
+import firestore from "@react-native-firebase/firestore";
+import { useNotificationPreferences } from "../hooks/useNotificationPreferences";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import { adUnitId } from "../constants/config";
+import Loading from "../Loading";
 
-// تفعيل الأنيميشن للأندرويد
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// --- دالة مساعدة لإنشاء معرفات آمنة ---
+const safeId = (input) => {
+  if (!input) return "unknown";
+  return String(input)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(/[^a-z0-9_\-]/g, "_") // يبقي فقط الإنجليزية والأرقام
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+};
 
-// --- 1. مكون فرعي يعرض قسم أخبار واحد (قابل لإعادة الاستخدام) ---
+// --- 1. مكون فرعي يعرض قسم أخبار واحد ---
 const NewsSection = ({
   gameName,
   title,
+  sourceId, // <--- خاصية جديدة لتحديد اسم المصدر بالإنجليزية
   langParams,
   defaultExpanded = true,
 }) => {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const [isEnabled, setIsEnabled] = useState(false); // حالة السويتش
 
-  // دمج اسم اللعبة مع باراميترات اللغة المطلوبة
+  const { preferences, toggleSource, loadingPreferences } =
+    useNotificationPreferences();
+
+  // استخدام sourceId (الإنجليزي) إذا توفر، وإلا نستخدم العنوان
+  const categorySafe = safeId(gameName);
+  const nameSafe = safeId(sourceId || title);
+  const topicName = `${categorySafe}_${nameSafe}`;
+
+  const isEnabled = !!preferences[topicName];
+
   const RSS_URL = `https://news.google.com/rss/search?q=${gameName}${langParams}`;
 
   useEffect(() => {
@@ -51,7 +67,6 @@ const NewsSection = ({
       const xmlText = response.data;
       const parser = new XMLParser();
       const jsonObj = parser.parse(xmlText);
-      // التعامل مع حالة وجود خبر واحد أو عدة أخبار أو لا شيء
       const channel = jsonObj?.rss?.channel;
       let items = [];
 
@@ -60,7 +75,6 @@ const NewsSection = ({
       }
 
       items.sort((a, b) => {
-        // تحويل نصوص التاريخ إلى كائنات تاريخ للمقارنة
         return new Date(b.pubDate) - new Date(a.pubDate);
       });
 
@@ -77,7 +91,29 @@ const NewsSection = ({
     setExpanded(!expanded);
   };
 
-  const toggleSwitch = () => setIsEnabled((previousState) => !previousState);
+  const handleToggleSwitch = async () => {
+    if (!isEnabled) {
+      try {
+        await firestore().collection("rss").doc(topicName).set(
+          {
+            rssUrl: RSS_URL,
+            category: categorySafe,
+            name: nameSafe, // سيحفظ الاسم الإنجليزي (arabic_news) في قاعدة البيانات
+            isActive: true,
+            createdAt: firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+        console.log("✅ RSS Source added/updated in Firestore");
+      } catch (error) {
+        console.error("❌ Error adding RSS source:", error);
+        return; // توقف إذا فشلت الكتابة في القاعدة (غالباً بسبب الصلاحيات)
+      }
+    }
+
+    // تفعيل الاشتراك باستخدام الاسم الآمن
+    toggleSource(categorySafe, nameSafe);
+  };
 
   return (
     <View
@@ -86,7 +122,6 @@ const NewsSection = ({
         langParams === "&hl=ar" ? { direction: "rtl" } : { direction: "ltr" },
       ]}
     >
-      {/* رأس القسم (Header) */}
       <TouchableOpacity
         style={styles.categoryHeader}
         onPress={toggleExpand}
@@ -105,42 +140,37 @@ const NewsSection = ({
         <Switch
           trackColor={{ false: "#3e3e3e", true: "#779bdd" }}
           thumbColor={"#ffffff"}
-          onValueChange={toggleSwitch}
+          onValueChange={handleToggleSwitch}
           value={isEnabled}
-          style={styles.categorySwitch}
+          disabled={loadingPreferences}
         />
       </TouchableOpacity>
 
-      {/* محتوى القائمة (يظهر عند الفتح) */}
       {expanded && (
         <View style={styles.listContainer}>
           {loading ? (
-            <ActivityIndicator size="small" color="#779bdd" />
+            <Loading />
           ) : news.length === 0 ? (
             <Text style={{ color: "gray", textAlign: "center" }}>
               No news found.
             </Text>
           ) : (
-            <FlatList
-              initialNumToRender={5}
-              maxToRenderPerBatch={5}
-              windowSize={5}
-              removeClippedSubviews={true}
+            <ScrollView
+              style={{ maxHeight: 250, borderRadius: 8 }}
+              nestedScrollEnabled={true} // مهم جداً عشان الاسكرول الداخلي يشتغل مع الخارجي
               showsVerticalScrollIndicator={false}
-              style={{ maxHeight: 200, borderRadius: 8 }}
-              data={news}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={({ item }) => (
+            >
+              {news.map((item, index) => (
                 <TouchableOpacity
-                  key={item.guid}
+                  key={index.toString()} // استخدام index أو item.guid لو متاح
                   style={styles.card}
                   onPress={() => item.link && Linking.openURL(item.link)}
                 >
                   <Text style={styles.title}>{item.title}</Text>
                   <Text style={styles.date}>{item.pubDate}</Text>
                 </TouchableOpacity>
-              )}
-            />
+              ))}
+            </ScrollView>
           )}
         </View>
       )}
@@ -150,27 +180,53 @@ const NewsSection = ({
 
 // --- 2. الشاشة الرئيسية ---
 function GameNewsScreen({ route, navigation }) {
-  // قيمة افتراضية للتجربة إذا لم يتم تمرير اسم اللعبة
   const Currentgame = route.params?.gameName || "";
+  const [showAds, setShowAds] = useState(false);
+
+  // activate ads after the list loads
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowAds(true);
+    });
+
+    return () => task.cancel(); // تنظيف المهمة عند الخروج
+  }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0d1b2a" }}>
-      <View style={{ padding: 16 }}>
-        {/* القسم العربي */}
-        <NewsSection
-          gameName={Currentgame}
-          title="الأخبار العربية"
-          langParams="&hl=ar"
-          defaultExpanded={true}
-        />
-        {/* القسم الإنجليزي */}
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#0d1b2a" }}
+      edges={["top", "left", "right"]}
+    >
+      <ScrollView style={{ padding: 16 }}>
+        {/* English News Section */}
         <NewsSection
           gameName={Currentgame}
           title="English News"
+          sourceId="english_news"
           langParams="&hl=en"
           defaultExpanded={true}
         />
-      </View>
+        {/* <Text>Ad </Text> */}
+        {showAds && (
+          <View style={styles.ad}>
+            <BannerAd
+              unitId={adUnitId}
+              size={BannerAdSize.MEDIUM_RECTANGLE}
+              requestOptions={{
+                requestNonPersonalizedAdsOnly: true,
+              }}
+            />
+          </View>
+        )}
+        {/* Arabic News Section */}
+        <NewsSection
+          gameName={Currentgame}
+          title="الأخبار العربية"
+          sourceId="arabic_news"
+          langParams="&hl=ar"
+          defaultExpanded={true}
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -179,7 +235,7 @@ export default GameNewsScreen;
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    marginBottom: 30,
+    marginBottom: 38,
   },
   categoryHeader: {
     flexDirection: "row",
@@ -188,7 +244,6 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: "rgba(119, 155, 221, 0.2)",
     borderRadius: 8,
-    marginBottom: 0, // إزالة المسافة لأن القائمة ستأتي تحته مباشرة
   },
   categoryHeaderLeft: {
     flexDirection: "row",
@@ -200,9 +255,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
     marginRight: 8,
-  },
-  categorySwitch: {
-    transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }],
   },
   chevronIcon: {
     marginRight: 8,
@@ -228,5 +280,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "gray",
     marginTop: 4,
+  },
+  ad: {
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 38,
   },
 });

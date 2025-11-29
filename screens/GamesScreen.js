@@ -4,28 +4,32 @@ import {
   View,
   TextInput,
   TouchableOpacity,
+  InteractionManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FreeGames from "../components/FreeGames";
 import GamesList from "../components/GamesList";
 import GamesNews from "../components/GamesNews";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import {
-  BannerAd,
-  BannerAdSize,
-  TestIds,
-} from "react-native-google-mobile-ads";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import { adUnitId } from "../constants/config";
 import COLORS from "../constants/colors";
 
 function GamesScreen() {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState(""); // store the currently typed text
   const [submittedQuery, setSubmittedQuery] = useState(""); // save the text after clicking enter
-  const adUnitId = __DEV__
-    ? TestIds.BANNER
-    : "ca-app-pub-4635812020796700~2053599689";
+  const [showAds, setShowAds] = useState(false);
+
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowAds(true);
+    });
+
+    return () => task.cancel();
+  }, []);
 
   const handleSearchTextChange = (text) => {
     setSearchQuery(text);
@@ -67,33 +71,67 @@ function GamesScreen() {
             <>
               <ScrollView showsVerticalScrollIndicator={false}>
                 {/* if search is empty show the defult lists */}
-                <View style={{ paddingBottom: 120 }}>
+                <View style={{ paddingBottom: 100 }}>
                   <FreeGames />
                   <GamesNews />
-                  <GamesList endpoint="/popular" />
-                  <GamesList endpoint="/recently-released" />
-                  <View style={{ alignItems: "center", width: "100%" }}>
-                    <BannerAd
-                      unitId={adUnitId}
-                      size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
-                      requestOptions={{
-                        requestNonPersonalizedAdsOnly: true,
-                      }}
-                    />
-                  </View>
-                  <GamesList endpoint="/top-rated" />
-                  <GamesList endpoint="/coming-soon" />
-                  <View style={{ alignItems: "center", width: "100%" }}>
-                    <BannerAd
-                      unitId={adUnitId}
-                      size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
-                      requestOptions={{
-                        requestNonPersonalizedAdsOnly: true,
-                      }}
-                    />
-                  </View>
-                  <GamesList endpoint="/most-anticipated" />
-                  <GamesList endpoint="/nostalgia-corner" />
+                  {showAds && (
+                    <View style={styles.ad}>
+                      <BannerAd
+                        unitId={adUnitId}
+                        size={BannerAdSize.MEDIUM_RECTANGLE}
+                        requestOptions={{
+                          requestNonPersonalizedAdsOnly: true,
+                        }}
+                      />
+                    </View>
+                  )}
+                  <GamesList
+                    endpoint="/popular"
+                    header={t("games.list.popular")}
+                  />
+                  <GamesList
+                    endpoint="/recently-released"
+                    header={t("games.list.recentlyReleased")}
+                  />
+                  {showAds && (
+                    <View style={styles.ad}>
+                      <BannerAd
+                        unitId={adUnitId}
+                        size={BannerAdSize.MEDIUM_RECTANGLE}
+                        requestOptions={{
+                          requestNonPersonalizedAdsOnly: true,
+                        }}
+                      />
+                    </View>
+                  )}
+                  <GamesList
+                    endpoint="/top-rated"
+                    header={t("games.list.topRated")}
+                  />
+                  <GamesList
+                    endpoint="/coming-soon"
+                    header={t("games.list.comingSoon")}
+                  />
+
+                  {showAds && (
+                    <View style={styles.ad}>
+                      <BannerAd
+                        unitId={adUnitId}
+                        size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+                        requestOptions={{
+                          requestNonPersonalizedAdsOnly: true,
+                        }}
+                      />
+                    </View>
+                  )}
+                  <GamesList
+                    endpoint="/most-anticipated"
+                    header={t("games.list.mostAnticipated")}
+                  />
+                  <GamesList
+                    endpoint="/nostalgia-corner"
+                    header={t("games.list.nostalgiaCorner")}
+                  />
                 </View>
               </ScrollView>
             </>
@@ -149,5 +187,10 @@ const styles = StyleSheet.create({
   },
   clearTextBtn: {
     marginBottom: 10,
+  },
+  ad: {
+    alignItems: "center",
+    width: "100%",
+    marginVertical: 20,
   },
 });

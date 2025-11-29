@@ -13,11 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import auth from "@react-native-firebase/auth";
 import NotificationService from "../notificationService";
 import { useTranslation } from "react-i18next";
-import {
-  BannerAd,
-  BannerAdSize,
-  TestIds,
-} from "react-native-google-mobile-ads";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import { adUnitId } from "../constants/config";
 import { useNotificationPreferences } from "../hooks/useNotificationPreferences";
 import useRssFeeds from "../hooks/useRssFeeds";
 import COLORS from "../constants/colors";
@@ -26,9 +23,6 @@ const Notification = () => {
   const { rssFeeds, loading: loadingRss } = useRssFeeds();
   const [expandedCategories, setExpandedCategories] = useState({});
   const { t } = useTranslation();
-  const adUnitId = __DEV__
-    ? TestIds.BANNER
-    : "ca-app-pub-4635812020796700~2053599689";
 
   const { preferences, loadingPreferences, toggleSource, setPreferences } =
     useNotificationPreferences();

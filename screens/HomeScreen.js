@@ -1,20 +1,30 @@
-import React, { useMemo } from "react"; // تأكد من استيراد React
-import { FlatList, StyleSheet, View } from "react-native";
+import { useMemo } from "react";
+import {
+  FlatList,
+  StyleSheet,
+  View,
+  Text,
+  InteractionManager,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Slideshow from "../components/Slideshow";
 import LatestNews from "../components/LatestNews";
-import {
-  BannerAd,
-  BannerAdSize,
-  TestIds,
-} from "react-native-google-mobile-ads";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import { useEffect, useState } from "react";
 import COLORS from "../constants/colors";
-
-const adUnitId = __DEV__
-  ? TestIds.BANNER
-  : "ca-app-pub-4635812020796700~2053599689";
+import { adUnitId } from "../constants/config";
 
 function Home() {
+  const [showAds, setShowAds] = useState(false);
+
+  useEffect(() => {
+    // تفعيل الإعلانات بعد تحميل القائمة
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowAds(true);
+    });
+    return () => task.cancel();
+  }, []);
+
   // 1. تعريف البيانات فقط (وليس المكونات نفسها)
   const sectionsData = useMemo(
     () => [
@@ -46,10 +56,10 @@ function Home() {
         );
 
       case "ad":
+        if (!showAds) return null;
         return (
-          <View
-            style={{ alignItems: "center", width: "100%", marginVertical: 55 }}
-          >
+          <View style={styles.ad}>
+            <Text>Ad </Text>
             <BannerAd
               unitId={adUnitId}
               size={BannerAdSize.MEDIUM_RECTANGLE}
@@ -83,5 +93,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.primary,
+  },
+  ad: {
+    alignItems: "center",
+    width: "100%",
+    marginVertical: 55,
   },
 });

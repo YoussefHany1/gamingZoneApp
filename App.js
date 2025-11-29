@@ -13,13 +13,10 @@ import { useTranslation } from "react-i18next";
 import auth from "@react-native-firebase/auth";
 import NotificationService from "./notificationService";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  BannerAd,
-  BannerAdSize,
-  TestIds,
-} from "react-native-google-mobile-ads";
-import { View } from "react-native";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import { View, InteractionManager } from "react-native";
 import COLORS from "./constants/colors";
+import { adUnitId } from "./constants/config";
 import Loading from "./Loading";
 import HomeScreen from "./screens/HomeScreen";
 import NewsScreen from "./screens/NewsScreen";
@@ -198,6 +195,15 @@ const queryClient = new QueryClient({
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showAds, setShowAds] = useState(false);
+
+  useEffect(() => {
+    // تفعيل الإعلانات بعد تحميل القائمة
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowAds(true);
+    });
+    return () => task.cancel();
+  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = auth().onAuthStateChanged(async (newUser) => {
@@ -379,9 +385,6 @@ function App() {
       background: COLORS.primary, // <--- هذا هو اللون الذي سيظهر خلف الـ Suspense
     },
   };
-  const adUnitId = __DEV__
-    ? TestIds.BANNER
-    : "ca-app-pub-4635812020796700~2053599689";
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
@@ -399,15 +402,17 @@ function App() {
               </Stack.Navigator>
             </Suspense>
           </NavigationContainer>
-          <View style={{ alignItems: "center", width: "100%" }}>
-            <BannerAd
-              unitId={adUnitId}
-              size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-              requestOptions={{
-                requestNonPersonalizedAdsOnly: true,
-              }}
-            />
-          </View>
+          {showAds && (
+            <View style={{ alignItems: "center", width: "100%" }}>
+              <BannerAd
+                unitId={adUnitId}
+                size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+                requestOptions={{
+                  requestNonPersonalizedAdsOnly: true,
+                }}
+              />
+            </View>
+          )}
         </View>
       </SafeAreaProvider>
     </QueryClientProvider>

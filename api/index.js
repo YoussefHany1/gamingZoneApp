@@ -178,14 +178,42 @@ app.get("/most-anticipated", async (req, res) => {
 // 5. Popular Right Now
 app.get("/popular", async (req, res) => {
   try {
-    const query = `
-      ${BASE_QUERY_FIELDS};
-      ${BASE_QUERY_WHERE};
-      sort popularity desc;
+    // الخطوة 1: جلب الـ IDs من popularity_primitives
+    // هنا نقوم بفرز النتائج حسب القيمة (value) تنازلياً للحصول على الأكثر شعبية
+    const primitivesQuery = `
+      fields game_id;
+      sort value desc;
+      where popularity_type = 5;
       limit 10;
     `;
-    const data = await callIgdb("games", query);
-    res.json(data);
+
+    // نطلب الـ IDs أولاً
+    const primitivesData = await callIgdb(
+      "popularity_primitives",
+      primitivesQuery
+    );
+
+    if (!primitivesData || primitivesData.length === 0) {
+      return res.json([]);
+    }
+
+    // الخطوة 2: استخراج الـ IDs من النتائج
+    const gameIds = primitivesData.map((p) => p.game_id).join(",");
+
+    // الخطوة 3: استخدام الـ IDs لجلب تفاصيل الألعاب الكاملة
+    const gamesQuery = `
+      ${BASE_QUERY_FIELDS};
+      where id = (${gameIds});
+    `;
+
+    const gamesData = await callIgdb("games", gamesQuery);
+
+    // الخطوة 4: إعادة ترتيب الألعاب لتطابق ترتيب الشعبية (لأن الـ where لا يضمن الترتيب)
+    const sortedGames = primitivesData
+      .map((p) => gamesData.find((g) => g.id === p.game_id))
+      .filter((g) => g); // تصفية أي نتائج غير موجودة (undefined)
+
+    res.json(sortedGames);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -209,7 +237,7 @@ limit 50;
 
 app.get("/search", async (req, res) => {
   try {
-    // نستقبل كلمة البحث من الرابط (مثلاً: /search?q=gta)
+    // search query parameter
     const { q } = req.query;
 
     if (!q) {
@@ -224,8 +252,6 @@ app.get("/search", async (req, res) => {
       search "${safeQuery}";
       limit 50;
     `;
-
-    // نستخدم الدالة المساعدة الموجودة مسبقاً في السيرفر
     const data = await callIgdb("games", query);
     res.json(data);
   } catch (error) {
@@ -241,18 +267,58 @@ app.get("/game-details", async (req, res) => {
       return res.status(400).json({ message: "Game ID is required" });
     }
 
-    // نفس الحقول التي طلبتها في كودك بالضبط
+    // 1. بناء الـ Multi-query
+    // نقوم بتعريف استعلامين: واحد باسم "Game" وواحد باسم "TimeToBeat"
     const query = `
-      fields id, name, cover.image_id, first_release_date, total_rating, total_rating_count, summary, dlcs, game_type, multiplayer_modes, remakes, remasters, screenshots.image_id, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.cover.image_id, collections.games.name, collections.games.cover.image_id;
-      where id = ${id};
-      limit 1;
+      query games "Game" {
+        fields id, name, cover.image_id, cover.url, first_release_date, total_rating, total_rating_count, summary, dlcs, game_type, multiplayer_modes, remakes, remasters, screenshots.image_id, release_dates.human, platforms.abbreviation, websites.type, websites.url, genres.name, game_modes.name, language_supports.language.name, language_supports.language_support_type.name, involved_companies.company.name, involved_companies.developer, involved_companies.publisher, game_engines.name, videos.name, videos.video_id, collection.name, similar_games.name, similar_games.cover.image_id, collections.games.name, collections.games.cover.image_id;
+        where id = ${id};
+        limit 1;
+      };
+      
+      query game_time_to_beats "TimeToBeat" {
+        fields normally, hastily, completely, game_id;
+        where game_id = ${id};
+      };
     `;
 
-    // استخدام دالة المساعدة الموجودة في السيرفر
-    const data = await callIgdb("games", query);
+    // 2. استدعاء الـ endpoint المسمى "multiquery"
+    const data = await callIgdb("multiquery", query);
 
-    // إرجاع العنصر الأول فقط (Object) بدلاً من مصفوفة، ليطابق كودك القديم
-    const game = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    // 3. معالجة البيانات القادمة (تكون عبارة عن مصفوفة تحتوي نتائج الاستعلامين)
+    // النتيجة تكون: [{ name: "Game", result: [...] }, { name: "TimeToBeat", result: [...] }]
+    const gameResult = data.find((item) => item.name === "Game");
+    const timeResult = data.find((item) => item.name === "TimeToBeat");
+
+    // استخراج كائن اللعبة
+    let game =
+      gameResult && gameResult.result.length > 0 ? gameResult.result[0] : null;
+
+    // استخراج بيانات الوقت
+    const timeToBeat =
+      timeResult && timeResult.result.length > 0 ? timeResult.result[0] : null;
+
+    if (game) {
+      // إصلاح رابط الغلاف يدوياً هنا لأن دالة callIgdb الأصلية
+      // لا يمكنها الوصول لداخل هيكلية الـ multiquery
+      if (game.cover && game.cover.url) {
+        game.cover.url = `https:${game.cover.url.replace(
+          "t_thumb",
+          "t_cover_big"
+        )}`;
+      }
+
+      // دمج بيانات الوقت داخل كائن اللعبة
+      if (timeToBeat) {
+        // نقوم بحذف الـ id و game_id من بيانات الوقت لأنها مكررة ولا داعي لها
+        delete timeToBeat.id;
+        delete timeToBeat.game_id;
+
+        game.game_time_to_beats = timeToBeat;
+      } else {
+        game.game_time_to_beats = null;
+      }
+    }
 
     res.json(game);
   } catch (error) {

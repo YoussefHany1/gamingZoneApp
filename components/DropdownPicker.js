@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,64 +7,44 @@ import {
   Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-// import firestore from "@react-native-firebase/firestore";
 import RNPickerSelect from "react-native-picker-select";
-import Loading from "../Loading";
-// import AsyncStorage from "@react-native-async-storage/async-storage";
 import COLORS from "../constants/colors";
 import { useNotificationPreferences } from "../hooks/useNotificationPreferences";
 import NotificationService from "../notificationService";
-import useRssFeeds from "../hooks/useRssFeeds";
+import { memo } from "react";
+import SkeletonDropdown from "../skeleton/SkeletonDropdown";
 
 const DropdownPicker = (props) => {
-  const { rssFeeds, loading } = useRssFeeds();
   const { preferences, toggleSource } = useNotificationPreferences();
 
   const category = props.category.toLowerCase();
-  const websites = rssFeeds[category] || [];
-  // 2. تحويل مصفوفة المواقع (websites) إلى الشكل الذي تتطلبه RNPickerSelect
-  //    يجب أن تكون `items` على شكل: [{ label: 'Site Name', value: 'siteName' }]
+  const websites = props.websites || [];
+
   const pickerItems = websites.map((site) => ({
     label: site.name,
-    value: site.name, // نستخدم الاسم كقيمة فريدة (value)
+    value: site.name,
   }));
 
-  // 3. الدالة التي سيتم استدعاؤها من RNPickerSelect عند التغيير
-  //    مهمتها هي إيجاد الكائن (Object) الكامل المطابق للقيمة (value) التي تم اختيارها
-  //    وإرساله إلى المكون الأب (Parent) عبر props.onChange
   const handleValueChange = (value) => {
     if (typeof props.onChange === "function") {
       if (!value) {
-        // إذا اختار المستخدم الـ placeholder (القيمة null)
         props.onChange(null);
       } else {
-        // ابحث عن الكائن الكامل المطابق للاسم (value)
         const fullItem = websites.find((site) => site.name === value);
         props.onChange(fullItem || null);
       }
     }
   };
 
-  // 4. العنصر المختار حالياً (الكائن الكامل) يُؤخذ مباشرة من props.value
   const selectedItem = props.value;
 
   const notifTopic = selectedItem
     ? NotificationService.getTopicName(category, selectedItem.name)
     : null;
   const isNotifEnabled = notifTopic ? preferences[notifTopic] : false;
-  // --- عرض حالات التحميل أو عدم وجود بيانات ---
-  if (loading) {
-    return <Loading />;
-  }
 
-  if (websites.length === 0 && !loading) {
-    return (
-      <View style={styles.wrapper}>
-        <Text style={styles.buttonText}>
-          No sites found for {props.category}
-        </Text>
-      </View>
-    );
+  if (websites.length === 0) {
+    return <SkeletonDropdown />;
   }
 
   return (
@@ -210,4 +189,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DropdownPicker;
+export default memo(DropdownPicker);

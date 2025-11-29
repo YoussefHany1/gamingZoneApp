@@ -78,7 +78,7 @@ function SettingsScreen() {
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons
-                name="bookmark"
+                name="game-controller"
                 size={20}
                 color="#779bdd"
                 style={styles.chevronIcon}
@@ -98,7 +98,7 @@ function SettingsScreen() {
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons
-                name="game-controller"
+                name="checkmark-done-sharp"
                 size={20}
                 color="#779bdd"
                 style={styles.chevronIcon}
@@ -149,13 +149,13 @@ function SettingsScreen() {
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons
-                name="chevron-forward"
+                name="shield-checkmark-sharp"
                 size={20}
                 color="#779bdd"
                 style={styles.chevronIcon}
               />
               <Text style={styles.categoryTitle}>
-                {t("settings.menu.feedback")}
+                {t("settings.menu.privacyPolicy")}
               </Text>
             </View>
           </TouchableOpacity>

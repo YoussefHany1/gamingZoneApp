@@ -9,7 +9,6 @@ import {
   onSnapshot,
 } from "@react-native-firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-// أو من firebase/firestore لو انت مستخدم SDK بتاع الويب مع Expo
 
 export default function useFeed(category, siteName) {
   const [articles, setArticles] = useState([]);

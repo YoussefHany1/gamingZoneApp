@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
-import COLORS from "./constants/colors";
 import { useTranslation } from "react-i18next";
+import COLORS from "./constants/colors";
 
 function Loading() {
   const { t } = useTranslation();
@@ -15,14 +15,14 @@ function Loading() {
 export default Loading;
 const styles = StyleSheet.create({
   loadingContainer: {
-    // ...StyleSheet.absoluteFillObject,
+    flex: 1,
     zIndex: 100,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: COLORS.background,
   },
   loadingText: {
-    color: "#779bdd",
+    color: COLORS.secondary,
     marginTop: 10,
     fontSize: 16,
   },

@@ -1,15 +1,14 @@
-import React from "react";
 import { Linking, Text, StyleSheet, Image, Pressable } from "react-native";
 import Swiper from "react-native-swiper";
 import { LinearGradient } from "expo-linear-gradient";
 import useFeed from "../hooks/useFeed";
-import Loading from "../Loading";
+import SlideshowSkeleton from "../skeleton/SlideshowSkeleton";
 import COLORS from "../constants/colors";
 
 function Slideshow({ website, category }) {
   const { articles, loading, error } = useFeed(category, website);
 
-  if (loading) return <Loading />;
+  if (loading) return <SlideshowSkeleton />;
   if (error) return <Text>Error: {error.message}</Text>;
   return (
     <>
@@ -60,7 +59,7 @@ export default Slideshow;
 const styles = StyleSheet.create({
   swiper: {
     height: 400,
-    marginBottom: 20,
+    // marginBottom: 20,
   },
   thumbnail: {
     // flex: 1,

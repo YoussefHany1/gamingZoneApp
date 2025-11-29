@@ -1,4 +1,3 @@
-// fetchRss.cjs
 const admin = require("firebase-admin");
 const axios = require("axios");
 const xml2js = require("xml2js");
@@ -12,7 +11,7 @@ const CONFIG = {
   COLLECTION_ARTICLES: "articles",
   MAX_CONCURRENCY: 5, // عدد المصادر التي تتم معالجتها في وقت واحد
   BATCH_SIZE: 400, // حجم الدفعة للكتابة في Firestore
-  RECENT_IDS_LIMIT: 50, // عدد المعرفات المحفوظة في مستند المصدر لمنع التكرار
+  RECENT_IDS_LIMIT: 30, // عدد المعرفات المحفوظة في مستند المصدر لمنع التكرار
   AXIOS_TIMEOUT: 20000,
   USER_AGENT: "RSS-Fetcher/2.0 (+mailto:youssefhany.2005.yh@gmail.com)",
 };

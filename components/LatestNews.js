@@ -7,18 +7,15 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from "react-native";
-import {
-  BannerAd,
-  BannerAdSize,
-  TestIds,
-} from "react-native-google-mobile-ads";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
-import Loading from "../Loading";
+import SkeletonNewsItem from "../skeleton/SkeletonNewsItem";
 import NewsDetails from "../screens/NewsDetailsScreen";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
+import { adUnitId } from "../constants/config";
 
 function LatestNews({
   limit,
@@ -28,11 +25,12 @@ function LatestNews({
   selectedItem,
   onChangeFeed,
   showDropdown,
+  websitesList,
 }) {
-  const adUnitId = __DEV__
-    ? TestIds.BANNER
-    : "ca-app-pub-4635812020796700~2053599689";
-  const [activeModal, setActiveModal] = useState(false);
+  // ✅ تعديل 1: تغيير إدارة الحالة (Modal)
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState(null);
+
   const feedCategory = typeof category !== "undefined" ? category : undefined;
   const feedWebsite =
     typeof website !== "undefined" && website !== null && website !== ""
@@ -53,11 +51,17 @@ function LatestNews({
       .join(" ");
   }
 
+  // دالة لفتح الخبر
+  const handlePressArticle = (item) => {
+    setSelectedArticle(item);
+    setModalVisible(true);
+  };
+
   const renderItem = ({ item, index }) => {
     const siteLabel = item?.siteName || website || "";
-    // 2. نقوم بحساب ما إذا كان يجب إظهار الإعلان (كل 10 عناصر)
-    // (index + 1) لأن الـ index يبدأ من 0
+    // حساب الإعلان
     const shouldShowAd = (index + 1) % 10 === 0;
+
     return (
       <View
         style={[
@@ -68,16 +72,8 @@ function LatestNews({
         <TouchableOpacity
           style={[styles.NewsContainer]}
           android_ripple={{ color: COLORS.secondary }}
-          onPress={() => {
-            setActiveModal(`${item.id}`);
-          }}
+          onPress={() => handlePressArticle(item)}
         >
-          <NewsDetails
-            article={item}
-            visible={activeModal === `${item.id}`}
-            onClose={() => setActiveModal(null)}
-          />
-
           <View style={styles.textContainer}>
             <Text
               style={[
@@ -129,13 +125,13 @@ function LatestNews({
     return (
       <>
         <Text style={styles.header}>
-          {/* {t('news.latestHeader', { category: category.charAt(0).toUpperCase() + category.slice(1) })} */}
           {t("news.latestHeader", { category: translatedCategory })}
         </Text>
         {showDropdown !== false && (
           <DropdownPicker
             category={category}
             value={selectedItem}
+            websites={websitesList}
             onChange={(item) => {
               if (typeof onChangeFeed === "function") {
                 onChangeFeed(item);
@@ -148,10 +144,21 @@ function LatestNews({
   };
 
   const onRefresh = () => {
-    refetch(); // دالة TanStack Query لجلب البيانات
+    refetch();
   };
 
-  if (loading) return <Loading />;
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        {renderHeader()}
+        <View style={{ marginTop: 10 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonNewsItem key={i} />
+          ))}
+        </View>
+      </View>
+    );
+  }
   if (error)
     return (
       <Text style={{ color: "white", textAlign: "center" }}>
@@ -164,17 +171,33 @@ function LatestNews({
       <FlatList
         data={listData}
         renderItem={renderItem}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={(item, index) => item.id || index.toString()}
         ListHeaderComponent={renderHeader}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={isFetching} // isFetching يكون صحيحاً أثناء التحديث في الخلفية أو اليدوي
+            refreshing={isFetching}
             onRefresh={onRefresh}
             tintColor={COLORS.secondary}
           />
         }
+        removeClippedSubviews={true}
+        initialNumToRender={5}
+        maxToRenderPerBatch={10}
+        windowSize={10}
       />
+
+      {selectedArticle && (
+        <NewsDetails
+          article={selectedArticle}
+          visible={modalVisible}
+          onClose={() => {
+            setModalVisible(false);
+            // اختياري: تأخير تصفير المقال قليلاً لتجنب وميض أثناء إغلاق المودال
+            setTimeout(() => setSelectedArticle(null), 300);
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -193,7 +216,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 80,
     paddingVertical: 10,
     marginBottom: 30,
-    // marginVertical: 30,
+    marginTop: 20,
     borderRadius: 16,
     color: "white",
   },

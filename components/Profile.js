@@ -1,307 +1,348 @@
 import {
-    View,
-    ScrollView,
-    Text,
-    StyleSheet,
-    TextInput,
-    Image,
-    Alert,
-    TouchableOpacity,
-} from 'react-native';
-import { useState, useEffect } from 'react';
+  View,
+  ScrollView,
+  Text,
+  StyleSheet,
+  TextInput,
+  Image,
+  Alert,
+  InteractionManager,
+  TouchableOpacity,
+} from "react-native";
+import { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import auth from '@react-native-firebase/auth';
-import * as ImagePicker from 'expo-image-picker';
-import firestore from '@react-native-firebase/firestore';
+import auth from "@react-native-firebase/auth";
+import * as ImagePicker from "expo-image-picker";
+import firestore from "@react-native-firebase/firestore";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import RNPickerSelect from 'react-native-picker-select';
-import Loading from '../Loading';
-import { useTranslation } from 'react-i18next';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
-import COLORS from '../constants/colors';
-// Cloudinary
-const CLOUDINARY_CLOUD_NAME = 'dewusw0db';
-const CLOUDINARY_API_KEY = '848952698676177';
-const CLOUDINARY_UPLOAD_PRESET = 'Gaming Zone';
+import RNPickerSelect from "react-native-picker-select";
+import Loading from "../Loading";
+import { useTranslation } from "react-i18next";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import COLORS from "../constants/colors";
+import { adUnitId } from "../constants/config";
+import {
+  CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY,
+  CLOUDINARY_UPLOAD_PRESET,
+} from "@env";
 
 function ProfileScreen() {
-    const [name, setName] = useState('');
-    const [imageUri, setImageUri] = useState(null);
-    const [dob, setDob] = useState('');
-    const [platform, setPlatform] = useState('');
-    const [showPicker, setShowPicker] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [currentUser, setCurrentUser] = useState(auth().currentUser);
-    const { t } = useTranslation();
-    const adUnitId = __DEV__ ? TestIds.BANNER : 'ca-app-pub-4635812020796700~2053599689';
-    useEffect(() => {
-        if (currentUser) {
-            // جلب البيانات الأساسية من Auth (سريع)
-            setName(currentUser.displayName || '');
-            setImageUri(currentUser.photoURL || null);
+  const [name, setName] = useState("");
+  const [imageUri, setImageUri] = useState(null);
+  const [dob, setDob] = useState("");
+  const [platform, setPlatform] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(auth().currentUser);
+  const [showAds, setShowAds] = useState(false);
+  const { t } = useTranslation();
 
-            // جلب كل البيانات (بما فيها تاريخ الميلاد) من Firestore
-            const fetchUserData = async () => {
-                try {
-                    const userDocument = await firestore()
-                        .collection('users')
-                        .doc(currentUser.uid)
-                        .get();
+  // 3. تفعيل الإعلانات بعد انتهاء تحميل الواجهة الأساسية
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      // يمكنك إضافة setTimeout هنا إذا أردت تأخيراً إضافياً بالمللي ثانية
+      setShowAds(true);
+    });
 
-                    if (userDocument.exists) {
-                        const userData = userDocument.data();
-                        // تحديث الـ State ببيانات Firestore (هي الأصح)
-                        setName(userData.displayName || '');
-                        setImageUri(userData.photoURL || null);
-                        setDob(userData.dob || '');
-                        setPlatform(userData.platform || ''); // <-- تحميل تاريخ الميلاد
-                    }
-                } catch (error) {
-                    console.error("❌ Error fetching user data from Firestore:", error);
-                }
-            };
+    return () => task.cancel(); // تنظيف المهمة عند الخروج
+  }, []);
 
-            fetchUserData();
-        }
-    }, [currentUser]);
+  useEffect(() => {
+    if (currentUser) {
+      // جلب البيانات الأساسية من Auth (سريع)
+      setName(currentUser.displayName || "");
+      setImageUri(currentUser.photoURL || null);
 
-    const pickImage = async () => {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-            Alert.alert('images permissions are required.', 'We need access to the images.');
-            return;
-        }
-
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.7,
-        });
-
-        if (!result.canceled) {
-            setImageUri(result.assets[0].uri);
-        }
-    };
-
-    const uploadImage = async (uri) => {
-        if (!uri || !uri.startsWith('file://')) {
-            return uri;
-        }
-
-        // 1. إعداد FormData للرفع
-        const data = new FormData();
-        data.append('file', {
-            uri: uri,
-            type: `image/${uri.split('.').pop()}`,
-            name: `profile.${uri.split('.').pop()}`,
-        });
-        data.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-        data.append('api_key', CLOUDINARY_API_KEY);
-
-        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
-
+      // جلب كل البيانات (بما فيها تاريخ الميلاد) من Firestore
+      const fetchUserData = async () => {
         try {
-            // 2. إرسال الطلب إلى Cloudinary
-            let response = await fetch(url, {
-                method: 'POST',
-                body: data,
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+          const userDocument = await firestore()
+            .collection("users")
+            .doc(currentUser.uid)
+            .get();
 
-            let json = await response.json();
-
-            if (json.secure_url) {
-                return json.secure_url; // 3. إرجاع الرابط الآمن
-            } else {
-                console.error('❌ Cloudinary error:', json);
-                throw new Error('Image upload to Cloudinary failed.');
-            }
-        } catch (e) {
-            console.error('❌ Error uploading image:', e);
-            Alert.alert('Error', 'Image upload failed.');
-            throw e;
-        }
-    };
-
-    const handleSave = async () => {
-        if (!currentUser) return;
-
-        setLoading(true);
-        try {
-            // رفع الصورة أولاً (لو اتغيرت)
-            const newPhotoURL = await uploadImage(imageUri);
-
-            // 1. تحديث ملف المصادقة (Auth) - بالاسم والصورة فقط
-            await currentUser.updateProfile({
-                displayName: name,
-                photoURL: newPhotoURL,
-            });
-
-            // 2. تحديث ملف Firestore (بكل البيانات)
-            await firestore().collection('users').doc(currentUser.uid).update({
-                displayName: name,
-                photoURL: newPhotoURL,
-                dob: dob,
-                platform: platform,
-            });
-
-            // تحديث الـ user state عشان يعكس التغييرات فوراً
-            setCurrentUser(auth().currentUser);
-
-            setLoading(false);
-            Alert.alert('Done!', 'Your data has been successfully updated.');
+          if (userDocument.exists) {
+            const userData = userDocument.data();
+            // تحديث الـ State ببيانات Firestore (هي الأصح)
+            setName(userData.displayName || "");
+            setImageUri(userData.photoURL || null);
+            setDob(userData.dob || "");
+            setPlatform(userData.platform || ""); // <-- تحميل تاريخ الميلاد
+          }
         } catch (error) {
-            setLoading(false);
-            console.error('❌ Error saving profile:', error);
-            Alert.alert('Error!', 'The changes failed to save.');
+          console.error("❌ Error fetching user data from Firestore:", error);
         }
-    };
-    const handleChange = (event, selectedDate) => {
-        setShowPicker(false);
-        if (selectedDate) {
-            const isoDate = selectedDate.toISOString().split("T")[0]; // YYYY-MM-DD
-            setDob(isoDate);
-        }
-    };
+      };
 
-    return (
-        <SafeAreaView style={styles.container}>
-            {loading ? (
-                <Loading />
-            ) : (
-                <ScrollView style={styles.subContainer}>
-                    <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
-                        <Image
-                            style={styles.avatar}
-                            source={imageUri ? { uri: imageUri } : require('../assets/default_profile.png')}
-                        />
-                        <Text style={styles.changePicText}>{t('settings.profile.changePic')}</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.label}>{t('settings.profile.nameLabel')}</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder={t('settings.profile.namePlaceholder')}
-                        placeholderTextColor="#888"
-                        value={name}
-                        onChangeText={setName}
-                    />
-                    <Text style={styles.label}>{t('settings.profile.dobLabel')}</Text>
-                    <TouchableOpacity onPress={() => setShowPicker(true)}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder={t('settings.profile.dobPlaceholder')}
-                            placeholderTextColor="#888"
-                            value={dob}
-                            editable={false}
-                        />
-                    </TouchableOpacity>
-                    {showPicker && (
-                        <DateTimePicker
-                            mode="date"
-                            display={"default"}
-                            value={dob ? new Date(dob) : new Date()}
-                            onChange={handleChange}
-                        />
-                    )}
-                    <Text style={styles.label}>{t('settings.profile.platformLabel')}</Text>
-                    <View style={styles.selectWrapper}>
-                        <RNPickerSelect
-                            value={platform}
-                            onValueChange={(itemValue, itemIndex) => setPlatform(itemValue)}
-                            items={[
-                                { label: `${t('settings.profile.platforms.pc')}`, value: 'pc' },
-                                { label: `${t('settings.profile.platforms.playstation')}`, value: 'playstaion' },
-                                { label: `${t('settings.profile.platforms.xbox')}`, value: 'xbox' },
-                                { label: `${t('settings.profile.platforms.android')}`, value: 'android' },
-                            ]}
-                        />
-                    </View>
-                    <View style={{ alignItems: 'center', width: '100%' }}>
-                        <BannerAd
-                            unitId={adUnitId}
-                            size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
-                            requestOptions={{
-                                requestNonPersonalizedAdsOnly: true,
-                            }}
-                        />
-                    </View>
-                    <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
-                        <Text style={styles.saveText}>{t('common.saveChanges')}</Text>
-                    </TouchableOpacity>
-                    {/* <TouchableOpacity title="Sign Out" onPress={handleSignOut} color="#d9534f"> */}
+      fetchUserData();
+    }
+  }, [currentUser]);
 
-                    {/* </TouchableOpacity> */}
-                </ScrollView>
-            )}
-        </SafeAreaView>
-    );
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "images permissions are required.",
+        "We need access to the images."
+      );
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
+  const uploadImage = async (uri) => {
+    if (!uri || !uri.startsWith("file://")) {
+      return uri;
+    }
+
+    // 1. إعداد FormData للرفع
+    const data = new FormData();
+    data.append("file", {
+      uri: uri,
+      type: `image/${uri.split(".").pop()}`,
+      name: `profile.${uri.split(".").pop()}`,
+    });
+    data.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    data.append("api_key", CLOUDINARY_API_KEY);
+
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+
+    try {
+      // 2. إرسال الطلب إلى Cloudinary
+      let response = await fetch(url, {
+        method: "POST",
+        body: data,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      let json = await response.json();
+
+      if (json.secure_url) {
+        return json.secure_url; // 3. إرجاع الرابط الآمن
+      } else {
+        console.error("❌ Cloudinary error:", json);
+        throw new Error("Image upload to Cloudinary failed.");
+      }
+    } catch (e) {
+      console.error("❌ Error uploading image:", e);
+      Alert.alert("Error", "Image upload failed.");
+      throw e;
+    }
+  };
+
+  const handleSave = async () => {
+    if (!currentUser) return;
+
+    setLoading(true);
+    try {
+      // رفع الصورة أولاً (لو اتغيرت)
+      const newPhotoURL = await uploadImage(imageUri);
+
+      // 1. تحديث ملف المصادقة (Auth) - بالاسم والصورة فقط
+      await currentUser.updateProfile({
+        displayName: name,
+        photoURL: newPhotoURL,
+      });
+
+      // 2. تحديث ملف Firestore (بكل البيانات)
+      await firestore().collection("users").doc(currentUser.uid).update({
+        displayName: name,
+        photoURL: newPhotoURL,
+        dob: dob,
+        platform: platform,
+      });
+
+      // تحديث الـ user state عشان يعكس التغييرات فوراً
+      setCurrentUser(auth().currentUser);
+
+      setLoading(false);
+      Alert.alert("Done!", "Your data has been successfully updated.");
+    } catch (error) {
+      setLoading(false);
+      console.error("❌ Error saving profile:", error);
+      Alert.alert("Error!", "The changes failed to save.");
+    }
+  };
+  const handleChange = (event, selectedDate) => {
+    setShowPicker(false);
+    if (selectedDate) {
+      const isoDate = selectedDate.toISOString().split("T")[0]; // YYYY-MM-DD
+      setDob(isoDate);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={["right", "left"]}>
+      {loading ? (
+        <Loading />
+      ) : (
+        <ScrollView style={styles.subContainer}>
+          <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
+            <Image
+              style={styles.avatar}
+              source={
+                imageUri
+                  ? { uri: imageUri }
+                  : require("../assets/default_profile.png")
+              }
+            />
+            <Text style={styles.changePicText}>
+              {t("settings.profile.changePic")}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.label}>{t("settings.profile.nameLabel")}</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={t("settings.profile.namePlaceholder")}
+            placeholderTextColor="#888"
+            value={name}
+            onChangeText={setName}
+          />
+          <Text style={styles.label}>{t("settings.profile.dobLabel")}</Text>
+          <TouchableOpacity onPress={() => setShowPicker(true)}>
+            <TextInput
+              style={styles.input}
+              placeholder={t("settings.profile.dobPlaceholder")}
+              placeholderTextColor="#888"
+              value={dob}
+              editable={false}
+            />
+          </TouchableOpacity>
+          {showPicker && (
+            <DateTimePicker
+              mode="date"
+              display={"default"}
+              value={dob ? new Date(dob) : new Date()}
+              onChange={handleChange}
+            />
+          )}
+          <Text style={styles.label}>
+            {t("settings.profile.platformLabel")}
+          </Text>
+          <View style={styles.selectWrapper}>
+            <RNPickerSelect
+              value={platform}
+              onValueChange={(itemValue, itemIndex) => setPlatform(itemValue)}
+              items={[
+                { label: `${t("settings.profile.platforms.pc")}`, value: "pc" },
+                {
+                  label: `${t("settings.profile.platforms.playstation")}`,
+                  value: "playstaion",
+                },
+                {
+                  label: `${t("settings.profile.platforms.xbox")}`,
+                  value: "xbox",
+                },
+                {
+                  label: `${t("settings.profile.platforms.android")}`,
+                  value: "android",
+                },
+              ]}
+            />
+          </View>
+          {showAds && (
+            <View style={styles.ad}>
+              <BannerAd
+                unitId={adUnitId}
+                size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+                requestOptions={{
+                  requestNonPersonalizedAdsOnly: true,
+                }}
+              />
+            </View>
+          )}
+          <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
+            <Text style={styles.saveText}>{t("common.saveChanges")}</Text>
+          </TouchableOpacity>
+          {/* <TouchableOpacity title="Sign Out" onPress={handleSignOut} color="#d9534f"> */}
+
+          {/* </TouchableOpacity> */}
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
 }
 
 export default ProfileScreen;
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.primary
-    },
-    subContainer: {
-        padding: 20,
-    },
-    avatarContainer: {
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    avatar: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: '#333',
-        borderWidth: 2,
-        borderColor: '#779bdd',
-    },
-    changePicText: {
-        color: '#779bdd',
-        marginTop: 10,
-        fontSize: 16,
-    },
-    input: {
-        width: '100%',
-        backgroundColor: "rgba(119, 155, 221, 0.2)",
-        color: '#fff',
-        padding: 15,
-        borderRadius: 5,
-        marginBottom: 20,
-        fontSize: 16,
-    },
-    separator: {
-        height: 40,
-    },
-    label: {
-        fontSize: 18,
-        fontWeight: "600",
-        marginBottom: 10,
-        color: "white",
-    },
-    selectWrapper: {
-        borderWidth: 1,
-        borderRadius: 8,
-        overflow: "hidden",
-        marginBottom: 20,
-        backgroundColor: "rgba(119, 155, 221, 0.2)",
-    },
-    saveBtn: {
-        backgroundColor: COLORS.secondary,
-        borderRadius: 12,
-        alignSelf: "center",
-        padding: 15
-    },
-    saveText: {
-        color: "#fff",
-        textAlign: "center",
-        fontSize: 18,
-        fontWeight: "600"
-    }
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+  },
+  subContainer: {
+    padding: 20,
+  },
+  avatarContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#333",
+    borderWidth: 2,
+    borderColor: "#779bdd",
+  },
+  changePicText: {
+    color: "#779bdd",
+    marginTop: 10,
+    fontSize: 16,
+  },
+  input: {
+    width: "100%",
+    backgroundColor: "rgba(119, 155, 221, 0.2)",
+    color: "#fff",
+    padding: 15,
+    borderRadius: 5,
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  separator: {
+    height: 40,
+  },
+  label: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 10,
+    color: "white",
+  },
+  selectWrapper: {
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+    marginBottom: 20,
+    backgroundColor: "rgba(119, 155, 221, 0.2)",
+  },
+  saveBtn: {
+    backgroundColor: COLORS.secondary,
+    borderRadius: 12,
+    alignSelf: "center",
+    padding: 15,
+    marginBottom: 70,
+  },
+  saveText: {
+    color: "#fff",
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  ad: {
+    alignItems: "center",
+    width: "100%",
+  },
 });

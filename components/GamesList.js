@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import Loading from "../Loading";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery } from "@tanstack/react-query";
+import SkeletonGameCard from "../skeleton/SkeletonGameCard";
 import COLORS from "../constants/colors";
 import { SERVER_URL } from "../constants/config";
 
@@ -52,7 +52,7 @@ function getRatingColor(rating) {
 
 const generateCacheKey = (type, value) => `games_cache:${type}:${value}`;
 
-export default function GamesList({ endpoint, query }) {
+export default function GamesList({ endpoint, query, header }) {
   const navigation = useNavigation();
   const { t } = useTranslation();
   const {
@@ -218,17 +218,29 @@ export default function GamesList({ endpoint, query }) {
       </TouchableOpacity>
     );
   };
-
-  // change headerText (Title) based on props
-  const headerText = endpoint
-    ? formatPath(endpoint)
-    : query
-    ? `${t("games.list.searchResults")}`
-    : null;
-
+  const skeletons = Array.from({ length: 5 }).map((_, index) => ({
+    id: index,
+  }));
   return (
     <View style={styles.container}>
-      {isLoading && <Loading />}
+      {isLoading && (
+        <View style={styles.container}>
+          <FlatList
+            data={skeletons}
+            horizontal={!!endpoint} // نفس منطق العرض (أفقي أو عمودي)
+            numColumns={query ? 2 : 1}
+            key={query ? "skeleton-grid" : "skeleton-list"}
+            renderItem={() => <SkeletonGameCard />}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingVertical: 12,
+              paddingHorizontal: 5,
+              // محاكاة نفس الـ styling للقائمة الأصلية
+              ...(query && { alignItems: "center", paddingBottom: 320 }),
+            }}
+          />
+        </View>
+      )}
 
       {error && <Text style={styles.error}>{error}</Text>}
 
@@ -238,7 +250,7 @@ export default function GamesList({ endpoint, query }) {
 
       {!isLoading && !error && games.length > 0 && (
         <>
-          <Text style={styles.header}>{headerText}</Text>
+          <Text style={styles.header}>{header}</Text>
           <FlatList
             data={games}
             horizontal={!!endpoint}
@@ -250,7 +262,7 @@ export default function GamesList({ endpoint, query }) {
             contentContainerStyle={{
               paddingVertical: 12,
               paddingHorizontal: 5,
-              ...(query && { alignItems: "center", paddingBottom: 340 }),
+              ...(query && { alignItems: "center", paddingBottom: 320 }),
             }}
           />
         </>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   FlatList,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,6 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
+import Loading from "../Loading";
 import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
 
@@ -150,13 +150,9 @@ function UserGamesScreen({ route, navigation }) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
       {loading ? (
-        <ActivityIndicator
-          size="large"
-          color="#779bdd"
-          style={{ marginTop: 50 }}
-        />
+        <Loading />
       ) : (
         <FlatList
           data={games}
@@ -212,7 +208,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "rgba(119, 155, 221, 0.1)",
     borderRadius: 12,
-    marginBottom: 12,
+    marginTop: 24,
     padding: 10,
     alignItems: "center",
   },

@@ -7,21 +7,27 @@ import {
   Linking,
   Modal,
   TouchableOpacity,
+  InteractionManager,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import {
-  BannerAd,
-  BannerAdSize,
-  TestIds,
-} from "react-native-google-mobile-ads";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import { useEffect, useState } from "react";
 import COLORS from "../constants/colors";
+import { adUnitId } from "../constants/config";
 
 function NewsDetails({ article, visible, onClose }) {
   const { t } = useTranslation();
-  const adUnitId = __DEV__
-    ? TestIds.BANNER
-    : "ca-app-pub-4635812020796700~2053599689";
+  const [showAds, setShowAds] = useState(false);
+
+  useEffect(() => {
+    // activate ads after the list loads
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowAds(true);
+    });
+    return () => task.cancel();
+  }, []);
+
   return (
     <Modal
       animationType="slide"
@@ -78,15 +84,17 @@ function NewsDetails({ article, visible, onClose }) {
               </Text>
             )}
           </View>
-          <View style={styles.ad}>
-            <BannerAd
-              unitId={adUnitId}
-              size={BannerAdSize.MEDIUM_RECTANGLE}
-              requestOptions={{
-                requestNonPersonalizedAdsOnly: true,
-              }}
-            />
-          </View>
+          {showAds && (
+            <View style={styles.ad}>
+              <BannerAd
+                unitId={adUnitId}
+                size={BannerAdSize.MEDIUM_RECTANGLE}
+                requestOptions={{
+                  requestNonPersonalizedAdsOnly: true,
+                }}
+              />
+            </View>
+          )}
           <TouchableOpacity
             style={styles.button}
             android_ripple={{ color: "#779bdd" }}
