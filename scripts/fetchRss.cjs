@@ -107,11 +107,19 @@ async function fetchFeed(url) {
   try {
     const res = await axios.get(url, {
       timeout: CONFIG.AXIOS_TIMEOUT,
-      headers: { "User-Agent": CONFIG.USER_AGENT },
+      maxRedirects: 10, // زيادة عدد مرات إعادة التوجيه المسموح بها
+      headers: {
+        "User-Agent": CONFIG.USER_AGENT,
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        Referer: "https://www.google.com/",
+      },
     });
     return await parser.parseStringPromise(res.data);
   } catch (error) {
-    throw new Error(`Fetch failed: ${error.message}`);
+    const status = error.response ? error.response.status : "N/A";
+    throw new Error(`Fetch failed: ${error.message} (Status: ${status})`);
   }
 }
 
