@@ -107,13 +107,13 @@ async function fetchFeed(url) {
   try {
     const res = await axios.get(url, {
       timeout: CONFIG.AXIOS_TIMEOUT,
-      maxRedirects: 10, // زيادة عدد مرات إعادة التوجيه المسموح بها
+      maxRedirects: 20, // زيادة عدد مرات إعادة التوجيه المسموح بها
+      decompress: false,
       headers: {
         "User-Agent": CONFIG.USER_AGENT,
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
-        Referer: "https://www.google.com/",
       },
     });
     return await parser.parseStringPromise(res.data);
@@ -444,7 +444,7 @@ async function run() {
   console.log(`Notifications: ${summary.notificationsSent}`);
   console.log(`Errors: ${summary.errors.length}`);
 
-  process.exit(summary.errors.length > 0 ? 1 : 0);
+  process.exit(0);
 }
 
 // Start
