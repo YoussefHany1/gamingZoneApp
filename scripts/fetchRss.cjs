@@ -108,12 +108,10 @@ async function fetchFeed(url) {
     const res = await axios.get(url, {
       timeout: CONFIG.AXIOS_TIMEOUT,
       maxRedirects: 20, // زيادة عدد مرات إعادة التوجيه المسموح بها
-      decompress: false,
       headers: {
         "User-Agent": CONFIG.USER_AGENT,
         Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
+          "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
       },
     });
     return await parser.parseStringPromise(res.data);
