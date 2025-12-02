@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useWindowDimensions, StyleSheet, View } from "react-native";
+import { useState, useEffect, useCallback, useMemo } from "react"; // 1. إضافة useMemo
+import { useWindowDimensions, StyleSheet, View, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TabView, TabBar } from "react-native-tab-view";
 import LatestNews from "../components/LatestNews.js";
@@ -7,9 +7,9 @@ import Loading from "../Loading.js";
 import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
 import useRssFeeds from "../hooks/useRssFeeds";
-import SkeletonDropdown from "../skeleton/SkeletonDropdown";
 
 function normalized(input) {
+  if (!input) return "";
   return input
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
@@ -17,86 +17,53 @@ function normalized(input) {
     .toLowerCase();
 }
 
-const NewsRoute = ({ rssFeeds }) => {
-  const [selected, setSelected] = useState(rssFeeds.news?.[0]);
-  // console.log("NewsRoute selected:", selected);
+// دالة موحدة لكل التبويبات
+const GenericNewsRoute = ({ rssFeeds, categoryKey }) => {
+  // --- بداية التعديل: ترتيب وفصل المصادر ---
+  const feedList = useMemo(() => {
+    const list = rssFeeds[categoryKey] || [];
+
+    // 1. فصل المجموعات
+    const arList = list.filter((item) => item.language === "ar");
+    const enList = list.filter((item) => item.language !== "ar"); // أي لغة أخرى نعتبرها إنجليزي أو أجنبي
+
+    // 2. الترتيب الأبجدي لكل مجموعة
+    arList.sort((a, b) => a.name.localeCompare(b.name, "ar"));
+    enList.sort((a, b) => a.name.localeCompare(b.name, "en"));
+
+    // 3. الدمج: هنا نضع العربي أولاً ثم الإنجليزي (يمكنك عكس الترتيب بتبديلهم)
+    return [...arList, ...enList];
+  }, [rssFeeds, categoryKey]);
+  // --- نهاية التعديل ---
+
+  const [selected, setSelected] = useState(feedList?.[0]);
+
   useEffect(() => {
-    if (!selected && rssFeeds.news?.length > 0) {
-      setSelected(rssFeeds.news[0]);
+    // التأكد من أن العنصر المختار موجود في القائمة الجديدة، وإلا اختر الأول
+    if (
+      (!selected || !feedList.find((f) => f.name === selected.name)) &&
+      feedList?.length > 0
+    ) {
+      setSelected(feedList[0]);
     }
-  }, [rssFeeds.news, selected]);
+  }, [feedList, selected]);
+
+  if (!selected) {
+    return (
+      <View style={styles.scene}>
+        <Loading />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.scene}>
       <LatestNews
         website={normalized(selected?.name || "")}
-        category="news"
+        category={categoryKey}
         selectedItem={selected}
         language={selected?.language}
-        websitesList={rssFeeds.news}
-        onChangeFeed={(item) => setSelected(item)}
-      />
-    </View>
-  );
-};
-
-const ReviewsRoute = ({ rssFeeds }) => {
-  const [selected, setSelected] = useState(rssFeeds.reviews?.[0]);
-  useEffect(() => {
-    if (!selected && rssFeeds.reviews?.length > 0) {
-      setSelected(rssFeeds.reviews[0]);
-    }
-  }, [rssFeeds.reviews, selected]);
-  return (
-    <View style={styles.scene}>
-      <LatestNews
-        website={normalized(selected?.name || "")}
-        category="reviews"
-        selectedItem={selected}
-        language={selected?.language}
-        websitesList={rssFeeds.reviews}
-        onChangeFeed={(item) => setSelected(item)}
-      />
-    </View>
-  );
-};
-
-const EsportsRoute = ({ rssFeeds }) => {
-  const [selected, setSelected] = useState(rssFeeds.esports?.[0]);
-  useEffect(() => {
-    if (!selected && rssFeeds.esports?.length > 0) {
-      setSelected(rssFeeds.esports[0]);
-    }
-  }, [rssFeeds.esports, selected]);
-  return (
-    <View style={styles.scene}>
-      <LatestNews
-        website={normalized(selected?.name || "")}
-        category="esports"
-        selectedItem={selected}
-        language={selected?.language}
-        websitesList={rssFeeds.esports}
-        onChangeFeed={(item) => setSelected(item)}
-      />
-    </View>
-  );
-};
-
-const HardwareRoute = ({ rssFeeds }) => {
-  const [selected, setSelected] = useState(rssFeeds.hardware?.[0]);
-  useEffect(() => {
-    if (!selected && rssFeeds.hardware?.length > 0) {
-      setSelected(rssFeeds.hardware[0]);
-    }
-  }, [rssFeeds.hardware, selected]);
-  return (
-    <View style={styles.scene}>
-      <LatestNews
-        website={normalized(selected?.name || "")}
-        category="hardware"
-        selectedItem={selected}
-        language={selected?.language}
-        websitesList={rssFeeds.hardware}
+        websitesList={feedList} // هنا نمرر القائمة المرتبة والمقسمة
         onChangeFeed={(item) => setSelected(item)}
       />
     </View>
@@ -108,35 +75,34 @@ export default function TabViewExample() {
   const layout = useWindowDimensions();
   const [index, setIndex] = useState(0);
 
-  const { rssFeeds, loading } = useRssFeeds();
+  const { rssFeeds } = useRssFeeds();
+
   const [routes] = useState([
-    { key: "news", title: `${t("news.tabs.news")}` },
-    { key: "reviews", title: `${t("news.tabs.reviews")}` },
-    { key: "esports", title: `${t("news.tabs.esports")}` },
-    { key: "hardware", title: `${t("news.tabs.hardware")}` },
+    { key: "news", title: t("news.tabs.news") || "News" },
+    { key: "reviews", title: t("news.tabs.reviews") || "Reviews" },
+    { key: "esports", title: t("news.tabs.esports") || "Esports" },
+    { key: "hardware", title: t("news.tabs.hardware") || "Hardware" },
   ]);
 
-  // ✅ 3. لازم نغير SceneMap علشان نقدر نمرر الـ props
   const renderScene = useCallback(
     ({ route }) => {
       switch (route.key) {
         case "news":
-          return <NewsRoute rssFeeds={rssFeeds} />;
+          return <GenericNewsRoute rssFeeds={rssFeeds} categoryKey="news" />;
         case "reviews":
-          return <ReviewsRoute rssFeeds={rssFeeds} />;
+          return <GenericNewsRoute rssFeeds={rssFeeds} categoryKey="reviews" />;
         case "esports":
-          return <EsportsRoute rssFeeds={rssFeeds} />;
+          return <GenericNewsRoute rssFeeds={rssFeeds} categoryKey="esports" />;
         case "hardware":
-          return <HardwareRoute rssFeeds={rssFeeds} />;
+          return (
+            <GenericNewsRoute rssFeeds={rssFeeds} categoryKey="hardware" />
+          );
         default:
           return null;
       }
     },
     [rssFeeds]
   );
-  // if (loading) {
-  //   return <SkeletonDropdown />;
-  // }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
@@ -171,9 +137,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
-  },
-  sceneSub: {
-    // marginTop: 30,
   },
   tabBar: {
     backgroundColor: COLORS.darkBackground,

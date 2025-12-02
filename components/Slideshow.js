@@ -2,13 +2,13 @@ import { Linking, Text, StyleSheet, Image, Pressable } from "react-native";
 import Swiper from "react-native-swiper";
 import { LinearGradient } from "expo-linear-gradient";
 import useFeed from "../hooks/useFeed";
-import SlideshowSkeleton from "../skeleton/SlideshowSkeleton";
+import SkeletonSlideshow from "../skeleton/SkeletonSlideshow";
 import COLORS from "../constants/colors";
 
 function Slideshow({ website, category }) {
   const { articles, loading, error } = useFeed(category, website);
 
-  if (loading) return <SlideshowSkeleton />;
+  if (loading) return <SkeletonSlideshow />;
   if (error) return <Text>Error: {error.message}</Text>;
   return (
     <>

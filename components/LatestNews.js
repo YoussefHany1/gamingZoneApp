@@ -1,3 +1,4 @@
+import React, { useState, useCallback, memo } from "react";
 import {
   View,
   Text,
@@ -12,7 +13,6 @@ import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
 import SkeletonNewsItem from "../skeleton/SkeletonNewsItem";
 import NewsDetails from "../screens/NewsDetailsScreen";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
 import { adUnitId } from "../constants/config";
@@ -27,100 +27,109 @@ function LatestNews({
   showDropdown,
   websitesList,
 }) {
-  // ✅ تعديل 1: تغيير إدارة الحالة (Modal)
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState(null);
-
+  const { t } = useTranslation();
   const feedCategory = typeof category !== "undefined" ? category : undefined;
   const feedWebsite =
     typeof website !== "undefined" && website !== null && website !== ""
       ? website
       : undefined;
+
   const { articles, loading, error, isFetching, refetch } = useFeed(
     feedCategory,
     feedWebsite
   );
-  const { t } = useTranslation();
-  const listData =
-    typeof limit === "number" ? articles.slice(0, limit) : articles;
+  let filteredArticles = articles;
+  if ((!websitesList || websitesList.length === 0) && language) {
+    filteredArticles = articles.filter((item) => item.language === language);
+  }
 
-  function fromSnakeCase(input) {
+  const listData =
+    typeof limit === "number"
+      ? filteredArticles.slice(0, limit)
+      : filteredArticles;
+
+  const handlePressArticle = useCallback((item) => {
+    setSelectedArticle(item);
+    setModalVisible(true);
+  }, []);
+
+  // دالة مساعدة لتنسيق الاسم
+  const fromSnakeCase = (input) => {
+    if (!input) return "";
     return input
       .split("_")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
-  }
-
-  // دالة لفتح الخبر
-  const handlePressArticle = (item) => {
-    setSelectedArticle(item);
-    setModalVisible(true);
   };
 
-  const renderItem = ({ item, index }) => {
-    const siteLabel = item?.siteName || website || "";
-    // حساب الإعلان
-    const shouldShowAd = (index + 1) % 10 === 0;
+  // ✅ 1. تحسين الأداء: استخدام useCallback لمنع إعادة إنشاء الدالة وتدمير الإعلانات
+  const renderItem = useCallback(
+    ({ item, index }) => {
+      const siteLabel = item?.siteName || website || "";
+      const shouldShowAd = (index + 1) % 10 === 0;
 
-    return (
-      <View
-        style={[
-          styles.container,
-          language === "ar" ? { direction: "rtl" } : { direction: "ltr" },
-        ]}
-      >
-        <TouchableOpacity
-          style={[styles.NewsContainer]}
-          android_ripple={{ color: COLORS.secondary }}
-          onPress={() => handlePressArticle(item)}
+      return (
+        <View
+          style={[
+            styles.container,
+            language === "ar" ? { direction: "rtl" } : { direction: "ltr" },
+          ]}
         >
-          <View style={styles.textContainer}>
-            <Text
-              style={[
-                styles.headline,
-                language === "ar" ? { marginLeft: 8 } : { marginRight: 8 },
-              ]}
-            >
-              {item.title.substring(0, 100)}
-            </Text>
-            {item.description &&
-            item.description !== undefined &&
-            item.description !== null &&
-            item.description !== "" ? (
-              <Text numberOfLines={2} style={styles.par}>
-                {item.description}..
+          <TouchableOpacity
+            style={[styles.NewsContainer]}
+            android_ripple={{ color: COLORS.secondary }}
+            onPress={() => handlePressArticle(item)}
+          >
+            <View style={styles.textContainer}>
+              <Text
+                style={[
+                  styles.headline,
+                  language === "ar" ? { marginLeft: 8 } : { marginRight: 8 },
+                ]}
+              >
+                {item.title ? item.title.substring(0, 100) : ""}
               </Text>
-            ) : null}
-          </View>
+              {item.description ? (
+                <Text numberOfLines={2} style={styles.par}>
+                  {item.description}..
+                </Text>
+              ) : null}
+            </View>
 
-          <View>
-            <Image
-              style={styles.thumbnail}
-              source={
-                item.thumbnail
-                  ? { uri: item.thumbnail }
-                  : require("../assets/image-not-found.webp")
-              }
-            />
-            <Text style={styles.website}>{fromSnakeCase(siteLabel)}</Text>
-          </View>
-        </TouchableOpacity>
-        {shouldShowAd && (
-          <View style={styles.ad}>
-            <BannerAd
-              unitId={adUnitId}
-              size={BannerAdSize.MEDIUM_RECTANGLE}
-              requestOptions={{
-                requestNonPersonalizedAdsOnly: true,
-              }}
-            />
-          </View>
-        )}
-      </View>
-    );
-  };
+            <View>
+              <Image
+                style={styles.thumbnail}
+                source={
+                  item.thumbnail
+                    ? { uri: item.thumbnail }
+                    : require("../assets/image-not-found.webp")
+                }
+              />
+              <Text style={styles.website}>{fromSnakeCase(siteLabel)}</Text>
+            </View>
+          </TouchableOpacity>
+          {shouldShowAd && (
+            <View style={styles.ad}>
+              <BannerAd
+                key={`ad-${index}`}
+                unitId={adUnitId}
+                size={BannerAdSize.MEDIUM_RECTANGLE}
+                requestOptions={{
+                  requestNonPersonalizedAdsOnly: true,
+                }}
+              />
+            </View>
+          )}
+        </View>
+      );
+    },
+    [language, website, handlePressArticle]
+  );
 
-  const renderHeader = () => {
+  // ✅ 2. تحسين الأداء: تثبيت الهيدر أيضاً
+  const renderHeader = useCallback(() => {
     const translatedCategory = t(`news.tabs.${category.toLowerCase()}`);
     return (
       <>
@@ -141,11 +150,11 @@ function LatestNews({
         )}
       </>
     );
-  };
+  }, [category, t, showDropdown, selectedItem, websitesList, onChangeFeed]);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     refetch();
-  };
+  }, [refetch]);
 
   if (loading) {
     return (
@@ -159,9 +168,10 @@ function LatestNews({
       </View>
     );
   }
+
   if (error)
     return (
-      <Text style={{ color: "white", textAlign: "center" }}>
+      <Text style={{ color: "white", textAlign: "center", marginTop: 20 }}>
         Error: {error.message}, please try again later
       </Text>
     );
@@ -171,7 +181,9 @@ function LatestNews({
       <FlatList
         data={listData}
         renderItem={renderItem}
-        keyExtractor={(item, index) => item.id || index.toString()}
+        keyExtractor={(item, index) =>
+          item.id ? `${item.id}-${index}` : index.toString()
+        }
         ListHeaderComponent={renderHeader}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -181,10 +193,10 @@ function LatestNews({
             tintColor={COLORS.secondary}
           />
         }
-        removeClippedSubviews={true}
-        initialNumToRender={5}
-        maxToRenderPerBatch={10}
-        windowSize={10}
+        removeClippedSubviews={true} // مهم للأداء
+        initialNumToRender={5} // تقليل العدد الأولي
+        maxToRenderPerBatch={5} // تقليل الدفعات
+        windowSize={5} // ✅ تقليل حجم النافذة في الذاكرة (الحل السحري لمشاكل الذاكرة)
       />
 
       {selectedArticle && (
@@ -193,7 +205,6 @@ function LatestNews({
           visible={modalVisible}
           onClose={() => {
             setModalVisible(false);
-            // اختياري: تأخير تصفير المقال قليلاً لتجنب وميض أثناء إغلاق المودال
             setTimeout(() => setSelectedArticle(null), 300);
           }}
         />
@@ -201,7 +212,7 @@ function LatestNews({
     </View>
   );
 }
-export default LatestNews;
+export default memo(LatestNews);
 
 const styles = StyleSheet.create({
   container: {

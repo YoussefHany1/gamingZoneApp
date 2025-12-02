@@ -7,13 +7,16 @@ import {
   Image,
   TouchableOpacity,
   Alert,
+  InteractionManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
-import Loading from "../Loading";
+import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import { adUnitId } from "../constants/config";
+import UserGamesSkeleton from "../skeleton/SkeletonUserGames";
 import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
 
@@ -53,13 +56,23 @@ function UserGamesScreen({ route, navigation }) {
   const { collection } = route.params;
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAds, setShowAds] = useState(false);
   const currentUser = auth().currentUser;
   const mountedRef = useRef(true);
   const { t } = useTranslation();
+
+  // تفعيل الإعلانات بعد تحميل القائمة
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowAds(true);
+    });
+    return () => task.cancel();
+  }, []);
+
   useEffect(() => {
     mountedRef.current = true;
     if (!currentUser) {
-      setLoading(false);
+      setLoading(true);
       // يمكنك عرض رسالة للمستخدم بأنه يجب تسجيل الدخول
       return;
     }
@@ -78,12 +91,12 @@ function UserGamesScreen({ route, navigation }) {
           gamesList.push({ ...doc.data(), id: doc.id });
         });
         setGames(gamesList);
-        setLoading(false);
+        setLoading(true);
       },
       (error) => {
         console.error("Error fetching want list: ", error);
         if (mountedRef.current) {
-          setLoading(false);
+          setLoading(true);
         }
         Alert.alert(
           "Error",
@@ -152,13 +165,40 @@ function UserGamesScreen({ route, navigation }) {
   return (
     <SafeAreaView style={styles.container} edges={["left", "right"]}>
       {loading ? (
-        <Loading />
+        <UserGamesSkeleton />
       ) : (
         <FlatList
           data={games}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => (
-            <GameItem game={item} onRemove={handleRemoveGame} />
+          renderItem={({ item, index }) => (
+            <>
+              {/* عرض اللعبة */}
+              <GameItem game={item} onRemove={handleRemoveGame} />
+
+              {/* شرط ظهور الإعلان: إذا كان الترتيب يقبل القسمة على 4 */}
+              {showAds && // 1. نتحقق أولاً أن الإعلانات مفعلة بشكل عام
+                ((index + 1) % 4 === 0 || // 2. إما يظهر كل 4 عناصر
+                  (games.length < 4 && index === games.length - 1)) && ( // 3. أو يظهر في نهاية القائمة القصيرة
+                  <View style={styles.ad}>
+                    <Text
+                      style={{
+                        color: "white",
+                        textAlign: "center",
+                        marginBottom: 5,
+                      }}
+                    >
+                      Ad
+                    </Text>
+                    <BannerAd
+                      unitId={adUnitId}
+                      size={BannerAdSize.MEDIUM_RECTANGLE}
+                      requestOptions={{
+                        requestNonPersonalizedAdsOnly: true,
+                      }}
+                    />
+                  </View>
+                )}
+            </>
           )}
           ListEmptyComponent={renderEmptyList}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
@@ -234,6 +274,11 @@ const styles = StyleSheet.create({
   removeButton: {
     padding: 8,
     marginLeft: 8,
+  },
+  ad: {
+    alignItems: "center",
+    width: "100%",
+    marginVertical: 55,
   },
 });
 

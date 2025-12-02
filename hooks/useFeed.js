@@ -7,6 +7,7 @@ import {
   orderBy,
   where,
   onSnapshot,
+  limit,
 } from "@react-native-firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -66,7 +67,7 @@ export default function useFeed(category, siteName) {
         "posts"
       );
 
-      q = query(postsCollectionRef, orderBy("pubDate", "desc"));
+      q = query(postsCollectionRef, orderBy("pubDate", "desc"), limit(30));
     }
 
     // ✅ الحالة 2: فيه category بس ومفيش siteName → كل المواقع في الكاتيجوري ده

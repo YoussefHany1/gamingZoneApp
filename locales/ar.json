@@ -58,8 +58,7 @@
         "titles": {
             "notificationSettings": "إعدادات الإشعارات",
             "accountSettings": "إعدادات الحساب",
-            "wantList": "قائمة الرغبات",
-            "playedList": "قائمة ما تم لعبه"
+            "gamesList": "قائمة ألعابي"
         }
     },
     "home": {
@@ -86,6 +85,10 @@
             "noDescription": "لا يوجد وصف متاح الأن"
         },
         "dropdown": {
+                        "selectSource": "اختر مصدرًا",
+            "cancel":"إلغاء",
+            "arabicSources": "مصادر عربية",
+            "englishSources": "مصادر إنجليزية",
             "visitWebsite": "زيارة الموقع"
         }
     },

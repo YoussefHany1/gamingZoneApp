@@ -54,10 +54,9 @@ const useRssFeeds = () => {
 
     return () => {
       isMounted = false;
-      subscriber(); // إيقاف الاستماع عند الخروج
+      subscriber();
     };
   }, []);
-
   return { rssFeeds, loading };
 };
 

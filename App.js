@@ -111,7 +111,7 @@ function SettingsStack() {
       <Stack.Screen
         name="UserGamesScreen"
         component={UserGamesScreen}
-        options={{ title: t("navigation.titles.wantList") }}
+        options={{ title: t("navigation.titles.gamesList") }}
       />
       <Stack.Screen
         name="LanguageScreen"

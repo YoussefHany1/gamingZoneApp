@@ -6,6 +6,7 @@ import {
   ScrollView,
   Switch,
   TouchableOpacity,
+  InteractionManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Loading from "../Loading";
@@ -22,7 +23,16 @@ import COLORS from "../constants/colors";
 const Notification = () => {
   const { rssFeeds, loading: loadingRss } = useRssFeeds();
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [showAds, setShowAds] = useState(false);
   const { t } = useTranslation();
+
+  // تفعيل الإعلانات بعد تحميل القائمة
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowAds(true);
+    });
+    return () => task.cancel();
+  }, []);
 
   const { preferences, loadingPreferences, toggleSource, setPreferences } =
     useNotificationPreferences();
@@ -204,16 +214,17 @@ const Notification = () => {
         {renderCategorySection("reviews", "Reviews")}
         {renderCategorySection("esports", "Esports")}
         {renderCategorySection("hardware", "Hardware")}
-
-        <View style={{ alignItems: "center", width: "100%" }}>
-          <BannerAd
-            unitId={adUnitId}
-            size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
-            requestOptions={{
-              requestNonPersonalizedAdsOnly: true,
-            }}
-          />
-        </View>
+        {showAds && (
+          <View style={styles.ad}>
+            <BannerAd
+              unitId={adUnitId}
+              size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+              requestOptions={{
+                requestNonPersonalizedAdsOnly: true,
+              }}
+            />
+          </View>
+        )}
 
         <View style={styles.footer}>
           <TouchableOpacity
@@ -360,6 +371,11 @@ const styles = StyleSheet.create({
     top: 50,
     left: 10,
     zIndex: 1000,
+  },
+  ad: {
+    alignItems: "center",
+    width: "100%",
+    marginVertical: 55,
   },
 });
 

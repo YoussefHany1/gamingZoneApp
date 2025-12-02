@@ -40,7 +40,6 @@ const DropdownSkeleton = () => {
   );
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.header}>latest news</Text>
       {/* محاكاة صندوق الاختيار */}
       <View
         style={[
@@ -139,19 +138,6 @@ const styles = StyleSheet.create({
     // flex: 1,
     alignItems: "center",
     paddingBottom: 20,
-  },
-  header: {
-    textAlign: "center",
-    alignSelf: "center",
-    fontSize: 28,
-    fontWeight: "bold",
-    backgroundColor: COLORS.secondary,
-    paddingHorizontal: 80,
-    paddingVertical: 10,
-    marginBottom: 30,
-    marginTop: 20,
-    borderRadius: 16,
-    color: "white",
   },
   pickerContainer: {
     borderWidth: 1,

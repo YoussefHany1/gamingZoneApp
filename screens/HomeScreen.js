@@ -11,12 +11,14 @@ import Slideshow from "../components/Slideshow";
 import LatestNews from "../components/LatestNews";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
 import { adUnitId } from "../constants/config";
 
 function Home() {
   const [showAds, setShowAds] = useState(false);
-
+  const { i18n } = useTranslation();
+  const currentLang = i18n.language;
   useEffect(() => {
     // تفعيل الإعلانات بعد تحميل القائمة
     const task = InteractionManager.runAfterInteractions(() => {
@@ -52,6 +54,7 @@ function Home() {
             category={item.category}
             limit={item.limit}
             showDropdown={false}
+            language={currentLang}
           />
         );
 

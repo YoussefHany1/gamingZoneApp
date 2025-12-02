@@ -13,7 +13,8 @@ const CONFIG = {
   BATCH_SIZE: 400, // حجم الدفعة للكتابة في Firestore
   RECENT_IDS_LIMIT: 30, // عدد المعرفات المحفوظة في مستند المصدر لمنع التكرار
   AXIOS_TIMEOUT: 20000,
-  USER_AGENT: "RSS-Fetcher/2.0 (+mailto:youssefhany.2005.yh@gmail.com)",
+  USER_AGENT:
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
 };
 
 // --- INITIALIZATION ---
@@ -164,9 +165,23 @@ async function sendNotifications(articles, summary) {
     const chunk = articles.slice(i, i + BATCH_SIZE);
     const promises = chunk.map(async (article) => {
       const imageLink = article.thumbnail || "";
+      const isValidUrl = (url) => {
+        try {
+          return (
+            Boolean(new URL(url)) &&
+            (url.startsWith("http://") || url.startsWith("https://"))
+          );
+        } catch (e) {
+          return false;
+        }
+      };
+
+      if (!isValidUrl(imageLink)) {
+        imageLink = "";
+      }
       const safeSiteName = safeId(article.siteName);
       const safeCategory = safeId(article.category);
-      const topicName = `${safeCategory}_${safeSiteName}`;
+      // const topicName = `${safeCategory}_${safeSiteName}`;
 
       const message = {
         topic: article.topicName,

@@ -17,7 +17,7 @@ import COLORS from "../constants/colors";
 import { adUnitId } from "../constants/config";
 
 function LanguageSelect() {
-  const { t, i18n } = useTranslation(); // <--- تفعيل الترجمة والوصول للكائن i18n
+  const { i18n } = useTranslation();
   const [showAds, setShowAds] = useState(false);
 
   // 3. تفعيل الإعلانات بعد انتهاء تحميل الواجهة الأساسية

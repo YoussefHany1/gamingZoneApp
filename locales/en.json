@@ -58,8 +58,7 @@
         "titles": {
             "notificationSettings": "Notification Settings",
             "accountSettings": "Account Settings",
-            "wantList": "Want List",
-            "playedList": "Played List"
+            "gamesList": "My Games List"
         }
     },
     "home": {
@@ -86,6 +85,10 @@
             "noDescription": "No description available here"
         },
         "dropdown": {
+            "selectSource": "Select a Source",
+            "cancel":"Cancel",
+                        "englishSources": "English Sources",
+            "arabicSources": "Arabic Sources",
             "visitWebsite": "Visit Website"
         }
     },

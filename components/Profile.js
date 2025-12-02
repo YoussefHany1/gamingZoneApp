@@ -15,7 +15,7 @@ import auth from "@react-native-firebase/auth";
 import * as ImagePicker from "expo-image-picker";
 import firestore from "@react-native-firebase/firestore";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import RNPickerSelect from "react-native-picker-select";
+import { Picker } from "@react-native-picker/picker";
 import Loading from "../Loading";
 import { useTranslation } from "react-i18next";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
@@ -233,28 +233,33 @@ function ProfileScreen() {
             {t("settings.profile.platformLabel")}
           </Text>
           <View style={styles.selectWrapper}>
-            <RNPickerSelect
-              value={platform}
+            <Picker
+              selectedValue={platform}
               onValueChange={(itemValue, itemIndex) => setPlatform(itemValue)}
-              items={[
-                { label: `${t("settings.profile.platforms.pc")}`, value: "pc" },
-                {
-                  label: `${t("settings.profile.platforms.playstation")}`,
-                  value: "playstaion",
-                },
-                {
-                  label: `${t("settings.profile.platforms.xbox")}`,
-                  value: "xbox",
-                },
-                {
-                  label: `${t("settings.profile.platforms.android")}`,
-                  value: "android",
-                },
-              ]}
-            />
+              dropdownIconColor="white" // لون السهم للأندرويد
+              style={styles.picker} // تنسيق البوكس
+              mode="dropdown" // (Android only) يجعلها قائمة منسدلة
+            >
+              <Picker.Item
+                label={t("settings.profile.platforms.pc")}
+                value="pc"
+              />
+              <Picker.Item
+                label={t("settings.profile.platforms.playstation")}
+                value="playstaion"
+              />
+              <Picker.Item
+                label={t("settings.profile.platforms.xbox")}
+                value="xbox"
+              />
+              <Picker.Item
+                label={t("settings.profile.platforms.android")}
+                value="android"
+              />
+            </Picker>
           </View>
-          {showAds && (
-            <View style={styles.ad}>
+          <View style={styles.ad}>
+            {showAds && (
               <BannerAd
                 unitId={adUnitId}
                 size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
@@ -262,14 +267,11 @@ function ProfileScreen() {
                   requestNonPersonalizedAdsOnly: true,
                 }}
               />
-            </View>
-          )}
+            )}
+          </View>
           <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
             <Text style={styles.saveText}>{t("common.saveChanges")}</Text>
           </TouchableOpacity>
-          {/* <TouchableOpacity title="Sign Out" onPress={handleSignOut} color="#d9534f"> */}
-
-          {/* </TouchableOpacity> */}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -305,7 +307,7 @@ const styles = StyleSheet.create({
   },
   input: {
     width: "100%",
-    backgroundColor: "rgba(119, 155, 221, 0.2)",
+    backgroundColor: COLORS.button,
     color: "#fff",
     padding: 15,
     borderRadius: 5,
@@ -324,9 +326,10 @@ const styles = StyleSheet.create({
   selectWrapper: {
     borderWidth: 1,
     borderRadius: 8,
-    overflow: "hidden",
-    marginBottom: 20,
-    backgroundColor: "rgba(119, 155, 221, 0.2)",
+    backgroundColor: COLORS.button,
+  },
+  picker: {
+    marginLeft: 8,
   },
   saveBtn: {
     backgroundColor: COLORS.secondary,
@@ -344,5 +347,6 @@ const styles = StyleSheet.create({
   ad: {
     alignItems: "center",
     width: "100%",
+    marginVertical: 30,
   },
 });
