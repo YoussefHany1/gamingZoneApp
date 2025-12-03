@@ -2,7 +2,7 @@ name: RSS fetch and write to Firestore
 
 on:
   schedule:
-    - cron: "*/30 * * * *" # every 5 minutes
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:

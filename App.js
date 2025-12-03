@@ -134,39 +134,60 @@ function SettingsStack() {
 
 function MainAppTabs() {
   const { t } = useTranslation();
+  const [showAds, setShowAds] = useState(false);
 
+  useEffect(() => {
+    // تفعيل الإعلانات بعد تحميل القائمة
+    const task = InteractionManager.runAfterInteractions(() => {
+      setShowAds(true);
+    });
+    return () => task.cancel();
+  }, []);
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: COLORS.darkBackground,
-          borderWidth: 0,
-          borderTopWidth: 0,
-          paddingTop: 5,
-          alignItems: "center",
-        },
-        tabBarActiveTintColor: "#779bdd",
-        tabBarInactiveTintColor: "#779bdd",
-        tabBarLabel: t(`navigation.tabs.${route.name.toLowerCase()}`),
-        tabBarIcon: ({ focused, color, size }) => {
-          const iconMap = {
-            Home: focused ? "home" : "home-outline",
-            News: focused ? "newspaper" : "newspaper-outline",
-            Settings: focused ? "settings" : "settings-outline",
-            Games: focused ? "game-controller" : "game-controller-outline",
-          };
-          const iconName = iconMap[route.name];
+    <>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: COLORS.darkBackground,
+            borderWidth: 0,
+            borderTopWidth: 0,
+            paddingTop: 5,
+            alignItems: "center",
+          },
+          tabBarActiveTintColor: "#779bdd",
+          tabBarInactiveTintColor: "#779bdd",
+          tabBarLabel: t(`navigation.tabs.${route.name.toLowerCase()}`),
+          tabBarIcon: ({ focused, color, size }) => {
+            const iconMap = {
+              Home: focused ? "home" : "home-outline",
+              News: focused ? "newspaper" : "newspaper-outline",
+              Settings: focused ? "settings" : "settings-outline",
+              Games: focused ? "game-controller" : "game-controller-outline",
+            };
+            const iconName = iconMap[route.name];
 
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-      })}
-    >
-      <Tab.Screen name="Home" component={HomeStack} />
-      <Tab.Screen name="News" component={NewsStack} />
-      <Tab.Screen name="Games" component={GamesStack} />
-      <Tab.Screen name="Settings" component={SettingsStack} />
-    </Tab.Navigator>
+            return <Ionicons name={iconName} size={size} color={color} />;
+          },
+        })}
+      >
+        <Tab.Screen name="Home" component={HomeStack} />
+        <Tab.Screen name="News" component={NewsStack} />
+        <Tab.Screen name="Games" component={GamesStack} />
+        <Tab.Screen name="Settings" component={SettingsStack} />
+      </Tab.Navigator>
+      {showAds && (
+        <View style={{ alignItems: "center", width: "100%" }}>
+          <BannerAd
+            unitId={adUnitId}
+            size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+            requestOptions={{
+              requestNonPersonalizedAdsOnly: true,
+            }}
+          />
+        </View>
+      )}
+    </>
   );
 }
 function AuthStack() {
@@ -195,15 +216,6 @@ const queryClient = new QueryClient({
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showAds, setShowAds] = useState(false);
-
-  useEffect(() => {
-    // تفعيل الإعلانات بعد تحميل القائمة
-    const task = InteractionManager.runAfterInteractions(() => {
-      setShowAds(true);
-    });
-    return () => task.cancel();
-  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = auth().onAuthStateChanged(async (newUser) => {
@@ -402,17 +414,6 @@ function App() {
               </Stack.Navigator>
             </Suspense>
           </NavigationContainer>
-          {showAds && (
-            <View style={{ alignItems: "center", width: "100%" }}>
-              <BannerAd
-                unitId={adUnitId}
-                size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-                requestOptions={{
-                  requestNonPersonalizedAdsOnly: true,
-                }}
-              />
-            </View>
-          )}
         </View>
       </SafeAreaProvider>
     </QueryClientProvider>

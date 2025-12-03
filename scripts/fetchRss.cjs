@@ -125,6 +125,7 @@ async function fetchFeed(url) {
  * Normalizes raw RSS items into a consistent structure.
  */
 function normalizeItems(parsedData) {
+  if (!parsedData || !parsedData.rss) return [];
   const channel = parsedData.rss?.channel;
   if (!channel) return [];
 
