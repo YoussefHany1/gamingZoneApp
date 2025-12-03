@@ -1,8 +1,8 @@
-name: RSS fetch and write to Firestore
+name: RSS fetch and write to Appwrite
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -18,22 +18,22 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
+        # تأكد من أنك قمت برفع package.json و package-lock.json
+        # بعد إضافة مكتبة node-appwrite
         run: |
           npm ci
         working-directory: .
 
-      - name: Write service account to file
-        env:
-          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          echo "$SA_JSON" > serviceAccountKey.json
-          # optional: show a small check
-          echo "Service account written, size:" $(wc -c serviceAccountKey.json)
-
       - name: Run RSS fetch script
         env:
-          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          RSS_SECRET: ${{ secrets.RSS_SECRET }}
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT: ${{ secrets.APPWRITE_PROJECT }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+          APPWRITE_DATABASE_ID: ${{ secrets.APPWRITE_DATABASE_ID }}
+
+          RSS_COLLECTION_ID: "news_sources"
+          ARTICLES_COLLECTION_ID: "articles"
+
+          FCM_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           node scripts/fetchRss.cjs

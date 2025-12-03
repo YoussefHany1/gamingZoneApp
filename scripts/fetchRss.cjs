@@ -1,69 +1,81 @@
-const admin = require("firebase-admin");
 const axios = require("axios");
 const xml2js = require("xml2js");
 const crypto = require("crypto");
 const striptags = require("striptags");
 const he = require("he");
+require("dotenv").config({ path: "E:\\Programing\\GamingZone2\\.env" });
+
+// Appwrite SDK
+const { Client, Databases, Query } = require("node-appwrite");
+
+// Optional Firebase Admin for FCM (only if you supply FCM_SERVICE_ACCOUNT)
+let admin = null;
+try {
+  admin = require("firebase-admin");
+} catch (e) {
+  // firebase-admin may not be present; it's optional
+  admin = null;
+}
 
 // --- CONFIGURATION & CONSTANTS ---
 const CONFIG = {
-  COLLECTION_RSS: "rss",
-  COLLECTION_ARTICLES: "articles",
-  MAX_CONCURRENCY: 5, // عدد المصادر التي تتم معالجتها في وقت واحد
-  BATCH_SIZE: 400, // حجم الدفعة للكتابة في Firestore
-  RECENT_IDS_LIMIT: 30, // عدد المعرفات المحفوظة في مستند المصدر لمنع التكرار
+  COLLECTION_RSS: process.env.RSS_COLLECTION_ID || "news_sources",
+  COLLECTION_ARTICLES: process.env.ARTICLES_COLLECTION_ID || "articles",
+  MAX_CONCURRENCY: 5,
+  RECENT_IDS_LIMIT: 30,
   AXIOS_TIMEOUT: 20000,
   USER_AGENT:
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+  APPWRITE_DATABASE_ID: process.env.APPWRITE_DATABASE_ID,
 };
 
-// --- INITIALIZATION ---
+// --- INIT PARSER ---
 const parser = new xml2js.Parser({
   explicitArray: false,
   mergeAttrs: true,
   trim: true,
 });
 
-// Initialize Firebase Admin
-const initFirebase = () => {
-  if (admin.apps.length) return admin.firestore();
+// --- INIT Appwrite client ---
+const client = new Client();
+client
+  .setEndpoint(process.env.APPWRITE_ENDPOINT) // e.g. https://cloud.appwrite.io/v1
+  .setProject(process.env.APPWRITE_PROJECT) // project id
+  .setKey(process.env.APPWRITE_API_KEY); // api key with full DB permissions
 
-  let serviceAccount = null;
+const databases = new Databases(client);
+
+// --- OPTIONAL: init Firebase Admin for FCM if provided ---
+let fcmEnabled = false;
+if (admin && process.env.FCM_SERVICE_ACCOUNT) {
   try {
-    if (process.env.SERVICE_ACCOUNT) {
-      serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT);
-    } else {
-      serviceAccount = require("../serviceAccountKey.json");
-    }
+    const svc = JSON.parse(process.env.FCM_SERVICE_ACCOUNT);
+
+    admin.initializeApp({
+      credential: admin.credential.cert(svc),
+      projectId: svc.project_id,
+    });
+
+    fcmEnabled = true;
+    console.log("✅ Firebase Admin initialized for messaging (FCM).");
   } catch (e) {
     console.warn(
-      "⚠️ Warning: Service account not found, trying default credentials."
+      "⚠️ Firebase Admin init failed — notifications disabled.",
+      e.message
     );
+    fcmEnabled = false;
   }
-
-  const options = { projectId: process.env.FIREBASE_PROJECT_ID };
-  if (serviceAccount) {
-    options.credential = admin.credential.cert(serviceAccount);
-  } else {
-    options.credential = admin.credential.applicationDefault();
-  }
-
-  admin.initializeApp(options);
-  return admin.firestore();
-};
-
-const db = initFirebase();
+} else {
+  console.log("ℹ️ Firebase Admin not configured — notifications disabled.");
+}
 
 // --- UTILS ---
-
-/** Generates a SHA1 hash for consistency. */
 const sha1 = (input) =>
   crypto
     .createHash("sha1")
     .update(String(input || ""))
     .digest("hex");
 
-/** Sanitizes strings for Firestore IDs. */
 const safeId = (input) => {
   if (!input) return "unknown";
   return String(input)
@@ -75,39 +87,34 @@ const safeId = (input) => {
     .replace(/^_+|_+$/g, "");
 };
 
-/** Extracts image URL from various RSS fields. */
 const extractThumbnail = (item) => {
   if (!item) return null;
-
   const getImgFromHtml = (html) =>
     (html || "").match(/<img[^>]+src=['"]([^'"]+)['"]/i)?.[1];
 
   return (
-    item.thumbnail ||
-    item.thumbnail?.[0] ||
+    (item.thumbnail &&
+      (Array.isArray(item.thumbnail) ? item.thumbnail[0] : item.thumbnail)) ||
     item.image ||
     item["media:content"]?.url ||
-    item["media:content"]?.[0]?.url ||
+    (Array.isArray(item["media:content"]) && item["media:content"][0]?.url) ||
     item["media:thumbnail"]?.url ||
-    item["media:thumbnail"]?.[0]?.url ||
-    item.enclosure?.url ||
-    item.enclosure?.[0]?.url ||
     getImgFromHtml(item.description) ||
     getImgFromHtml(item["content:encoded"]) ||
+    (item.enclosure &&
+      (Array.isArray(item.enclosure)
+        ? item.enclosure[0]?.url
+        : item.enclosure.url)) ||
     null
   );
 };
 
-// --- CORE FUNCTIONS ---
-
-/**
- * Fetches and parses RSS feed.
- */
+// --- RSS fetch + parse ---
 async function fetchFeed(url) {
   try {
     const res = await axios.get(url, {
       timeout: CONFIG.AXIOS_TIMEOUT,
-      maxRedirects: 20, // زيادة عدد مرات إعادة التوجيه المسموح بها
+      maxRedirects: 20,
       headers: {
         "User-Agent": CONFIG.USER_AGENT,
         Accept:
@@ -121,57 +128,68 @@ async function fetchFeed(url) {
   }
 }
 
-/**
- * Normalizes raw RSS items into a consistent structure.
- */
 function normalizeItems(parsedData) {
-  if (!parsedData || !parsedData.rss) return [];
-  const channel = parsedData.rss?.channel;
+  if (!parsedData) return [];
+  const channel = parsedData.rss?.channel || parsedData.feed || parsedData;
   if (!channel) return [];
 
-  let items = channel.item || [];
+  let items = channel.item || channel.entry || [];
   if (!Array.isArray(items)) items = [items];
 
   return items
     .map((item) => {
-      const link = item.link?._ || item.link || item.guid?._ || item.guid;
+      const link =
+        item.link?._ ||
+        item.link ||
+        (typeof item.link === "object" && item.link.href) ||
+        item.guid?._ ||
+        item.guid;
       if (!link) return null;
 
-      const title = typeof item.title === "string" ? item.title : "No Title";
+      const title =
+        typeof item.title === "string"
+          ? item.title
+          : item.title?._ || "No Title";
       const description = item.description
         ? he.decode(striptags(String(item.description))).trim()
+        : item.summary
+        ? he.decode(striptags(String(item.summary))).trim()
         : "";
       const guidContent =
         (typeof item.guid === "string" ? item.guid : item.guid?._) || link;
+
+      const pubDateRaw =
+        item.pubDate || item["dc:date"] || item.published || item.updated;
+      const pubDate = pubDateRaw ? new Date(pubDateRaw) : null;
 
       return {
         title,
         link,
         description: description.replace(/\s+/g, " "),
-        pubDate:
-          item.pubDate || item["dc:date"]
-            ? new Date(item.pubDate || item["dc:date"])
-            : null,
+        pubDate,
         thumbnail: extractThumbnail(item),
         guid: guidContent,
-        docId: sha1(guidContent), // Unique ID based on content
+        docId: sha1(guidContent).substring(0, 36),
       };
     })
-    .filter(Boolean); // Remove nulls
+    .filter(Boolean);
 }
 
-/**
- * Sends FCM notifications in parallel.
- */
+// --- Notifications (optional) ---
 async function sendNotifications(articles, summary) {
   if (!articles.length) return;
-  console.log(`🔔 Sending ${articles.length} notifications...`);
+  if (!fcmEnabled) {
+    console.log("ℹ️ Skipping notifications (FCM not configured).");
+    return;
+  }
+
   const BATCH_SIZE = 20;
+  console.log(`🔔 Sending ${articles.length} notifications...`);
 
   for (let i = 0; i < articles.length; i += BATCH_SIZE) {
     const chunk = articles.slice(i, i + BATCH_SIZE);
     const promises = chunk.map(async (article) => {
-      const imageLink = article.thumbnail || "";
+      let imageLink = article.thumbnail || "";
       const isValidUrl = (url) => {
         try {
           return (
@@ -182,13 +200,7 @@ async function sendNotifications(articles, summary) {
           return false;
         }
       };
-
-      if (!isValidUrl(imageLink)) {
-        imageLink = "";
-      }
-      const safeSiteName = safeId(article.siteName);
-      const safeCategory = safeId(article.category);
-      // const topicName = `${safeCategory}_${safeSiteName}`;
+      if (!isValidUrl(imageLink)) imageLink = "";
 
       const message = {
         topic: article.topicName,
@@ -201,9 +213,6 @@ async function sendNotifications(articles, summary) {
           articleId: article.docId,
           link: article.link,
           image: imageLink || "",
-          // category: article.category || "",
-          // siteName: article.siteName || "",
-          // pubDate: article.pubDate ? article.pubDate.toISOString() : new Date().toISOString(),
           clickAction: "FLUTTER_NOTIFICATION_CLICK",
         },
         android: {
@@ -238,58 +247,53 @@ async function sendNotifications(articles, summary) {
     await Promise.allSettled(promises);
   }
 }
-/**
- * Helper: Get recent IDs.
- * Optimization: First check `source.recentIds` (in-memory).
- * Fallback: Query Firestore (legacy support for first run).
- */
+
+// --- Helper: getExistingIds (uses rss doc recentIds fast path; else queries articles collection) ---
 async function getExistingIds(sourceDocData, category, siteName) {
-  // 1. Fast Path: Check directly in source document data
-  if (sourceDocData.recentIds && Array.isArray(sourceDocData.recentIds)) {
+  if (sourceDocData?.recentIds && Array.isArray(sourceDocData.recentIds)) {
     return new Set(sourceDocData.recentIds);
   }
 
-  // 2. Slow Path (Fallback): Query the articles sub-collection
-  // This only happens once per source until the new 'recentIds' field is populated.
   console.log(
-    `⚠️ [Migration] Fetching legacy IDs from Firestore for ${siteName}...`
+    `⚠️ [Migration] Fetching legacy IDs from Appwrite articles for ${siteName}...`
   );
   const ids = new Set();
-  try {
-    const snapshot = await db
-      .collection(CONFIG.COLLECTION_ARTICLES)
-      .doc(category)
-      .collection("sources")
-      .doc(siteName)
-      .collection("posts")
-      .orderBy("fetchedAt", "desc")
-      .limit(CONFIG.RECENT_IDS_LIMIT)
-      .get();
 
-    snapshot.forEach((doc) => ids.add(doc.id));
+  try {
+    const resp = await databases.listDocuments(
+      CONFIG.APPWRITE_DATABASE_ID,
+      CONFIG.COLLECTION_ARTICLES,
+      [
+        Query.equal("category", category),
+        Query.equal("siteName", siteName),
+        Query.orderDesc("fetchedAt"),
+        Query.limit(CONFIG.RECENT_IDS_LIMIT),
+      ]
+    );
+
+    (resp.documents || []).forEach((d) => {
+      if (d.$id) ids.add(d.$id);
+    });
   } catch (e) {
-    // Ignore if collection doesn't exist
+    // ignore if collection doesn't exist or other errors
   }
+
   return ids;
 }
 
-/**
- * Processes a single source.
- */
+// --- Process a single source ---
 async function processSource(sourceData, summary) {
   const { rssUrl, category, name, docId, raw: rawSourceData } = sourceData;
   const categorySanitized = safeId(category || "uncategorized");
   const siteNameSanitized = safeId(name || docId);
 
   try {
-    // 1. Fetch & Parse
     console.log(`📥 Fetching: ${name || rssUrl}`);
     const parsed = await fetchFeed(rssUrl);
     const items = normalizeItems(parsed);
 
     if (!items.length) return;
 
-    // 2. Deduplication (Optimized)
     const existingIds = await getExistingIds(
       rawSourceData,
       categorySanitized,
@@ -299,72 +303,112 @@ async function processSource(sourceData, summary) {
 
     if (newItems.length === 0) {
       console.log(`   No new articles for ${name}.`);
-      // Update timestamp only to show we checked
-      await db.collection(CONFIG.COLLECTION_RSS).doc(docId).update({
-        lastFetchedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      // Update only lastFetchedAt in rss doc
+      try {
+        await databases.updateDocument(
+          CONFIG.APPWRITE_DATABASE_ID,
+          CONFIG.COLLECTION_RSS,
+          docId,
+          { lastFetchedAt: new Date().toISOString() }
+        );
+      } catch (e) {
+        // If update fails (e.g. doc missing), ignore
+      }
       return;
     }
 
     console.log(`   Found ${newItems.length} new articles.`);
 
-    // 3. Write to Firestore (Batched) & Prepare Notifications
-    const batch = db.batch();
-    const articlesForNotify = [];
-
-    // Prepare list of IDs to save back to Source Doc (for future caching)
-    // Merge new IDs with existing IDs, keep top N
-    const allIds = [...newItems.map((i) => i.docId), ...existingIds];
+    // Prepare updated recentIds
+    const allIds = [
+      ...newItems.map((i) => i.docId),
+      ...Array.from(existingIds),
+    ];
     const updatedRecentIds = allIds.slice(0, CONFIG.RECENT_IDS_LIMIT);
 
-    newItems.forEach((item) => {
-      const docRef = db
-        .collection(CONFIG.COLLECTION_ARTICLES)
-        .doc(categorySanitized)
-        .collection("sources")
-        .doc(siteNameSanitized)
-        .collection("posts")
-        .doc(item.docId);
+    const articlesForNotify = [];
 
+    // For each new item: try createDocument (with id = docId); if exists -> updateDocument
+    for (const item of newItems) {
       const payload = {
-        ...item,
-        pubDate: item.pubDate
-          ? admin.firestore.Timestamp.fromDate(item.pubDate)
-          : null,
-        fetchedAt: admin.firestore.FieldValue.serverTimestamp(),
+        title: item.title,
+        link: item.link,
+        description: item.description,
+        pubDate: item.pubDate ? item.pubDate.toISOString() : null,
+        thumbnail: item.thumbnail || null,
+        guid: item.guid,
+        fetchedAt: new Date().toISOString(),
         siteName: name,
         category: category,
-        siteImage: rawSourceData.image || null,
-        language: rawSourceData.language || "en",
+        // siteImage: rawSourceData?.image || null,
+        // language: rawSourceData?.language || "en",
       };
 
-      // Remove keys undefined to avoid Firestore errors
+      // remove undefined keys
       Object.keys(payload).forEach(
-        (key) => payload[key] === undefined && delete payload[key]
+        (k) => payload[k] === undefined && delete payload[k]
       );
 
-      batch.set(docRef, payload, { merge: true });
+      try {
+        await databases.createDocument(
+          CONFIG.APPWRITE_DATABASE_ID,
+          CONFIG.COLLECTION_ARTICLES,
+          item.docId, // use sha1 as document ID so duplicates are prevented
+          payload
+        );
+        summary.articlesUpserted++;
+      } catch (err) {
+        // If already exists, update it; otherwise log error
+        const msg = err.message || String(err);
+        if (msg.includes("document already exists") || err.code === 409) {
+          // update existing
+          try {
+            await databases.updateDocument(
+              CONFIG.APPWRITE_DATABASE_ID,
+              CONFIG.COLLECTION_ARTICLES,
+              item.docId,
+              payload
+            );
+          } catch (uErr) {
+            console.error(
+              "Update existing article failed:",
+              uErr.message || uErr
+            );
+            summary.errors.push({
+              site: rssUrl,
+              msg: uErr.message || String(uErr),
+            });
+          }
+        } else {
+          console.error("Create article failed:", msg);
+          summary.errors.push({ site: rssUrl, msg });
+        }
+      }
 
       articlesForNotify.push({
         ...item,
         ...payload,
         topicName: `${categorySanitized}_${siteNameSanitized}`,
       });
-    });
+    }
 
-    // 4. Update Source Document (Atomically update lastFetchedAt AND recentIds)
-    // This saves us from querying the posts collection next time!
-    const sourceRef = db.collection(CONFIG.COLLECTION_RSS).doc(docId);
-    batch.update(sourceRef, {
-      lastFetchedAt: admin.firestore.FieldValue.serverTimestamp(),
-      recentIds: updatedRecentIds, // <--- The Key Optimization
-    });
+    // Update rss document recentIds and lastFetchedAt
+    try {
+      await databases.updateDocument(
+        CONFIG.APPWRITE_DATABASE_ID,
+        CONFIG.COLLECTION_RSS,
+        docId,
+        {
+          lastFetchedAt: new Date().toISOString(),
+          recentIds: updatedRecentIds,
+        }
+      );
+    } catch (e) {
+      // If update fails (e.g. doc not found), try patch by creating or logging
+      console.warn("Could not update rss doc recentIds:", e.message || e);
+    }
 
-    // Commit Batch
-    await batch.commit();
-    summary.articlesUpserted += newItems.length;
-
-    // 5. Send Notifications
+    // Send notifications (if enabled)
     await sendNotifications(articlesForNotify, summary);
   } catch (error) {
     console.error(`❌ Error processing ${name}: ${error.message}`);
@@ -373,9 +417,8 @@ async function processSource(sourceData, summary) {
 }
 
 // --- MAIN RUNNER ---
-
 async function run() {
-  console.log("🚀 Starting RSS Fetcher...");
+  console.log("🚀 Starting RSS Fetcher (Appwrite)...");
   const summary = {
     sourcesProcessed: 0,
     articlesUpserted: 0,
@@ -384,53 +427,33 @@ async function run() {
   };
 
   try {
-    // 1. Read All Sources
-    const sourcesSnapshot = await db.collection(CONFIG.COLLECTION_RSS).get();
-    if (sourcesSnapshot.empty) {
+    // 1. Read all sources from rss_sources collection (flat)
+    const sourcesResp = await databases.listDocuments(
+      CONFIG.APPWRITE_DATABASE_ID,
+      CONFIG.COLLECTION_RSS,
+      [Query.limit(1000)]
+    );
+
+    const docs = sourcesResp.documents || [];
+    if (!docs.length) {
       console.log("No sources found.");
       process.exit(0);
     }
 
-    const sources = [];
-    sourcesSnapshot.forEach((doc) => {
-      const data = doc.data();
-      // Helper to extract sources from flexible structure
-      const extract = (entry, cat) => {
-        if (!entry) return;
-        const url = entry.rssUrl || entry.url || entry.feed || entry.link;
-        if (url) {
-          sources.push({
-            docId: doc.id,
-            rssUrl: url,
-            name: entry.name || entry.title || "Unknown",
-            category: cat || entry.category || null,
-            raw: data, // Pass full data to access existing recentIds
-          });
-        }
-      };
-
-      // Handle Arrays or Objects inside the RSS doc
-      if (Array.isArray(data)) {
-        data.forEach((e) => extract(e, null));
-      } else {
-        Object.keys(data).forEach((key) => {
-          if (key === "recentIds" || key === "lastFetchedAt") return; // Skip metadata
-          const val = data[key];
-          if (Array.isArray(val)) val.forEach((v) => extract(v, key));
-          else if (typeof val === "object") extract(val, key);
-        });
-        // Direct root check
-        if (!sources.length) extract(data, null);
-      }
-    });
+    const sources = docs.map((doc) => ({
+      docId: doc.$id,
+      rssUrl: doc.rssUrl,
+      name: doc.name,
+      category: doc.category, // هنا news / reviews / hardware
+      raw: doc,
+    }));
 
     summary.sourcesProcessed = sources.length;
 
-    // 2. Process with Worker Pool
-    // Split sources into chunks to respect concurrency
+    // 2. Process with limited concurrency
     for (let i = 0; i < sources.length; i += CONFIG.MAX_CONCURRENCY) {
       const chunk = sources.slice(i, i + CONFIG.MAX_CONCURRENCY);
-      await Promise.all(chunk.map((source) => processSource(source, summary)));
+      await Promise.all(chunk.map((s) => processSource(s, summary)));
     }
   } catch (error) {
     console.error("Fatal Error:", error);
@@ -446,5 +469,4 @@ async function run() {
   process.exit(0);
 }
 
-// Start
 run();
