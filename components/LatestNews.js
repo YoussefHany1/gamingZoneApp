@@ -40,11 +40,11 @@ function LatestNews({
     feedCategory,
     feedWebsite
   );
+
   let filteredArticles = articles;
   if ((!websitesList || websitesList.length === 0) && language) {
     filteredArticles = articles.filter((item) => item.language === language);
   }
-
   const listData =
     typeof limit === "number"
       ? filteredArticles.slice(0, limit)

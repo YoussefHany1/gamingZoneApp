@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Switch,
   LayoutAnimation,
-  ActivityIndicator,
   ScrollView,
   Linking,
   InteractionManager,

@@ -1,15 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
-import {
-  getFirestore,
-  collection,
-  collectionGroup,
-  query,
-  orderBy,
-  where,
-  onSnapshot,
-  limit,
-} from "@react-native-firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Query } from "react-native-appwrite";
+import { databases, client } from "../lib/appwrite";
+import Constants from "expo-constants";
+const { APPWRITE_DATABASE_ID, ARTICLES_COLLECTION_ID } =
+  Constants.expoConfig.extra;
 
 export default function useFeed(category, siteName) {
   const [articles, setArticles] = useState([]);
@@ -17,7 +12,6 @@ export default function useFeed(category, siteName) {
   const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(Date.now());
 
-  // إنشاء مفتاح فريد للكاش بناءً على التصنيف واسم الموقع
   const cacheKey = `feed_cache_${category || "nocat"}_${siteName || "all"}`;
 
   const refetch = useCallback(() => {
@@ -27,7 +21,6 @@ export default function useFeed(category, siteName) {
   }, []);
 
   useEffect(() => {
-    // لو مفيش كاتيجوري أصلاً، ما نعملش subscribe
     if (!category) {
       setArticles([]);
       setLoading(false);
@@ -36,12 +29,10 @@ export default function useFeed(category, siteName) {
 
     let isMounted = true;
 
-    // 1️⃣ محاولة تحميل البيانات من الكاش أولاً لعرضها فوراً
     const loadFromCache = async () => {
       try {
         const cachedData = await AsyncStorage.getItem(cacheKey);
         if (cachedData && isMounted) {
-          // لو في داتا في الكاش نعرضها ونوقف اللودينج مؤقتاً لحد ما الـ Realtime يشتغل
           setArticles(JSON.parse(cachedData));
           setLoading(false);
         }
@@ -50,75 +41,93 @@ export default function useFeed(category, siteName) {
       }
     };
 
-    // تشغيل تحميل الكاش
     loadFromCache();
 
-    const db = getFirestore();
-    let q;
+    // 2️⃣ تجهيز الاستعلام (Queries)
+    // في Appwrite نستخدم مصفوفة من الـ Queries
+    const queries = [
+      Query.orderDesc("pubDate"), // ترتيب تنازلي حسب التاريخ
+      Query.limit(30), // جلب 30 مقال فقط
+      Query.equal("category", category), // فلتر التصنيف أساسي
+    ];
 
-    // ✅ الحالة 1: فيه category و siteName → نفس الكود القديم
-    if (category && siteName) {
-      const postsCollectionRef = collection(
-        db,
-        "articles",
-        category,
-        "sources",
-        siteName,
-        "posts"
-      );
-
-      q = query(postsCollectionRef, orderBy("pubDate", "desc"), limit(30));
+    // لو تم تحديد موقع معين، نضيف فلتر الموقع
+    if (siteName) {
+      queries.push(Query.equal("siteName", siteName));
     }
 
-    // ✅ الحالة 2: فيه category بس ومفيش siteName → كل المواقع في الكاتيجوري ده
-    if (category && !siteName) {
-      // لازم يكون جوه كل post حقل category بنفس القيمة
-      const postsCollectionGroup = collectionGroup(db, "posts");
+    // دالة جلب البيانات
+    const fetchArticles = async () => {
+      try {
+        const response = await databases.listDocuments(
+          APPWRITE_DATABASE_ID,
+          ARTICLES_COLLECTION_ID,
+          queries
+        );
 
-      q = query(
-        postsCollectionGroup,
-        where("category", "==", category),
-        orderBy("pubDate", "desc")
-      );
-    }
-
-    if (!q) {
-      setLoading(false);
-      return;
-    }
-
-    // 2️⃣ الاستماع للتحديثات (Real-time)
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
         if (!isMounted) return;
 
-        const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        // Appwrite ترجع البيانات داخل documents
+        const data = response.documents;
 
-        // تحديث البيانات في الواجهة
         setArticles(data);
         setLoading(false);
 
-        // حفظ البيانات الجديدة في الكاش (هيمسح القديم ويحط الجديد لنفس المفتاح)
+        // تحديث الكاش
         AsyncStorage.setItem(cacheKey, JSON.stringify(data)).catch((err) =>
           console.error("Failed to save to cache:", err)
         );
-      },
-      (err) => {
+      } catch (err) {
         if (!isMounted) return;
-        console.error("Realtime error:", err);
+        console.error("Appwrite error:", err);
         setError(err);
         setLoading(false);
+      }
+    };
+
+    // استدعاء الجلب المبدئي
+    fetchArticles();
+    // 3️⃣ الاستماع للتحديثات (Real-time)
+    // Appwrite Realtime يختلف عن Snapshot، هو يرسل "الأحداث" وليس "البيانات كاملة"
+    const unsubscribe = client.subscribe(
+      `databases.${APPWRITE_DATABASE_ID}.collections.${ARTICLES_COLLECTION_ID}.documents`,
+      (response) => {
+        if (!isMounted) return;
+
+        // التحقق مما إذا كان الحدث (إنشاء مقال جديد)
+        if (
+          response.events.includes(
+            "databases.*.collections.*.documents.*.create"
+          )
+        ) {
+          const newArticle = response.payload;
+
+          // التحقق يدوياً أن المقال الجديد يتبع التصنيف والموقع المحددين
+          const isMatchCategory = newArticle.category === category;
+          const isMatchSite = siteName
+            ? newArticle.siteName === siteName
+            : true;
+
+          if (isMatchCategory && isMatchSite) {
+            setArticles((prevArticles) => {
+              // إضافة المقال الجديد في الأول
+              const updated = [newArticle, ...prevArticles];
+              // حفظ الكاش المحدث
+              AsyncStorage.setItem(cacheKey, JSON.stringify(updated));
+              return updated;
+            });
+          }
+        }
       }
     );
 
     return () => {
       isMounted = false;
-      unsubscribe();
+      unsubscribe(); // إيقاف الاستماع
     };
   }, [category, siteName, refreshTrigger, cacheKey]);
 
-  const isFetching = loading; // لو محتاج تستخدمه في الـ UI زي ما كنت عامل في LatestNews
+  const isFetching = loading;
 
   return { articles, loading, error, isFetching, refetch };
 }

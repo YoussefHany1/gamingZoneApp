@@ -72,7 +72,7 @@ function UserGamesScreen({ route, navigation }) {
   useEffect(() => {
     mountedRef.current = true;
     if (!currentUser) {
-      setLoading(true);
+      setLoading(false);
       // يمكنك عرض رسالة للمستخدم بأنه يجب تسجيل الدخول
       return;
     }
@@ -91,12 +91,12 @@ function UserGamesScreen({ route, navigation }) {
           gamesList.push({ ...doc.data(), id: doc.id });
         });
         setGames(gamesList);
-        setLoading(true);
+        setLoading(false);
       },
       (error) => {
         console.error("Error fetching want list: ", error);
         if (mountedRef.current) {
-          setLoading(true);
+          setLoading(false);
         }
         Alert.alert(
           "Error",

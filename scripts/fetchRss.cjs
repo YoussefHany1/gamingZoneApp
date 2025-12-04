@@ -294,11 +294,7 @@ async function processSource(sourceData, summary) {
 
     if (!items.length) return;
 
-    const existingIds = await getExistingIds(
-      rawSourceData,
-      categorySanitized,
-      siteNameSanitized
-    );
+    const existingIds = await getExistingIds(rawSourceData, category, name);
     const newItems = items.filter((item) => !existingIds.has(item.docId));
 
     if (newItems.length === 0) {
@@ -340,8 +336,8 @@ async function processSource(sourceData, summary) {
         fetchedAt: new Date().toISOString(),
         siteName: name,
         category: category,
-        // siteImage: rawSourceData?.image || null,
-        // language: rawSourceData?.language || "en",
+        siteImage: rawSourceData?.image || null,
+        language: rawSourceData?.language || "en",
       };
 
       // remove undefined keys
