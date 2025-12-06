@@ -761,6 +761,7 @@ function GameDetails({ route, navigation }) {
               </>
             )}
             <View style={styles.ad}>
+              <Text style={styles.adText}>{t("common.ad")}</Text>
               <BannerAd
                 unitId={adUnitId}
                 size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
@@ -1127,6 +1128,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 20,
+  },
+  adText: {
+    color: "#fff",
+    marginBottom: 10,
   },
   summary: {
     color: "#c1c1c1",

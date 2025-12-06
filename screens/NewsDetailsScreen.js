@@ -86,6 +86,7 @@ function NewsDetails({ article, visible, onClose }) {
           </View>
           {showAds && (
             <View style={styles.ad}>
+              <Text style={styles.adText}>{t("common.ad")}</Text>
               <BannerAd
                 unitId={adUnitId}
                 size={BannerAdSize.MEDIUM_RECTANGLE}
@@ -192,6 +193,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 55,
+  },
+  adText: {
+    color: "#fff",
+    marginBottom: 10,
   },
   button: {
     backgroundColor: COLORS.secondary,

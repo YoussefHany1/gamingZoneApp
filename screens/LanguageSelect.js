@@ -82,6 +82,7 @@ function LanguageSelect() {
         </TouchableOpacity>
         {showAds && (
           <View style={styles.ad}>
+            <Text style={styles.adText}>{t("common.ad")}</Text>
             <BannerAd
               unitId={adUnitId}
               size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
@@ -127,5 +128,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 55,
+  },
+  adText: {
+    color: "#fff",
+    marginBottom: 10,
   },
 });

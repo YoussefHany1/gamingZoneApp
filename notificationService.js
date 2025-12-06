@@ -219,6 +219,8 @@ class NotificationService {
    * Debugging: Schedule a local notification
    */
   static async testLocalNotification() {
+    const imageUrl =
+      "https://media.rockstargames.com/rockstargames-newsite/uploads/b4546f96a016d9da31a9353e9b38d6aafe984436.jpg";
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -230,13 +232,14 @@ class NotificationService {
           // إضافة مرفقات للصورة (تعمل بشكل أساسي مع iOS، وفي أندرويد تعتمد على نسخة النظام)
           attachments: [
             {
-              url: "https://media.rockstargames.com/rockstargames-newsite/uploads/b4546f96a016d9da31a9353e9b38d6aafe984436.jpg",
+              url: imageUrl,
               identifier: "test-image",
               typeHint: "image",
             },
           ],
         },
         trigger: null, // immediate
+        identifier: "test_notification",
       });
     } catch (error) {
       console.error("❌ Local Notification Failed:", error);

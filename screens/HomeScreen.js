@@ -17,7 +17,7 @@ import { adUnitId } from "../constants/config";
 
 function Home() {
   const [showAds, setShowAds] = useState(false);
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const currentLang = i18n.language;
   useEffect(() => {
     // تفعيل الإعلانات بعد تحميل القائمة
@@ -26,18 +26,18 @@ function Home() {
     });
     return () => task.cancel();
   }, []);
-
+  const website = currentLang === "en" ? "destructoid" : "true gaming";
   // 1. تعريف البيانات فقط (وليس المكونات نفسها)
   const sectionsData = useMemo(
     () => [
-      { type: "slideshow", website: "vg247", category: "news" },
-      { type: "news", category: "news", limit: 5 },
+      { type: "slideshow", website: website, category: "news" },
+      { type: "news", category: "news", limit: 5, language: currentLang },
       { type: "ad" },
-      { type: "news", category: "reviews", limit: 5 },
+      { type: "news", category: "reviews", limit: 5, language: currentLang },
       { type: "ad" },
-      { type: "news", category: "esports", limit: 5 },
+      { type: "news", category: "esports", limit: 5, language: currentLang },
       { type: "ad" },
-      { type: "news", category: "hardware", limit: 5 },
+      { type: "news", category: "hardware", limit: 5, language: currentLang },
     ],
     []
   );
@@ -62,7 +62,7 @@ function Home() {
         if (!showAds) return null;
         return (
           <View style={styles.ad}>
-            <Text>Ad </Text>
+            <Text style={styles.adText}>{t("common.ad")}</Text>
             <BannerAd
               unitId={adUnitId}
               size={BannerAdSize.MEDIUM_RECTANGLE}
@@ -101,5 +101,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 55,
+  },
+  adText: {
+    color: "#fff",
+    marginBottom: 10,
   },
 });

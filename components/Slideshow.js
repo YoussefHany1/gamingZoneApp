@@ -59,7 +59,7 @@ export default Slideshow;
 const styles = StyleSheet.create({
   swiper: {
     height: 400,
-    // marginBottom: 20,
+    backgroundColor: COLORS.secondary,
   },
   thumbnail: {
     // flex: 1,

@@ -8,15 +8,6 @@ import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
 import useRssFeeds from "../hooks/useRssFeeds";
 
-function normalized(input) {
-  if (!input) return "";
-  return input
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim()
-    .replace(/\s+/g, "_")
-    .toLowerCase();
-}
-
 // دالة موحدة لكل التبويبات
 const GenericNewsRoute = ({ rssFeeds, categoryKey }) => {
   // --- بداية التعديل: ترتيب وفصل المصادر ---
@@ -59,7 +50,7 @@ const GenericNewsRoute = ({ rssFeeds, categoryKey }) => {
   return (
     <View style={styles.scene}>
       <LatestNews
-        website={normalized(selected?.name || "")}
+        website={selected?.name || ""}
         category={categoryKey}
         selectedItem={selected}
         language={selected?.language}

@@ -7,7 +7,8 @@
         "remove": "Remove",
         "saveChanges": "Save Changes",
         "noData": "No data to display",
-        "imageNotFound": "Image not found"
+        "imageNotFound": "Image not found",
+        "ad": "Advertisement"
     },
     "auth": {
         "login": {

@@ -14,7 +14,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { XMLParser } from "fast-xml-parser";
 import axios from "axios";
-import firestore from "@react-native-firebase/firestore";
+import { useTranslation } from "react-i18next";
+import { databases } from "../lib/appwrite";
+import { Query, ID } from "react-native-appwrite";
+import Constants from "expo-constants";
+const { APPWRITE_DATABASE_ID, RSS_COLLECTION_ID } = Constants.expoConfig.extra;
+
 import { useNotificationPreferences } from "../hooks/useNotificationPreferences";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { adUnitId } from "../constants/config";
@@ -27,7 +32,7 @@ const safeId = (input) => {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_\-]/g, "_") // يبقي فقط الإنجليزية والأرقام
+    .replace(/[^a-z0-9_\-]/g, "_")
     .replace(/_+/g, "_")
     .replace(/^_+|_+$/g, "");
 };
@@ -36,7 +41,7 @@ const safeId = (input) => {
 const NewsSection = ({
   gameName,
   title,
-  sourceId, // <--- خاصية جديدة لتحديد اسم المصدر بالإنجليزية
+  sourceId,
   langParams,
   defaultExpanded = true,
 }) => {
@@ -47,14 +52,15 @@ const NewsSection = ({
   const { preferences, toggleSource, loadingPreferences } =
     useNotificationPreferences();
 
-  // استخدام sourceId (الإنجليزي) إذا توفر، وإلا نستخدم العنوان
   const categorySafe = safeId(gameName);
   const nameSafe = safeId(sourceId || title);
   const topicName = `${categorySafe}_${nameSafe}`;
 
   const isEnabled = !!preferences[topicName];
 
-  const RSS_URL = `https://news.google.com/rss/search?q=${gameName}${langParams}`;
+  const RSS_URL = `https://news.google.com/rss/search?q=${encodeURIComponent(
+    gameName
+  )}${langParams}`;
 
   useEffect(() => {
     fetchRSS();
@@ -91,26 +97,54 @@ const NewsSection = ({
   };
 
   const handleToggleSwitch = async () => {
+    // إذا كان الزر غير مفعل، وسنقوم بتفعيله الآن -> نحتاج لتسجيل المصدر في السيرفر
     if (!isEnabled) {
       try {
-        await firestore().collection("rss").doc(topicName).set(
-          {
-            rssUrl: RSS_URL,
-            category: categorySafe,
-            name: nameSafe, // سيحفظ الاسم الإنجليزي (arabic_news) في قاعدة البيانات
-            isActive: true,
-            createdAt: firestore.FieldValue.serverTimestamp(),
-          },
-          { merge: true }
+        // 1. البحث هل هذا المصدر مسجل من قبل؟
+        const existingDocs = await databases.listDocuments(
+          APPWRITE_DATABASE_ID,
+          RSS_COLLECTION_ID,
+          [Query.equal("category", categorySafe), Query.equal("name", nameSafe)]
         );
-        console.log("✅ RSS Source added/updated in Firestore");
+
+        const payload = {
+          rssUrl: RSS_URL,
+          category: categorySafe,
+          name: nameSafe,
+          isActive: true,
+        };
+
+        if (existingDocs.total > 0) {
+          // ✅ المصدر موجود: نقوم بتحديثه فقط للتأكيد
+          const docId = existingDocs.documents[0].$id;
+          await databases.updateDocument(
+            APPWRITE_DATABASE_ID,
+            RSS_COLLECTION_ID,
+            docId,
+            payload
+          );
+          console.log("✅ RSS Source updated in Appwrite");
+        } else {
+          // ✅ المصدر غير موجود: ننشئه بمعرف فريد جديد
+          await databases.createDocument(
+            APPWRITE_DATABASE_ID,
+            RSS_COLLECTION_ID,
+            ID.unique(), // نستخدم ID تلقائي لتجنب مشكلة الطول المحدود (36 حرف)
+            payload
+          );
+          console.log("✅ RSS Source created in Appwrite");
+        }
       } catch (error) {
-        console.error("❌ Error adding RSS source:", error);
-        return; // توقف إذا فشلت الكتابة في القاعدة (غالباً بسبب الصلاحيات)
+        console.error(
+          "❌ Error adding/updating RSS source in Appwrite:",
+          error
+        );
+        // يمكنك اتخاذ قرار هنا: هل تمنع التفعيل في الواجهة أم تسمح به محلياً؟
+        // return;
       }
     }
 
-    // تفعيل الاشتراك باستخدام الاسم الآمن
+    // تفعيل الاشتراك محلياً وفي الإشعارات
     toggleSource(categorySafe, nameSafe);
   };
 
@@ -156,12 +190,12 @@ const NewsSection = ({
           ) : (
             <ScrollView
               style={{ maxHeight: 250, borderRadius: 8 }}
-              nestedScrollEnabled={true} // مهم جداً عشان الاسكرول الداخلي يشتغل مع الخارجي
+              nestedScrollEnabled={true}
               showsVerticalScrollIndicator={false}
             >
               {news.map((item, index) => (
                 <TouchableOpacity
-                  key={index.toString()} // استخدام index أو item.guid لو متاح
+                  key={index.toString()}
                   style={styles.card}
                   onPress={() => item.link && Linking.openURL(item.link)}
                 >
@@ -181,14 +215,14 @@ const NewsSection = ({
 function GameNewsScreen({ route, navigation }) {
   const Currentgame = route.params?.gameName || "";
   const [showAds, setShowAds] = useState(false);
+  const { t } = useTranslation();
 
-  // activate ads after the list loads
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       setShowAds(true);
     });
 
-    return () => task.cancel(); // تنظيف المهمة عند الخروج
+    return () => task.cancel();
   }, []);
 
   return (
@@ -208,6 +242,7 @@ function GameNewsScreen({ route, navigation }) {
         {/* <Text>Ad </Text> */}
         {showAds && (
           <View style={styles.ad}>
+            <Text style={styles.adText}>{t("common.ad")}</Text>
             <BannerAd
               unitId={adUnitId}
               size={BannerAdSize.MEDIUM_RECTANGLE}
@@ -284,5 +319,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginBottom: 38,
+  },
+  adText: {
+    color: "#fff",
+    marginBottom: 10,
   },
 });

@@ -55,21 +55,11 @@ function LatestNews({
     setModalVisible(true);
   }, []);
 
-  // دالة مساعدة لتنسيق الاسم
-  const fromSnakeCase = (input) => {
-    if (!input) return "";
-    return input
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
-
   // ✅ 1. تحسين الأداء: استخدام useCallback لمنع إعادة إنشاء الدالة وتدمير الإعلانات
   const renderItem = useCallback(
     ({ item, index }) => {
       const siteLabel = item?.siteName || website || "";
       const shouldShowAd = (index + 1) % 10 === 0;
-
       return (
         <View
           style={[
@@ -89,9 +79,9 @@ function LatestNews({
                   language === "ar" ? { marginLeft: 8 } : { marginRight: 8 },
                 ]}
               >
-                {item.title ? item.title.substring(0, 100) : ""}
+                {item?.title ? item.title.substring(0, 100) : ""}
               </Text>
-              {item.description ? (
+              {item?.description ? (
                 <Text numberOfLines={2} style={styles.par}>
                   {item.description}..
                 </Text>
@@ -102,16 +92,17 @@ function LatestNews({
               <Image
                 style={styles.thumbnail}
                 source={
-                  item.thumbnail
+                  item?.thumbnail
                     ? { uri: item.thumbnail }
                     : require("../assets/image-not-found.webp")
                 }
               />
-              <Text style={styles.website}>{fromSnakeCase(siteLabel)}</Text>
+              <Text style={styles.website}>{item.siteName}</Text>
             </View>
           </TouchableOpacity>
           {shouldShowAd && (
             <View style={styles.ad}>
+              <Text style={styles.adText}>{t("common.ad")}</Text>
               <BannerAd
                 key={`ad-${index}`}
                 unitId={adUnitId}
@@ -130,7 +121,10 @@ function LatestNews({
 
   // ✅ 2. تحسين الأداء: تثبيت الهيدر أيضاً
   const renderHeader = useCallback(() => {
-    const translatedCategory = t(`news.tabs.${category.toLowerCase()}`);
+    const safeCategory = category ? String(category).toLowerCase() : "";
+    const translatedCategory = safeCategory
+      ? t(`news.tabs.${safeCategory}`)
+      : "";
     return (
       <>
         <Text style={styles.header}>
@@ -182,7 +176,7 @@ function LatestNews({
         data={listData}
         renderItem={renderItem}
         keyExtractor={(item, index) =>
-          item.id ? `${item.id}-${index}` : index.toString()
+          item.$id ? `${item.$id}-${index}` : index.toString()
         }
         ListHeaderComponent={renderHeader}
         showsVerticalScrollIndicator={false}
@@ -198,7 +192,12 @@ function LatestNews({
         maxToRenderPerBatch={5} // تقليل الدفعات
         windowSize={5} // ✅ تقليل حجم النافذة في الذاكرة (الحل السحري لمشاكل الذاكرة)
       />
-
+      {filteredArticles.length === 0 ? (
+        <Text style={{ color: "white", textAlign: "center" }}>
+          no data to show
+          {/* {t("news.noArticles")} */}
+        </Text>
+      ) : null}
       {selectedArticle && (
         <NewsDetails
           article={selectedArticle}
@@ -274,5 +273,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 55,
+  },
+  adText: {
+    color: "#fff",
+    marginBottom: 10,
   },
 });

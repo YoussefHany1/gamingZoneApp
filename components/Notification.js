@@ -216,6 +216,7 @@ const Notification = () => {
         {renderCategorySection("hardware", "Hardware")}
         {showAds && (
           <View style={styles.ad}>
+            <Text style={styles.adText}>{t("common.ad")}</Text>
             <BannerAd
               unitId={adUnitId}
               size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
@@ -232,7 +233,7 @@ const Notification = () => {
             onPress={NotificationService.testLocalNotification}
           >
             <Ionicons name="notifications" size={20} color="#ffffff" />
-            <Text style={styles.testButtonText}>Test Local Notification</Text>
+            <Text style={styles.testButtonText}>Test Notification</Text>
           </TouchableOpacity>
 
           <Text style={styles.footerText}>
@@ -376,6 +377,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 55,
+  },
+  adText: {
+    color: "#fff",
+    marginBottom: 10,
   },
 });
 

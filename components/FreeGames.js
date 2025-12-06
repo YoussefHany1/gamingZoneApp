@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   Linking,
   FlatList,
+  ScrollView, // تمت إضافته لعمل قائمة الـ Skeleton
 } from "react-native";
 import { useState, useEffect, useMemo, memo } from "react";
 import { EpicFreeGames } from "epic-free-games";
-import Loading from "../Loading";
+// تم إزالة استيراد Loading
+import SkeletonGameCard from "../skeleton/SkeletonGameCard"; // تم إضافة استيراد SkeletonGameCard
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import COLORS from "../constants/colors";
@@ -174,17 +176,31 @@ function FreeGames() {
 
   return (
     <View style={styles.mainContainer}>
-      {loading && <Loading />}
+      {/* قمت بنقل العنوان للأعلى ليظهر دائماً سواء أثناء التحميل أو بعده */}
       <Text style={styles.header}>{t("games.freeGames.header")}</Text>
 
-      <FlatList
-        data={flatListData}
-        renderItem={renderGameItem}
-        keyExtractor={(item, index) => item.id || index.toString()}
-        horizontal={true}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      />
+      {/* شرط التحميل: إذا كان يحمل نعرض الـ Skeletons، وإلا نعرض القائمة الحقيقية */}
+      {loading ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        >
+          {/* عرض 3 بطاقات Skeleton لمحاكاة القائمة */}
+          {[1, 2, 3].map((item) => (
+            <SkeletonGameCard key={item} />
+          ))}
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={flatListData}
+          renderItem={renderGameItem}
+          keyExtractor={(item, index) => item.id || index.toString()}
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
     </View>
   );
 }
@@ -268,5 +284,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 10,
     marginBottom: 2,
+  },
+  listContent: {
+    // يمكنك إضافة ستايل للمحتوى هنا إذا لزم الأمر
   },
 });

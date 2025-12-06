@@ -21,11 +21,17 @@ import { useTranslation } from "react-i18next";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import COLORS from "../constants/colors";
 import { adUnitId } from "../constants/config";
-import {
-  CLOUDINARY_CLOUD_NAME,
-  CLOUDINARY_API_KEY,
-  CLOUDINARY_UPLOAD_PRESET,
-} from "@env";
+import Constants from "expo-constants";
+
+const CLOUDINARY_CLOUD_NAME =
+  Constants?.expoConfig?.extra?.CLOUDINARY_CLOUD_NAME ??
+  process.env.CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_API_KEY =
+  Constants?.expoConfig?.extra?.CLOUDINARY_API_KEY ??
+  process.env.CLOUDINARY_API_KEY;
+const CLOUDINARY_UPLOAD_PRESET =
+  Constants?.expoConfig?.extra?.CLOUDINARY_UPLOAD_PRESET ??
+  process.env.CLOUDINARY_UPLOAD_PRESET;
 
 function ProfileScreen() {
   const [name, setName] = useState("");
@@ -258,8 +264,9 @@ function ProfileScreen() {
               />
             </Picker>
           </View>
-          <View style={styles.ad}>
-            {showAds && (
+          {showAds && (
+            <View style={styles.ad}>
+              <Text style={styles.adText}>{t("common.ad")}</Text>
               <BannerAd
                 unitId={adUnitId}
                 size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
@@ -267,8 +274,8 @@ function ProfileScreen() {
                   requestNonPersonalizedAdsOnly: true,
                 }}
               />
-            )}
-          </View>
+            </View>
+          )}
           <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
             <Text style={styles.saveText}>{t("common.saveChanges")}</Text>
           </TouchableOpacity>
@@ -348,5 +355,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 30,
+  },
+  adText: {
+    color: "#fff",
+    marginBottom: 10,
   },
 });

@@ -8,12 +8,11 @@ require("dotenv").config({ path: "E:\\Programing\\GamingZone2\\.env" });
 // Appwrite SDK
 const { Client, Databases, Query } = require("node-appwrite");
 
-// Optional Firebase Admin for FCM (only if you supply FCM_SERVICE_ACCOUNT)
+// Optional Firebase Admin for FCM
 let admin = null;
 try {
   admin = require("firebase-admin");
 } catch (e) {
-  // firebase-admin may not be present; it's optional
   admin = null;
 }
 
@@ -39,34 +38,29 @@ const parser = new xml2js.Parser({
 // --- INIT Appwrite client ---
 const client = new Client();
 client
-  .setEndpoint(process.env.APPWRITE_ENDPOINT) // e.g. https://cloud.appwrite.io/v1
-  .setProject(process.env.APPWRITE_PROJECT) // project id
-  .setKey(process.env.APPWRITE_API_KEY); // api key with full DB permissions
+  .setEndpoint(process.env.APPWRITE_ENDPOINT)
+  .setProject(process.env.APPWRITE_PROJECT)
+  .setKey(process.env.APPWRITE_API_KEY);
 
 const databases = new Databases(client);
 
-// --- OPTIONAL: init Firebase Admin for FCM if provided ---
+// --- INIT Firebase Admin ---
 let fcmEnabled = false;
 if (admin && process.env.FCM_SERVICE_ACCOUNT) {
   try {
     const svc = JSON.parse(process.env.FCM_SERVICE_ACCOUNT);
-
     admin.initializeApp({
       credential: admin.credential.cert(svc),
       projectId: svc.project_id,
     });
-
     fcmEnabled = true;
     console.log("✅ Firebase Admin initialized for messaging (FCM).");
   } catch (e) {
-    console.warn(
-      "⚠️ Firebase Admin init failed — notifications disabled.",
-      e.message
-    );
+    console.warn("⚠️ Firebase Admin init failed:", e.message);
     fcmEnabled = false;
   }
 } else {
-  console.log("ℹ️ Firebase Admin not configured — notifications disabled.");
+  console.log("ℹ️ Firebase Admin not configured.");
 }
 
 // --- UTILS ---
@@ -175,7 +169,7 @@ function normalizeItems(parsedData) {
     .filter(Boolean);
 }
 
-// --- Notifications (optional) ---
+// --- Notifications (Fixed) ---
 async function sendNotifications(articles, summary) {
   if (!articles.length) return;
   if (!fcmEnabled) {
@@ -202,16 +196,19 @@ async function sendNotifications(articles, summary) {
       };
       if (!isValidUrl(imageLink)) imageLink = "";
 
+      // 🛠️ FIX 1: تحسين هيكل الرسالة ليظهر الصورة بشكل صحيح
       const message = {
         topic: article.topicName,
         notification: {
           title: article.title.substring(0, 100),
           body: article.description.substring(0, 100),
-          ...(imageLink && { imageUrl: imageLink }),
+          // الصورة هنا تدعمها بعض المكتبات الحديثة
+          ...(imageLink && { image: imageLink }),
         },
         data: {
           articleId: article.docId,
           link: article.link,
+          // نضع الصورة في data أيضًا لأن التطبيق قد يحتاجها
           image: imageLink || "",
           clickAction: "FLUTTER_NOTIFICATION_CLICK",
         },
@@ -219,12 +216,20 @@ async function sendNotifications(articles, summary) {
           notification: {
             clickAction: "FLUTTER_NOTIFICATION_CLICK",
             channelId: "news_notifications",
-            ...(imageLink ? { imageUrl: imageLink } : {}),
+            // المفتاح الرسمي للأندرويد في FCM هو image
+            ...(imageLink ? { image: imageLink } : {}),
           },
         },
         apns: {
-          payload: { aps: { "mutable-content": 1 } },
-          fcm_options: { ...(imageLink && { image: imageLink }) },
+          payload: {
+            aps: {
+              "mutable-content": 1, // ضروري لظهور الصور في iOS
+            },
+          },
+          fcm_options: {
+            // المفتاح الرسمي للـ iOS في FCM
+            ...(imageLink && { image: imageLink }),
+          },
         },
       };
 
@@ -248,7 +253,7 @@ async function sendNotifications(articles, summary) {
   }
 }
 
-// --- Helper: getExistingIds (uses rss doc recentIds fast path; else queries articles collection) ---
+// --- Helper: getExistingIds ---
 async function getExistingIds(sourceDocData, category, siteName) {
   if (sourceDocData?.recentIds && Array.isArray(sourceDocData.recentIds)) {
     return new Set(sourceDocData.recentIds);
@@ -275,7 +280,7 @@ async function getExistingIds(sourceDocData, category, siteName) {
       if (d.$id) ids.add(d.$id);
     });
   } catch (e) {
-    // ignore if collection doesn't exist or other errors
+    // ignore
   }
 
   return ids;
@@ -295,11 +300,11 @@ async function processSource(sourceData, summary) {
     if (!items.length) return;
 
     const existingIds = await getExistingIds(rawSourceData, category, name);
+    // تصفية العناصر التي نعرف أنها موجودة من قائمة recentIds
     const newItems = items.filter((item) => !existingIds.has(item.docId));
 
     if (newItems.length === 0) {
       console.log(`   No new articles for ${name}.`);
-      // Update only lastFetchedAt in rss doc
       try {
         await databases.updateDocument(
           CONFIG.APPWRITE_DATABASE_ID,
@@ -307,15 +312,12 @@ async function processSource(sourceData, summary) {
           docId,
           { lastFetchedAt: new Date().toISOString() }
         );
-      } catch (e) {
-        // If update fails (e.g. doc missing), ignore
-      }
+      } catch (e) {}
       return;
     }
 
-    console.log(`   Found ${newItems.length} new articles.`);
+    console.log(`   Found ${newItems.length} potential new articles.`);
 
-    // Prepare updated recentIds
     const allIds = [
       ...newItems.map((i) => i.docId),
       ...Array.from(existingIds),
@@ -324,7 +326,6 @@ async function processSource(sourceData, summary) {
 
     const articlesForNotify = [];
 
-    // For each new item: try createDocument (with id = docId); if exists -> updateDocument
     for (const item of newItems) {
       const payload = {
         title: item.title,
@@ -340,24 +341,25 @@ async function processSource(sourceData, summary) {
         language: rawSourceData?.language || "en",
       };
 
-      // remove undefined keys
       Object.keys(payload).forEach(
         (k) => payload[k] === undefined && delete payload[k]
       );
+
+      let isTrulyNew = false; // 🛠️ FIX 2: متغير للتحقق مما إذا كان المقال جديداً فعلاً
 
       try {
         await databases.createDocument(
           CONFIG.APPWRITE_DATABASE_ID,
           CONFIG.COLLECTION_ARTICLES,
-          item.docId, // use sha1 as document ID so duplicates are prevented
+          item.docId,
           payload
         );
         summary.articlesUpserted++;
+        isTrulyNew = true; // تم الإنشاء بنجاح، إذن هو جديد
       } catch (err) {
-        // If already exists, update it; otherwise log error
+        // إذا كان الخطأ أن المستند موجود، نقوم بالتحديث ولكن لا نرسل إشعاراً
         const msg = err.message || String(err);
         if (msg.includes("document already exists") || err.code === 409) {
-          // update existing
           try {
             await databases.updateDocument(
               CONFIG.APPWRITE_DATABASE_ID,
@@ -365,15 +367,9 @@ async function processSource(sourceData, summary) {
               item.docId,
               payload
             );
+            // لاحظ: لم نقم بتعيين isTrulyNew = true هنا، لأن الخبر موجود مسبقاً
           } catch (uErr) {
-            console.error(
-              "Update existing article failed:",
-              uErr.message || uErr
-            );
-            summary.errors.push({
-              site: rssUrl,
-              msg: uErr.message || String(uErr),
-            });
+            console.error("Update failed:", uErr.message);
           }
         } else {
           console.error("Create article failed:", msg);
@@ -381,14 +377,16 @@ async function processSource(sourceData, summary) {
         }
       }
 
-      articlesForNotify.push({
-        ...item,
-        ...payload,
-        topicName: `${categorySanitized}_${siteNameSanitized}`,
-      });
+      // 🛠️ FIX 2: إضافة المقال للإشعارات فقط إذا تم إنشاؤه لأول مرة
+      if (isTrulyNew) {
+        articlesForNotify.push({
+          ...item,
+          ...payload,
+          topicName: `${categorySanitized}_${siteNameSanitized}`,
+        });
+      }
     }
 
-    // Update rss document recentIds and lastFetchedAt
     try {
       await databases.updateDocument(
         CONFIG.APPWRITE_DATABASE_ID,
@@ -400,11 +398,10 @@ async function processSource(sourceData, summary) {
         }
       );
     } catch (e) {
-      // If update fails (e.g. doc not found), try patch by creating or logging
-      console.warn("Could not update rss doc recentIds:", e.message || e);
+      console.warn("Could not update rss doc recentIds:", e.message);
     }
 
-    // Send notifications (if enabled)
+    // إرسال الإشعارات للقائمة المفلترة فقط
     await sendNotifications(articlesForNotify, summary);
   } catch (error) {
     console.error(`❌ Error processing ${name}: ${error.message}`);
@@ -423,7 +420,6 @@ async function run() {
   };
 
   try {
-    // 1. Read all sources from rss_sources collection (flat)
     const sourcesResp = await databases.listDocuments(
       CONFIG.APPWRITE_DATABASE_ID,
       CONFIG.COLLECTION_RSS,
@@ -440,13 +436,12 @@ async function run() {
       docId: doc.$id,
       rssUrl: doc.rssUrl,
       name: doc.name,
-      category: doc.category, // هنا news / reviews / hardware
+      category: doc.category,
       raw: doc,
     }));
 
     summary.sourcesProcessed = sources.length;
 
-    // 2. Process with limited concurrency
     for (let i = 0; i < sources.length; i += CONFIG.MAX_CONCURRENCY) {
       const chunk = sources.slice(i, i + CONFIG.MAX_CONCURRENCY);
       await Promise.all(chunk.map((s) => processSource(s, summary)));

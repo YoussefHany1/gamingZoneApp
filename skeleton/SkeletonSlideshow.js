@@ -1,75 +1,71 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Dimensions } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
   withTiming,
-  withSequence,
-  Easing,
 } from "react-native-reanimated";
 import COLORS from "../constants/colors";
 
-// const { width } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 const SlideshowSkeleton = () => {
-  // 1. Shared Value for Opacity Animation
-  const opacity = useSharedValue(0.5);
+  // 1. قيمة مشتركة للتحريك الأفقي (بدلاً من الشفافية)
+  const translateX = useSharedValue(-width);
 
-  // 2. Start Animation Loop
+  // 2. حلقة التحريك (Infinite Loop)
   useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1000, easing: Easing.ease }),
-        withTiming(0.5, { duration: 1000, easing: Easing.ease })
-      ),
-      -1, // Infinite loop
-      true // Reverse
+    translateX.value = withRepeat(
+      withTiming(width, { duration: 1500 }), // تحريك من اليسار لليمين
+      -1, // تكرار لا نهائي
+      false // عدم العكس (يبدأ من جديد دائماً)
     );
   }, []);
 
-  // 3. Animated Style
+  // 3. تطبيق الستايل المتحرك
   const animatedStyle = useAnimatedStyle(() => {
     return {
-      opacity: opacity.value,
+      transform: [{ translateX: translateX.value }],
     };
   });
 
   return (
     <View style={styles.container}>
-      {/* Background / Main Image Placeholder */}
-      <Animated.View style={[styles.imagePlaceholder, animatedStyle]} />
+      {/* خلفية مكان الصورة - ثابتة الآن */}
+      <View style={styles.imagePlaceholder} />
 
-      {/* Gradient Area Placeholder (Optional, just visual spacing) */}
-
-      {/* Title Placeholders (Lines simulating text) */}
+      {/* أماكن النصوص - ثابتة الآن */}
       <View style={styles.textContainer}>
-        <Animated.View
-          style={[styles.textLine, { width: "80%" }, animatedStyle]}
-        />
-        <Animated.View
-          style={[
-            styles.textLine,
-            { width: "60%", marginTop: 8 },
-            animatedStyle,
-          ]}
-        />
+        <View style={[styles.textLine, { width: "80%" }]} />
+        <View style={[styles.textLine, { width: "60%", marginTop: 8 }]} />
       </View>
+
+      {/* طبقة الوميض المتحركة (Shimmer Overlay) */}
+      <Animated.View style={[styles.shimmerOverlay, animatedStyle]}>
+        <LinearGradient
+          colors={["transparent", "rgba(255,255,255,0.3)", "transparent"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    height: 400, // Same height as your Swiper
+    height: 400, // نفس ارتفاع الـ Swiper
     width: "100%",
-    backgroundColor: COLORS.secondary, // Light gray background
+    backgroundColor: COLORS.secondary,
     position: "relative",
-    overflow: "hidden",
+    overflow: "hidden", // ضروري لضمان بقاء الوميض داخل الحاوية
   },
   imagePlaceholder: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.primary, // Slightly darker gray for the "bone"
+    backgroundColor: COLORS.primary,
   },
   textContainer: {
     position: "absolute",
@@ -78,15 +74,18 @@ const styles = StyleSheet.create({
     right: 0,
     padding: 16,
     justifyContent: "flex-end",
-    height: "30%", // Area where text usually appears
-    // Simulating the gradient darkening effect roughly
+    height: "30%",
     backgroundColor: COLORS.primary + "80",
   },
   textLine: {
     height: 20,
     backgroundColor: COLORS.secondary,
     borderRadius: 4,
-    alignSelf: "center", // Center align because your original text is textAlign: "center"
+    alignSelf: "center",
+  },
+  shimmerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
   },
 });
 

@@ -180,15 +180,7 @@ function UserGamesScreen({ route, navigation }) {
                 ((index + 1) % 4 === 0 || // 2. إما يظهر كل 4 عناصر
                   (games.length < 4 && index === games.length - 1)) && ( // 3. أو يظهر في نهاية القائمة القصيرة
                   <View style={styles.ad}>
-                    <Text
-                      style={{
-                        color: "white",
-                        textAlign: "center",
-                        marginBottom: 5,
-                      }}
-                    >
-                      Ad
-                    </Text>
+                    <Text style={styles.adText}>{t("common.ad")}</Text>
                     <BannerAd
                       unitId={adUnitId}
                       size={BannerAdSize.MEDIUM_RECTANGLE}
@@ -279,6 +271,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     marginVertical: 55,
+  },
+  adText: {
+    color: "#fff",
+    marginBottom: 10,
   },
 });
 
