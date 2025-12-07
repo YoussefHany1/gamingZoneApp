@@ -40,7 +40,6 @@ function LatestNews({
     feedCategory,
     feedWebsite
   );
-
   let filteredArticles = articles;
   if ((!websitesList || websitesList.length === 0) && language) {
     filteredArticles = articles.filter((item) => item.language === language);
@@ -156,7 +155,7 @@ function LatestNews({
         {renderHeader()}
         <View style={{ marginTop: 10 }}>
           {Array.from({ length: 5 }).map((_, i) => (
-            <SkeletonNewsItem key={i} />
+            <SkeletonNewsItem key={i} language={language} />
           ))}
         </View>
       </View>

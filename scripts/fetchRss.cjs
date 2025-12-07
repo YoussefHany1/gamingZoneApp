@@ -64,6 +64,17 @@ if (admin && process.env.FCM_SERVICE_ACCOUNT) {
 }
 
 // --- UTILS ---
+// دالة لحذف المعاملات المتغيرة (Query Params) من الرابط لضمان ثبات المعرف
+const cleanUrl = (url) => {
+  if (!url) return "";
+  try {
+    const u = new URL(url);
+    // نأخذ فقط المسار والأصل، ونتجاهل ?utm_... وما بعدها
+    return u.origin + u.pathname;
+  } catch (e) {
+    return url ? String(url).split("?")[0] : "";
+  }
+};
 const sha1 = (input) =>
   crypto
     .createHash("sha1")
@@ -155,7 +166,7 @@ function normalizeItems(parsedData) {
       const pubDateRaw =
         item.pubDate || item["dc:date"] || item.published || item.updated;
       const pubDate = pubDateRaw ? new Date(pubDateRaw) : null;
-
+      const stableIdSource = cleanUrl(guidContent);
       return {
         title,
         link,
@@ -163,7 +174,7 @@ function normalizeItems(parsedData) {
         pubDate,
         thumbnail: extractThumbnail(item),
         guid: guidContent,
-        docId: sha1(guidContent).substring(0, 36),
+        docId: sha1(stableIdSource).substring(0, 36),
       };
     })
     .filter(Boolean);
@@ -186,15 +197,24 @@ async function sendNotifications(articles, summary) {
       let imageLink = article.thumbnail || "";
       const isValidUrl = (url) => {
         try {
-          return (
-            Boolean(new URL(url)) &&
-            (url.startsWith("http://") || url.startsWith("https://"))
-          );
+          const u = new URL(url);
+          return u.protocol === "http:" || u.protocol === "https:";
         } catch (e) {
           return false;
         }
       };
-      if (!isValidUrl(imageLink)) imageLink = "";
+
+      if (!isValidUrl(imageLink)) {
+        imageLink = "";
+      } else {
+        // تنظيف رابط الصورة أحياناً يساعد
+        imageLink = imageLink.trim();
+      }
+
+      // 🛠️ LOG: طباعة الرابط للتأكد أثناء التشغيل (اختياري)
+      // console.log(
+      //   `Preparing notification for: ${article.title} | Image: ${imageLink}`
+      // );
 
       // 🛠️ FIX 1: تحسين هيكل الرسالة ليظهر الصورة بشكل صحيح
       const message = {

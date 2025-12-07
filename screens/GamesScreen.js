@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingHorizontal: 15,
     paddingBottom: 2,
-    // paddingTop: 10,
+    marginTop: 10,
     borderRadius: 24,
     marginHorizontal: 50,
     borderWidth: 1,

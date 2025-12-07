@@ -11,7 +11,7 @@ import COLORS from "../constants/colors";
 
 const { width } = Dimensions.get("window");
 
-const SkeletonNewsItem = () => {
+const SkeletonNewsItem = ({ language }) => {
   const translateX = useSharedValue(-width);
 
   useEffect(() => {
@@ -37,10 +37,23 @@ const SkeletonNewsItem = () => {
     </Animated.View>
   );
 
+  const isRTL = language === "ar";
+
   return (
-    <View style={styles.container}>
-      {/* text lines */}
-      <View style={styles.textContainer}>
+    <View
+      style={[
+        styles.container,
+        { direction: isRTL ? "rtl" : "ltr" }, // ✅ ضبط الاتجاه
+      ]}
+    >
+      {/* Text Container */}
+      <View
+        style={[
+          styles.textContainer,
+          // ✅ ضبط الهوامش حسب اللغة كما في LatestNews
+          isRTL ? { paddingLeft: 8 } : { paddingRight: 8 },
+        ]}
+      >
         <View style={[styles.skeletonLine, styles.titleLine]}>
           <Shimmer />
         </View>
@@ -49,7 +62,7 @@ const SkeletonNewsItem = () => {
         </View>
       </View>
 
-      {/* thumbnail */}
+      {/* Thumbnail */}
       <View style={styles.thumbnail}>
         <Shimmer />
       </View>
@@ -63,17 +76,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#2c3e50",
+    borderBottomColor: "#4a5565", // ✅ نفس لون LatestNews
+    borderRadius: 16, // ✅ إضافة borderRadius للتطابق
   },
   textContainer: {
     width: "65%",
-    paddingRight: 10,
   },
   thumbnail: {
     width: 135,
     height: 100,
     borderRadius: 16,
-    backgroundColor: COLORS.secondary + "40",
+    backgroundColor: COLORS.secondary + "40", // شفافية قليلة لتمييز السكيلتون
     overflow: "hidden",
   },
   skeletonLine: {
@@ -85,7 +98,7 @@ const styles = StyleSheet.create({
   titleLine: {
     width: "90%",
     height: 20,
-    marginBottom: 12,
+    marginBottom: 12, // ✅ نفس المسافة في LatestNews
   },
   descLine: {
     width: "60%",

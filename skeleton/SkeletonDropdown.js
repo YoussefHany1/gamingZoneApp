@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { View, StyleSheet, Dimensions, Text } from "react-native";
+import { View, StyleSheet, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useSharedValue,
@@ -8,12 +8,10 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import COLORS from "../constants/colors";
-import { useTranslation } from "react-i18next";
 
 const { width } = Dimensions.get("window");
 
 const DropdownSkeleton = () => {
-  const { t } = useTranslation();
   const translateX = useSharedValue(-width);
 
   useEffect(() => {
@@ -38,95 +36,20 @@ const DropdownSkeleton = () => {
       />
     </Animated.View>
   );
+
   return (
     <View style={styles.wrapper}>
-      {/* محاكاة صندوق الاختيار */}
-      <View
-        style={[
-          styles.pickerContainer,
-          { borderColor: "transparent", height: 50, justifyContent: "center" },
-        ]}
-      >
-        <View
-          style={{
-            width: "80%",
-            height: 20,
-            backgroundColor: COLORS.secondary + "40",
-            borderRadius: 4,
-            overflow: "hidden",
-          }}
-        >
-          <Shimmer />
-        </View>
+      {/* Header Title Skeleton */}
+      {/* يحاكي العنوان: Latest News */}
+      <View style={styles.headerSkeleton}>
+        <Shimmer />
       </View>
 
-      {/* محاكاة تفاصيل الموقع */}
-      <View style={styles.siteDesc}>
-        {/* الصورة الدائرية */}
-        <View
-          style={[
-            styles.siteImg,
-            { backgroundColor: COLORS.secondary + "40", overflow: "hidden" },
-          ]}
-        >
+      {/* Dropdown Box Skeleton */}
+      {/* يحاكي القائمة المنسدلة */}
+      <View style={styles.pickerContainer}>
+        <View style={styles.pickerTextLine}>
           <Shimmer />
-        </View>
-
-        <View style={styles.siteText}>
-          {/* اسم الموقع */}
-          <View
-            style={{
-              width: 150,
-              height: 30,
-              backgroundColor: COLORS.secondary + "40",
-              borderRadius: 4,
-              marginBottom: 10,
-              overflow: "hidden",
-              alignSelf: "flex-end", // لمحاكاة row-reverse
-            }}
-          >
-            <Shimmer />
-          </View>
-          {/* وصف الموقع */}
-          <View
-            style={{
-              width: 250,
-              height: 60,
-              backgroundColor: COLORS.secondary + "40",
-              borderRadius: 4,
-              marginBottom: 10,
-              overflow: "hidden",
-            }}
-          >
-            <Shimmer />
-          </View>
-
-          {/* الأزرار */}
-          <View style={styles.buttons}>
-            <View
-              style={{
-                width: 100,
-                height: 35,
-                backgroundColor: COLORS.secondary + "40",
-                borderRadius: 6,
-                marginRight: 24,
-                overflow: "hidden",
-              }}
-            >
-              <Shimmer />
-            </View>
-            <View
-              style={{
-                width: 30,
-                height: 30,
-                backgroundColor: COLORS.secondary + "40",
-                borderRadius: 15,
-                overflow: "hidden",
-              }}
-            >
-              <Shimmer />
-            </View>
-          </View>
         </View>
       </View>
     </View>
@@ -135,36 +58,35 @@ const DropdownSkeleton = () => {
 
 const styles = StyleSheet.create({
   wrapper: {
-    // flex: 1,
     alignItems: "center",
     paddingBottom: 20,
+    marginTop: 20, // ✅ يتطابق مع marginTop في LatestNews header
+  },
+  headerSkeleton: {
+    width: 250, // عرض تقريبي للعنوان مع الحشوة
+    height: 50, // ارتفاع تقريبي للعنوان
+    borderRadius: 16,
+    backgroundColor: COLORS.secondary + "80", // لون أغمق قليلاً لمحاكاة خلفية العنوان
+    marginBottom: 30, // ✅ نفس marginBottom في LatestNews header
+    overflow: "hidden",
   },
   pickerContainer: {
     borderWidth: 1,
     borderRadius: 8,
     overflow: "hidden",
     backgroundColor: COLORS.secondary + "50",
-    width: "50%",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
+    width: "90%", // عرض الـ Dropdown عادة
+    height: 50,
+    justifyContent: "center",
+    paddingHorizontal: 15,
+    borderColor: "transparent",
   },
-  siteDesc: {
-    flexDirection: "row-reverse",
-    marginTop: 20,
-  },
-  siteImg: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  siteText: {
-    marginHorizontal: 10,
-  },
-  buttons: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
+  pickerTextLine: {
+    width: "40%",
+    height: 15,
+    backgroundColor: COLORS.secondary + "40",
+    borderRadius: 4,
+    overflow: "hidden",
   },
 });
 
