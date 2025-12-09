@@ -189,7 +189,7 @@ function LatestNews({
         removeClippedSubviews={true} // مهم للأداء
         initialNumToRender={5} // تقليل العدد الأولي
         maxToRenderPerBatch={5} // تقليل الدفعات
-        windowSize={5} // ✅ تقليل حجم النافذة في الذاكرة (الحل السحري لمشاكل الذاكرة)
+        windowSize={10} // ✅ تقليل حجم النافذة في الذاكرة (الحل السحري لمشاكل الذاكرة)
       />
       {filteredArticles.length === 0 ? (
         <Text style={{ color: "white", textAlign: "center" }}>

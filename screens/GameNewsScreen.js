@@ -8,23 +8,22 @@ import {
   ScrollView,
   Linking,
   InteractionManager,
+  Image,
 } from "react-native";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { XMLParser } from "fast-xml-parser";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { databases } from "../lib/appwrite";
 import { Query, ID } from "react-native-appwrite";
 import Constants from "expo-constants";
-const { APPWRITE_DATABASE_ID, RSS_COLLECTION_ID } = Constants.expoConfig.extra;
-
 import { useNotificationPreferences } from "../hooks/useNotificationPreferences";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { adUnitId } from "../constants/config";
 import Loading from "../Loading";
 
+const { APPWRITE_DATABASE_ID, RSS_COLLECTION_ID } = Constants.expoConfig.extra;
 // --- دالة مساعدة لإنشاء معرفات آمنة ---
 const safeId = (input) => {
   if (!input) return "unknown";
@@ -40,9 +39,10 @@ const safeId = (input) => {
 // --- 1. مكون فرعي يعرض قسم أخبار واحد ---
 const NewsSection = ({
   gameName,
+  apiUrl,
   title,
   sourceId,
-  langParams,
+  lang,
   defaultExpanded = true,
 }) => {
   const [news, setNews] = useState([]);
@@ -58,34 +58,27 @@ const NewsSection = ({
 
   const isEnabled = !!preferences[topicName];
 
-  const RSS_URL = `https://news.google.com/rss/search?q=${encodeURIComponent(
-    gameName
-  )}${langParams}`;
-
+  const API_URL = `${apiUrl}${lang}`;
+  console.log("API_URL:", API_URL);
   useEffect(() => {
-    fetchRSS();
-  }, [gameName]);
+    fetchNews();
+  }, [gameName, apiUrl]);
 
-  const fetchRSS = async () => {
+  const fetchNews = async () => {
     try {
-      const response = await axios.get(RSS_URL);
-      const xmlText = response.data;
-      const parser = new XMLParser();
-      const jsonObj = parser.parse(xmlText);
-      const channel = jsonObj?.rss?.channel;
-      let items = [];
+      const response = await axios.get(API_URL);
+      const data = response.data;
+      let newsArray = [];
 
-      if (channel?.item) {
-        items = Array.isArray(channel.item) ? channel.item : [channel.item];
+      if (Array.isArray(data.data)) {
+        newsArray = data.data;
+      } else if (gameName === "Fortnite") {
+        // إذا كانت البيانات داخل مفتاح data
+        newsArray = data?.data?.br.motds;
       }
-
-      items.sort((a, b) => {
-        return new Date(b.pubDate) - new Date(a.pubDate);
-      });
-
-      setNews(items);
+      setNews(newsArray);
     } catch (error) {
-      console.error(`Error fetching RSS for ${title}:`, error);
+      console.error(`Error fetching API for ${title}:`, error);
     } finally {
       setLoading(false);
     }
@@ -108,7 +101,7 @@ const NewsSection = ({
         );
 
         const payload = {
-          rssUrl: RSS_URL,
+          rssUrl: API_URL,
           category: categorySafe,
           name: nameSafe,
           isActive: true,
@@ -152,7 +145,7 @@ const NewsSection = ({
     <View
       style={[
         styles.sectionContainer,
-        langParams === "&hl=ar" ? { direction: "rtl" } : { direction: "ltr" },
+        lang === "ar" ? { direction: "rtl" } : { direction: "ltr" },
       ]}
     >
       <TouchableOpacity
@@ -197,10 +190,23 @@ const NewsSection = ({
                 <TouchableOpacity
                   key={index.toString()}
                   style={styles.card}
-                  onPress={() => item.link && Linking.openURL(item.link)}
+                  onPress={() =>
+                    item.link ? Linking.openURL(item.link) : null
+                  }
                 >
-                  <Text style={styles.title}>{item.title}</Text>
-                  <Text style={styles.date}>{item.pubDate}</Text>
+                  <View style={styles.cardContent}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.title}>{item.title}</Text>
+                      <Text style={styles.desc}>
+                        {item.description || item.body}
+                      </Text>
+                      {/* <Text style={styles.desc}>{item.description}</Text> */}
+                    </View>
+                    <Image
+                      source={{ uri: item.image || item.tileImage }}
+                      style={styles.cover}
+                    />
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -214,6 +220,7 @@ const NewsSection = ({
 // --- 2. الشاشة الرئيسية ---
 function GameNewsScreen({ route, navigation }) {
   const Currentgame = route.params?.gameName || "";
+  const apiUrl = route.params?.apiUrl || "";
   const [showAds, setShowAds] = useState(false);
   const { t } = useTranslation();
 
@@ -236,7 +243,8 @@ function GameNewsScreen({ route, navigation }) {
           gameName={Currentgame}
           title="English News"
           sourceId="english_news"
-          langParams="&hl=en"
+          apiUrl={apiUrl}
+          lang="en"
           defaultExpanded={true}
         />
         {/* <Text>Ad </Text> */}
@@ -257,7 +265,8 @@ function GameNewsScreen({ route, navigation }) {
           gameName={Currentgame}
           title="الأخبار العربية"
           sourceId="arabic_news"
-          langParams="&hl=ar"
+          apiUrl={apiUrl}
+          lang="ar"
           defaultExpanded={true}
         />
       </ScrollView>
@@ -302,6 +311,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 8,
     elevation: 2,
+    flexDirection: "row",
+    flex: 1,
+    alignItems: "center",
+  },
+  cardContent: {
+    flexDirection: "row",
+    flex: 1,
+    alignItems: "center",
+  },
+  cover: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginLeft: 10,
+    // backgroundColor: COLORS.secondary, // يظهر أثناء تحميل الصورة
   },
   title: {
     color: "white",
@@ -310,7 +334,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     textAlign: "left",
   },
-  date: {
+  desc: {
     fontSize: 12,
     color: "gray",
     marginTop: 4,
