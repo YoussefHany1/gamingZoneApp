@@ -5,10 +5,8 @@ const striptags = require("striptags");
 const he = require("he");
 require("dotenv").config({ path: "E:\\Programing\\GamingZone2\\.env" });
 
-// Appwrite SDK
-const { Client, Databases, Query } = require("node-appwrite");
+const { Client, Databases, Query, ID } = require("node-appwrite");
 
-// Optional Firebase Admin for FCM
 let admin = null;
 try {
   admin = require("firebase-admin");
@@ -16,26 +14,31 @@ try {
   admin = null;
 }
 
-// --- CONFIGURATION & CONSTANTS ---
+// --- CONFIGURATION ---
 const CONFIG = {
   COLLECTION_RSS: process.env.RSS_COLLECTION_ID || "news_sources",
   COLLECTION_ARTICLES: process.env.ARTICLES_COLLECTION_ID || "articles",
-  MAX_CONCURRENCY: 5,
-  RECENT_IDS_LIMIT: 30,
-  AXIOS_TIMEOUT: 20000,
+  MAX_CONCURRENCY: 3,
+
+  // الحد الأقصى للأخبار المخزنة (سواء عناوين أو مستندات)
+  MAX_STORED_NEWS: 40,
+
+  // نحتفظ بذاكرة أكبر قليلاً للمعرفات لمنع تكرار الإشعارات للأخبار المحذوفة حديثاً
+  RECENT_IDS_LIMIT: 100,
+
+  AXIOS_TIMEOUT: 30000,
   USER_AGENT:
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
   APPWRITE_DATABASE_ID: process.env.APPWRITE_DATABASE_ID,
 };
 
-// --- INIT PARSER ---
+// --- INIT ---
 const parser = new xml2js.Parser({
   explicitArray: false,
   mergeAttrs: true,
   trim: true,
 });
 
-// --- INIT Appwrite client ---
 const client = new Client();
 client
   .setEndpoint(process.env.APPWRITE_ENDPOINT)
@@ -44,7 +47,6 @@ client
 
 const databases = new Databases(client);
 
-// --- INIT Firebase Admin ---
 let fcmEnabled = false;
 if (admin && process.env.FCM_SERVICE_ACCOUNT) {
   try {
@@ -54,32 +56,35 @@ if (admin && process.env.FCM_SERVICE_ACCOUNT) {
       projectId: svc.project_id,
     });
     fcmEnabled = true;
-    console.log("✅ Firebase Admin initialized for messaging (FCM).");
+    console.log("✅ Firebase Admin initialized.");
   } catch (e) {
-    console.warn("⚠️ Firebase Admin init failed:", e.message);
-    fcmEnabled = false;
+    console.warn("⚠️ Firebase error:", e.message);
   }
-} else {
-  console.log("ℹ️ Firebase Admin not configured.");
 }
 
-// --- UTILS ---
-// دالة لحذف المعاملات المتغيرة (Query Params) من الرابط لضمان ثبات المعرف
-const cleanUrl = (url) => {
-  if (!url) return "";
-  try {
-    const u = new URL(url);
-    // نأخذ فقط المسار والأصل، ونتجاهل ?utm_... وما بعدها
-    return u.origin + u.pathname;
-  } catch (e) {
-    return url ? String(url).split("?")[0] : "";
+// --- HELPERS ---
+const generateDocId = (item) => {
+  if (item.id || item.guid) {
+    return crypto
+      .createHash("sha1")
+      .update(String(item.id || item.guid))
+      .digest("hex")
+      .substring(0, 36);
   }
-};
-const sha1 = (input) =>
-  crypto
+  if (item.link) {
+    return crypto
+      .createHash("sha1")
+      .update(String(item.link))
+      .digest("hex")
+      .substring(0, 36);
+  }
+  const safeTitle = (item.title || "unknown").trim().toLowerCase();
+  return crypto
     .createHash("sha1")
-    .update(String(input || ""))
-    .digest("hex");
+    .update(safeTitle)
+    .digest("hex")
+    .substring(0, 36);
+};
 
 const safeId = (input) => {
   if (!input) return "unknown";
@@ -92,391 +97,362 @@ const safeId = (input) => {
     .replace(/^_+|_+$/g, "");
 };
 
-const extractThumbnail = (item) => {
-  if (!item) return null;
-  const getImgFromHtml = (html) =>
-    (html || "").match(/<img[^>]+src=['"]([^'"]+)['"]/i)?.[1];
-
-  return (
-    (item.thumbnail &&
-      (Array.isArray(item.thumbnail) ? item.thumbnail[0] : item.thumbnail)) ||
-    item.image ||
-    item["media:content"]?.url ||
-    (Array.isArray(item["media:content"]) && item["media:content"][0]?.url) ||
-    item["media:thumbnail"]?.url ||
-    getImgFromHtml(item.description) ||
-    getImgFromHtml(item["content:encoded"]) ||
-    (item.enclosure &&
-      (Array.isArray(item.enclosure)
-        ? item.enclosure[0]?.url
-        : item.enclosure.url)) ||
-    null
-  );
+const resolveImageUrl = (img, baseUrl) => {
+  if (!img || typeof img !== "string") return null;
+  let finalUrl = img.trim();
+  if (finalUrl.startsWith("//")) finalUrl = "https:" + finalUrl;
+  if (finalUrl.startsWith("/")) {
+    try {
+      const u = new URL(baseUrl);
+      finalUrl = u.origin + finalUrl;
+    } catch (e) {}
+  }
+  if (finalUrl.startsWith("http:"))
+    finalUrl = finalUrl.replace("http:", "https:");
+  if (!finalUrl.startsWith("https")) return null;
+  return finalUrl;
 };
 
-// --- RSS fetch + parse ---
+const extractThumbnail = (item, baseUrl, isJson = false) => {
+  let img = null;
+  if (isJson) {
+    img = item.image || item.tileImage || item.thumbnail || item.img || null;
+  } else {
+    const getImgFromHtml = (html) =>
+      (html || "").match(/<img[^>]+src=['"]([^'"]+)['"]/i)?.[1];
+    img =
+      (item.thumbnail &&
+        (Array.isArray(item.thumbnail) ? item.thumbnail[0] : item.thumbnail)) ||
+      item["media:content"]?.url ||
+      item["media:thumbnail"]?.url ||
+      getImgFromHtml(item.description) ||
+      getImgFromHtml(item["content:encoded"]) ||
+      (item.enclosure &&
+        (Array.isArray(item.enclosure)
+          ? item.enclosure[0]?.url
+          : item.enclosure.url));
+  }
+  return resolveImageUrl(img, baseUrl);
+};
+
+// --- FETCHING ---
 async function fetchFeed(url) {
   try {
     const res = await axios.get(url, {
       timeout: CONFIG.AXIOS_TIMEOUT,
-      maxRedirects: 20,
       headers: {
         "User-Agent": CONFIG.USER_AGENT,
         Accept:
-          "application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+          "application/json, application/rss+xml, text/xml;q=0.9, */*;q=0.8",
       },
     });
-    return await parser.parseStringPromise(res.data);
+
+    if (typeof res.data === "object" && !res.data["rss"] && !res.data["feed"]) {
+      return { type: "json", data: res.data };
+    }
+    const parsed = await parser.parseStringPromise(res.data);
+    return { type: "xml", data: parsed };
   } catch (error) {
-    const status = error.response ? error.response.status : "N/A";
-    throw new Error(`Fetch failed: ${error.message} (Status: ${status})`);
+    throw new Error(`Fetch failed: ${error.message}`);
   }
 }
 
-function normalizeItems(parsedData) {
-  if (!parsedData) return [];
-  const channel = parsedData.rss?.channel || parsedData.feed || parsedData;
-  if (!channel) return [];
+function normalizeItems(fetchedContent, sourceUrl) {
+  if (!fetchedContent) return [];
+  const items = [];
 
-  let items = channel.item || channel.entry || [];
-  if (!Array.isArray(items)) items = [items];
+  if (fetchedContent.type === "json") {
+    const data = fetchedContent.data;
+    let rawItems = [];
+    if (data.data && data.data.br && data.data.br.motds)
+      rawItems = data.data.br.motds;
+    else if (Array.isArray(data.data)) rawItems = data.data;
+    else if (Array.isArray(data)) rawItems = data;
 
-  return items
-    .map((item) => {
+    rawItems.forEach((item) => {
+      items.push({
+        title: item.title || "No Title",
+        description: item.description || item.body || "",
+        link: item.link || item.website || sourceUrl,
+        thumbnail: extractThumbnail(item, sourceUrl, true),
+        rawId: item.id,
+        pubDate: new Date(),
+      });
+    });
+  } else {
+    const parsedData = fetchedContent.data;
+    const channel = parsedData.rss?.channel || parsedData.feed || parsedData;
+    let rawItems = channel.item || channel.entry || [];
+    if (!Array.isArray(rawItems)) rawItems = [rawItems];
+
+    rawItems.forEach((item) => {
       const link =
         item.link?._ ||
         item.link ||
         (typeof item.link === "object" && item.link.href) ||
         item.guid?._ ||
         item.guid;
-      if (!link) return null;
-
-      const title =
-        typeof item.title === "string"
-          ? item.title
-          : item.title?._ || "No Title";
+      if (!link) return;
       const description = item.description
         ? he.decode(striptags(String(item.description))).trim()
         : item.summary
         ? he.decode(striptags(String(item.summary))).trim()
         : "";
-      const guidContent =
-        (typeof item.guid === "string" ? item.guid : item.guid?._) || link;
 
       const pubDateRaw =
         item.pubDate || item["dc:date"] || item.published || item.updated;
-      const pubDate = pubDateRaw ? new Date(pubDateRaw) : null;
-      const stableIdSource = cleanUrl(guidContent);
-      return {
-        title,
-        link,
-        description: description.replace(/\s+/g, " "),
-        pubDate,
-        thumbnail: extractThumbnail(item),
-        guid: guidContent,
-        docId: sha1(stableIdSource).substring(0, 36),
-      };
-    })
-    .filter(Boolean);
-}
+      const pubDate = pubDateRaw ? new Date(pubDateRaw) : new Date();
 
-// --- Notifications (Fixed) ---
-async function sendNotifications(articles, summary) {
-  if (!articles.length) return;
-  if (!fcmEnabled) {
-    console.log("ℹ️ Skipping notifications (FCM not configured).");
-    return;
+      items.push({
+        title:
+          typeof item.title === "string"
+            ? item.title
+            : item.title?._ || "No Title",
+        description: description.replace(/\s+/g, " "),
+        link: link,
+        thumbnail: extractThumbnail(item, sourceUrl, false),
+        guid:
+          (typeof item.guid === "string" ? item.guid : item.guid?._) || link,
+        pubDate: pubDate,
+      });
+    });
   }
 
-  const BATCH_SIZE = 20;
-  console.log(`🔔 Sending ${articles.length} notifications...`);
+  return items.map((item) => ({
+    ...item,
+    docId: generateDocId(item),
+  }));
+}
 
+// --- NOTIFICATIONS ---
+async function sendNotifications(articles, summary) {
+  if (!articles.length || !fcmEnabled) return;
+  console.log(`🔔 Sending ${articles.length} notifications...`);
+  const BATCH_SIZE = 10;
   for (let i = 0; i < articles.length; i += BATCH_SIZE) {
     const chunk = articles.slice(i, i + BATCH_SIZE);
-    const promises = chunk.map(async (article) => {
-      let imageLink = article.thumbnail || "";
-      const isValidUrl = (url) => {
-        try {
-          const u = new URL(url);
-          return u.protocol === "http:" || u.protocol === "https:";
-        } catch (e) {
-          return false;
-        }
-      };
-
-      if (!isValidUrl(imageLink)) {
-        imageLink = "";
-      } else {
-        // تنظيف رابط الصورة أحياناً يساعد
-        imageLink = imageLink.trim();
-      }
-
-      // 🛠️ LOG: طباعة الرابط للتأكد أثناء التشغيل (اختياري)
-      // console.log(
-      //   `Preparing notification for: ${article.title} | Image: ${imageLink}`
-      // );
-
-      // 🛠️ FIX 1: تحسين هيكل الرسالة ليظهر الصورة بشكل صحيح
-      const message = {
-        topic: article.topicName,
-        notification: {
-          title: article.title.substring(0, 100),
-          body: article.description.substring(0, 100),
-          // الصورة هنا تدعمها بعض المكتبات الحديثة
-          ...(imageLink && { image: imageLink }),
-        },
-        data: {
-          articleId: article.docId,
-          link: article.link,
-          // نضع الصورة في data أيضًا لأن التطبيق قد يحتاجها
-          image: imageLink || "",
-          clickAction: "FLUTTER_NOTIFICATION_CLICK",
-        },
-        android: {
+    await Promise.allSettled(
+      chunk.map(async (article) => {
+        const imageLink = article.thumbnail || "";
+        const message = {
+          topic: article.topicName,
           notification: {
-            clickAction: "FLUTTER_NOTIFICATION_CLICK",
-            channelId: "news_notifications",
-            // المفتاح الرسمي للأندرويد في FCM هو image
-            ...(imageLink ? { image: imageLink } : {}),
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              "mutable-content": 1, // ضروري لظهور الصور في iOS
-            },
-          },
-          fcm_options: {
-            // المفتاح الرسمي للـ iOS في FCM
+            title: article.title.substring(0, 150),
+            body: article.description.substring(0, 150),
             ...(imageLink && { image: imageLink }),
           },
-        },
-      };
-
-      try {
-        await admin.messaging().send(message);
-        summary.notificationsSent++;
-      } catch (error) {
-        console.error(
-          `❌ Notification Error (${article.siteName}):`,
-          error.message
-        );
-        summary.errors.push({
-          type: "notification",
-          msg: error.message,
-          site: article.siteName,
-        });
-      }
-    });
-
-    await Promise.allSettled(promises);
-  }
-}
-
-// --- Helper: getExistingIds ---
-async function getExistingIds(sourceDocData, category, siteName) {
-  if (sourceDocData?.recentIds && Array.isArray(sourceDocData.recentIds)) {
-    return new Set(sourceDocData.recentIds);
-  }
-
-  console.log(
-    `⚠️ [Migration] Fetching legacy IDs from Appwrite articles for ${siteName}...`
-  );
-  const ids = new Set();
-
-  try {
-    const resp = await databases.listDocuments(
-      CONFIG.APPWRITE_DATABASE_ID,
-      CONFIG.COLLECTION_ARTICLES,
-      [
-        Query.equal("category", category),
-        Query.equal("siteName", siteName),
-        Query.orderDesc("fetchedAt"),
-        Query.limit(CONFIG.RECENT_IDS_LIMIT),
-      ]
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "news_notifications",
+              ...(imageLink && { image: imageLink }),
+            },
+          },
+          data: {
+            link: article.link || "",
+            image: imageLink || "",
+            clickAction: "FLUTTER_NOTIFICATION_CLICK",
+          },
+        };
+        try {
+          await admin.messaging().send(message);
+          summary.notificationsSent++;
+          console.log(`   -> Sent: ${article.title.substring(0, 30)}...`);
+        } catch (e) {
+          console.error(`   -> Failed: ${e.message}`);
+        }
+      })
     );
-
-    (resp.documents || []).forEach((d) => {
-      if (d.$id) ids.add(d.$id);
-    });
-  } catch (e) {
-    // ignore
   }
-
-  return ids;
 }
 
-// --- Process a single source ---
+// --- MAIN PROCESS LOGIC ---
 async function processSource(sourceData, summary) {
   const { rssUrl, category, name, docId, raw: rawSourceData } = sourceData;
-  const categorySanitized = safeId(category || "uncategorized");
-  const siteNameSanitized = safeId(name || docId);
+  const topicName = `${safeId(category)}_${safeId(name)}`;
 
   try {
-    console.log(`📥 Fetching: ${name || rssUrl}`);
-    const parsed = await fetchFeed(rssUrl);
-    const items = normalizeItems(parsed);
+    console.log(`📥 Processing: ${name}`);
+    const fetched = await fetchFeed(rssUrl);
+    let items = normalizeItems(fetched, rssUrl);
 
     if (!items.length) return;
 
-    const existingIds = await getExistingIds(rawSourceData, category, name);
-    // تصفية العناصر التي نعرف أنها موجودة من قائمة recentIds
-    const newItems = items.filter((item) => !existingIds.has(item.docId));
+    // إزالة التكرار الداخلي
+    const uniqueMap = new Map();
+    items.forEach((i) => uniqueMap.set(i.docId, i));
+    items = Array.from(uniqueMap.values());
 
-    if (newItems.length === 0) {
-      console.log(`   No new articles for ${name}.`);
-      try {
-        await databases.updateDocument(
-          CONFIG.APPWRITE_DATABASE_ID,
-          CONFIG.COLLECTION_RSS,
-          docId,
-          { lastFetchedAt: new Date().toISOString() }
+    // تحديد الأخبار الجديدة
+    const existingIds = new Set(rawSourceData.recentIds || []);
+    const newItems = items.filter((i) => !existingIds.has(i.docId));
+
+    // =========================================================
+    // BRANCH A: API (JSON) -> تخزين العناوين فقط (حد أقصى 40)
+    // =========================================================
+    if (fetched.type === "json") {
+      let finalTitles = [];
+      if (
+        !rawSourceData.latestTitles ||
+        rawSourceData.latestTitles.length === 0
+      ) {
+        finalTitles = items
+          .map((i) => i.title)
+          .slice(0, CONFIG.MAX_STORED_NEWS);
+      } else {
+        const storedTitles = rawSourceData.latestTitles || [];
+        const newTitles = newItems.map((i) => i.title);
+        // إضافة الجديد أولاً ثم القديم، والاحتفاظ بأول 40 فقط
+        finalTitles = [...newTitles, ...storedTitles].slice(
+          0,
+          CONFIG.MAX_STORED_NEWS
         );
-      } catch (e) {}
-      return;
-    }
-
-    console.log(`   Found ${newItems.length} potential new articles.`);
-
-    const allIds = [
-      ...newItems.map((i) => i.docId),
-      ...Array.from(existingIds),
-    ];
-    const updatedRecentIds = allIds.slice(0, CONFIG.RECENT_IDS_LIMIT);
-
-    const articlesForNotify = [];
-
-    for (const item of newItems) {
-      const payload = {
-        title: item.title,
-        link: item.link,
-        description: item.description,
-        pubDate: item.pubDate ? item.pubDate.toISOString() : null,
-        thumbnail: item.thumbnail || null,
-        guid: item.guid,
-        fetchedAt: new Date().toISOString(),
-        siteName: name,
-        category: category,
-        siteImage: rawSourceData?.image || null,
-        language: rawSourceData?.language || "en",
-      };
-
-      Object.keys(payload).forEach(
-        (k) => payload[k] === undefined && delete payload[k]
-      );
-
-      let isTrulyNew = false; // 🛠️ FIX 2: متغير للتحقق مما إذا كان المقال جديداً فعلاً
-
-      try {
-        await databases.createDocument(
-          CONFIG.APPWRITE_DATABASE_ID,
-          CONFIG.COLLECTION_ARTICLES,
-          item.docId,
-          payload
-        );
-        summary.articlesUpserted++;
-        isTrulyNew = true; // تم الإنشاء بنجاح، إذن هو جديد
-      } catch (err) {
-        // إذا كان الخطأ أن المستند موجود، نقوم بالتحديث ولكن لا نرسل إشعاراً
-        const msg = err.message || String(err);
-        if (msg.includes("document already exists") || err.code === 409) {
-          try {
-            await databases.updateDocument(
-              CONFIG.APPWRITE_DATABASE_ID,
-              CONFIG.COLLECTION_ARTICLES,
-              item.docId,
-              payload
-            );
-            // لاحظ: لم نقم بتعيين isTrulyNew = true هنا، لأن الخبر موجود مسبقاً
-          } catch (uErr) {
-            console.error("Update failed:", uErr.message);
-          }
-        } else {
-          console.error("Create article failed:", msg);
-          summary.errors.push({ site: rssUrl, msg });
-        }
       }
 
-      // 🛠️ FIX 2: إضافة المقال للإشعارات فقط إذا تم إنشاؤه لأول مرة
-      if (isTrulyNew) {
-        articlesForNotify.push({
-          ...item,
-          ...payload,
-          topicName: `${categorySanitized}_${siteNameSanitized}`,
-        });
-      }
-    }
+      const allIds = items.map((i) => i.docId);
+      const updatedRecentIds = Array.from(
+        new Set([...allIds, ...existingIds])
+      ).slice(0, CONFIG.RECENT_IDS_LIMIT);
 
-    try {
       await databases.updateDocument(
         CONFIG.APPWRITE_DATABASE_ID,
         CONFIG.COLLECTION_RSS,
         docId,
         {
           lastFetchedAt: new Date().toISOString(),
+          latestTitles: finalTitles,
           recentIds: updatedRecentIds,
         }
       );
-    } catch (e) {
-      console.warn("Could not update rss doc recentIds:", e.message);
+    }
+    // =========================================================
+    // BRANCH B: RSS (XML) -> تخزين مستندات كاملة (حد أقصى 40)
+    // =========================================================
+    else {
+      // 1. إضافة الأخبار الجديدة
+      for (const item of newItems) {
+        const payload = {
+          title: item.title,
+          link: item.link,
+          description: item.description,
+          pubDate: item.pubDate ? item.pubDate.toISOString() : null,
+          thumbnail: item.thumbnail || null,
+          guid: item.guid,
+          fetchedAt: new Date().toISOString(),
+          siteName: name,
+          category: category,
+        };
+
+        try {
+          await databases.createDocument(
+            CONFIG.APPWRITE_DATABASE_ID,
+            CONFIG.COLLECTION_ARTICLES,
+            item.docId,
+            payload
+          );
+        } catch (err) {
+          if (err.code !== 409) {
+            // 409 = موجود مسبقاً
+            console.error(`      ❌ Save failed: ${err.message}`);
+          }
+        }
+      }
+
+      // 2. تحديث recentIds في المصدر
+      const allIds = items.map((i) => i.docId);
+      const updatedRecentIds = Array.from(
+        new Set([...allIds, ...existingIds])
+      ).slice(0, CONFIG.RECENT_IDS_LIMIT);
+
+      await databases.updateDocument(
+        CONFIG.APPWRITE_DATABASE_ID,
+        CONFIG.COLLECTION_RSS,
+        docId,
+        { lastFetchedAt: new Date().toISOString(), recentIds: updatedRecentIds }
+      );
+
+      // 3. 🧹 تنظيف المستندات القديمة (RSS Cleanup)
+      // نحذف أي مستند يزيد ترتيبه عن 40 لنفس المصدر
+      try {
+        // نطلب المستندات الزائدة (بدءاً من رقم 41)
+        const excessDocs = await databases.listDocuments(
+          CONFIG.APPWRITE_DATABASE_ID,
+          CONFIG.COLLECTION_ARTICLES,
+          [
+            Query.equal("siteName", name),
+            Query.orderDesc("fetchedAt"), // الأحدث أولاً
+            Query.limit(50), // حجم الدفعة للحذف
+            Query.offset(CONFIG.MAX_STORED_NEWS), // تجاوز أول 40 (الاحتفاظ بهم)
+          ]
+        );
+
+        if (excessDocs.documents.length > 0) {
+          console.log(
+            `      🧹 Cleanup: Deleting ${excessDocs.documents.length} old articles for ${name}...`
+          );
+          const deletePromises = excessDocs.documents.map((d) =>
+            databases
+              .deleteDocument(
+                CONFIG.APPWRITE_DATABASE_ID,
+                CONFIG.COLLECTION_ARTICLES,
+                d.$id
+              )
+              .catch((e) => console.error(`Failed to delete ${d.$id}`))
+          );
+          await Promise.all(deletePromises);
+        }
+      } catch (cleanupError) {
+        console.error(`      ⚠️ Cleanup failed: ${cleanupError.message}`);
+      }
     }
 
-    // إرسال الإشعارات للقائمة المفلترة فقط
-    await sendNotifications(articlesForNotify, summary);
+    // =========================================================
+    // NOTIFICATIONS
+    // =========================================================
+    if (newItems.length > 0) {
+      console.log(`   🚀 Found ${newItems.length} new articles.`);
+      const notifyItems = newItems.map((i) => ({ ...i, topicName }));
+      await sendNotifications(notifyItems, summary);
+    } else {
+      console.log(`   💤 No new articles.`);
+    }
   } catch (error) {
-    console.error(`❌ Error processing ${name}: ${error.message}`);
-    summary.errors.push({ site: rssUrl, msg: error.message });
+    console.error(`❌ Error in ${name}: ${error.message}`);
+    summary.errors.push({ name, msg: error.message });
   }
 }
 
-// --- MAIN RUNNER ---
+// --- RUN ---
 async function run() {
-  console.log("🚀 Starting RSS Fetcher (Appwrite)...");
-  const summary = {
-    sourcesProcessed: 0,
-    articlesUpserted: 0,
-    notificationsSent: 0,
-    errors: [],
-  };
-
+  console.log("🚀 Starting Hybrid Fetcher (API & RSS)...");
+  const summary = { notificationsSent: 0, errors: [] };
   try {
-    const sourcesResp = await databases.listDocuments(
+    const res = await databases.listDocuments(
       CONFIG.APPWRITE_DATABASE_ID,
       CONFIG.COLLECTION_RSS,
       [Query.limit(1000)]
     );
 
-    const docs = sourcesResp.documents || [];
-    if (!docs.length) {
-      console.log("No sources found.");
-      process.exit(0);
-    }
-
-    const sources = docs.map((doc) => ({
-      docId: doc.$id,
-      rssUrl: doc.rssUrl,
-      name: doc.name,
-      category: doc.category,
-      raw: doc,
+    const sources = res.documents.map((d) => ({
+      docId: d.$id,
+      rssUrl: d.rssUrl,
+      name: d.name,
+      category: d.category,
+      raw: d,
     }));
 
-    summary.sourcesProcessed = sources.length;
+    console.log(`Found ${sources.length} sources.`);
 
     for (let i = 0; i < sources.length; i += CONFIG.MAX_CONCURRENCY) {
       const chunk = sources.slice(i, i + CONFIG.MAX_CONCURRENCY);
       await Promise.all(chunk.map((s) => processSource(s, summary)));
     }
-  } catch (error) {
-    console.error("Fatal Error:", error);
-    process.exit(1);
+  } catch (e) {
+    console.error("Fatal Error:", e);
   }
-
-  console.log("\n--- 📊 FINAL SUMMARY ---");
-  console.log(`Sources: ${summary.sourcesProcessed}`);
-  console.log(`New Articles: ${summary.articlesUpserted}`);
-  console.log(`Notifications: ${summary.notificationsSent}`);
-  console.log(`Errors: ${summary.errors.length}`);
-
+  console.log(
+    `\n--- Done. Sent: ${summary.notificationsSent}, Errors: ${summary.errors.length} ---`
+  );
   process.exit(0);
 }
 
