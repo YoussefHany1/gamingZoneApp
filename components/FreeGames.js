@@ -6,46 +6,35 @@ import {
   TouchableOpacity,
   Linking,
   FlatList,
-  ScrollView, // تمت إضافته لعمل قائمة الـ Skeleton
+  ScrollView,
 } from "react-native";
 import { useState, useEffect, useMemo, memo } from "react";
-import { EpicFreeGames } from "epic-free-games";
-// تم إزالة استيراد Loading
-import SkeletonGameCard from "../skeleton/SkeletonGameCard"; // تم إضافة استيراد SkeletonGameCard
+import axios from "axios";
+import SkeletonGameCard from "../skeleton/SkeletonGameCard";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import COLORS from "../constants/colors";
 
 const CACHE_KEY = "EPIC_GAMES_CACHE";
 
-// --- Sub-Component: Countdown Timer (Optimization: Re-renders only itself) ---
-const CountdownTimer = memo(({ t }) => {
-  const [timeLeft, setTimeLeft] = useState(getTimeUntilNextThursday());
+// --- Sub-Component: Countdown Timer ---
+// التعديل: استقبال startDate كـ prop واستخدامه في الحساب
+const CountdownTimer = memo(({ t, startDate }) => {
+  const calculateTimeLeft = () => {
+    const now = new Date();
+    const targetDate = new Date(startDate);
+    const diff = targetDate - now;
+    return diff > 0 ? diff : 0;
+  };
+
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTimeLeft(getTimeUntilNextThursday());
+      setTimeLeft(calculateTimeLeft());
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  function getTimeUntilNextThursday() {
-    const now = new Date();
-    const nextThursday = new Date();
-    const dayOfWeek = now.getDay();
-    let daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-
-    // If today is Thursday and past 5 PM, aim for next week
-    if (daysUntilThursday === 0 && now.getHours() >= 17) {
-      daysUntilThursday = 7;
-    }
-
-    nextThursday.setDate(now.getDate() + daysUntilThursday);
-    nextThursday.setHours(17, 0, 0, 0);
-
-    const diff = nextThursday - now;
-    return diff > 0 ? diff : 0;
-  }
+  }, [startDate]);
 
   const seconds = Math.floor((timeLeft / 1000) % 60);
   const minutes = Math.floor((timeLeft / (1000 * 60)) % 60);
@@ -65,7 +54,6 @@ const CountdownTimer = memo(({ t }) => {
   );
 });
 
-// Helper for Timer UI
 const TimeUnit = ({ value, label }) => (
   <View>
     <Text style={styles.countdownLabel}>{label}</Text>
@@ -96,29 +84,58 @@ function FreeGames() {
       console.error("Cache loading error:", error);
     }
 
-    // 2. Fetch Fresh Data
+    // 2. Fetch Fresh Data using Axios
     try {
-      const epicFreeGames = new EpicFreeGames({
-        country: "US",
-        locale: "en-US",
-        includeAll: true,
+      const response = await axios.get(
+        "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=en-US&country=US&allowCountries=US"
+      );
+
+      const allGames = response.data.data.Catalog.searchStore.elements;
+
+      // Filter Current Free Games
+      const currentGames = allGames.filter((game) => {
+        const promotions = game.promotions;
+        if (!promotions || !promotions.promotionalOffers) return false;
+        return promotions.promotionalOffers.length > 0;
       });
 
-      const res = await epicFreeGames.getGames();
-      setGame(res);
+      // Filter Upcoming Free Games
+      const nextGames = allGames.filter((game) => {
+        const promotions = game.promotions;
+        if (
+          !promotions ||
+          !promotions.upcomingPromotionalOffers ||
+          promotions.upcomingPromotionalOffers.length === 0
+        ) {
+          return false;
+        }
+
+        const offer =
+          promotions.upcomingPromotionalOffers[0].promotionalOffers[0];
+
+        if (!offer || !offer.discountSetting) return false;
+
+        return offer.discountSetting.discountPercentage === 0;
+      });
+
+      const processedData = {
+        currentGames: currentGames,
+        nextGames: nextGames,
+      };
+
+      setGame(processedData);
       setLoading(false);
 
       await AsyncStorage.setItem(
         CACHE_KEY,
-        JSON.stringify({ data: res, timestamp: Date.now() })
+        JSON.stringify({ data: processedData, timestamp: Date.now() })
       );
     } catch (err) {
       console.error("Error fetching games:", err);
-      if (!game) setLoading(false);
+      setLoading(false);
     }
   };
 
-  // Combine and flatten data for FlatList
   const flatListData = useMemo(() => {
     if (!game) return [];
 
@@ -132,13 +149,22 @@ function FreeGames() {
   }, [game]);
 
   const renderGameItem = ({ item, index }) => {
-    const imageUrl = item.keyImages?.[2]?.url || item.keyImages?.[0]?.url; // Better fallback logic
+    const imageUrl = item.keyImages?.[2]?.url || item.keyImages?.[0]?.url;
+
+    // استخراج تاريخ البدء للألعاب القادمة
+    let startDate = null;
+    if (item.type === "next") {
+      const offer =
+        item.promotions?.upcomingPromotionalOffers?.[0]?.promotionalOffers?.[0];
+      if (offer && offer.startDate) {
+        startDate = offer.startDate;
+      }
+    }
 
     return (
       <TouchableOpacity
         style={styles.gameCard}
         onPress={() => {
-          // Use item.urlSlug or offerMappings for safer linking
           const slug = item.offerMappings?.[0]?.pageSlug || item.urlSlug;
           if (slug) {
             Linking.openURL(`https://store.epicgames.com/en-US/p/${slug}`);
@@ -146,15 +172,16 @@ function FreeGames() {
         }}
       >
         <View>
-          {/* Show Discount Badge if Current */}
           {item.type === "current" && (
             <Text style={styles.discountBadge}>
               {t("games.freeGames.discount")}
             </Text>
           )}
 
-          {/* Show Timer Overlay if Next */}
-          {item.type === "next" && <CountdownTimer t={t} />}
+          {/* تمرير تاريخ البدء للعداد */}
+          {item.type === "next" && startDate && (
+            <CountdownTimer t={t} startDate={startDate} />
+          )}
 
           <Image
             source={
@@ -176,17 +203,14 @@ function FreeGames() {
 
   return (
     <View style={styles.mainContainer}>
-      {/* قمت بنقل العنوان للأعلى ليظهر دائماً سواء أثناء التحميل أو بعده */}
       <Text style={styles.header}>{t("games.freeGames.header")}</Text>
 
-      {/* شرط التحميل: إذا كان يحمل نعرض الـ Skeletons، وإلا نعرض القائمة الحقيقية */}
       {loading ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
         >
-          {/* عرض 3 بطاقات Skeleton لمحاكاة القائمة */}
           {[1, 2, 3].map((item) => (
             <SkeletonGameCard key={item} />
           ))}
@@ -206,10 +230,9 @@ function FreeGames() {
 }
 
 export default FreeGames;
+
 const styles = StyleSheet.create({
-  container: {
-    // flexDirection: "row"
-  },
+  container: {},
   header: { fontSize: 28, color: "white", margin: 12, fontWeight: "bold" },
   gameCard: {
     borderWidth: 1,
@@ -248,7 +271,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  // Overlay & Timer Styles
   overlay: {
     backgroundColor: "rgba(0, 0, 0, 0.85)",
     position: "absolute",
@@ -259,7 +281,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 10, // Match cover radius
+    borderRadius: 10,
   },
   subCount: {
     color: "white",
@@ -285,7 +307,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginBottom: 2,
   },
-  listContent: {
-    // يمكنك إضافة ستايل للمحتوى هنا إذا لزم الأمر
-  },
+  listContent: {},
 });

@@ -105,7 +105,8 @@
             "hours": "Hrs",
             "minutes": "Min",
             "seconds": "Sec",
-            "discount": "100%\nOFF"
+            "discount": "100%\nOFF",
+            "not": "New Free Game!"
         },
         "list": {
                         "gamesNews": "Game News",
