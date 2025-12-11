@@ -221,170 +221,131 @@ function App() {
     const unsubscribeAuth = auth().onAuthStateChanged(async (newUser) => {
       setUser(newUser);
       setLoading(false);
-      if (newUser) {
-        console.log("✅ User authenticated:", newUser.uid);
-        try {
-          await initFcm(newUser.uid);
-        } catch (error) {
-          console.error("❌ Failed to initialize FCM:", error);
-        }
-      } else {
-        console.log("❌ User not authenticated, showing Auth stack.");
-      }
-      // Set loading false only after initial auth check and FCM init attempt (if user exists)
-      setLoading(false);
     });
-
     return () => unsubscribeAuth();
   }, []);
 
-  const initFcm = async (userId) => {
-    try {
-      // Create notification channel for Android
-      await Notifications.setNotificationChannelAsync("news_notifications", {
-        name: "News Notifications",
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#779bdd",
-        sound: "default",
-        lockscreenVisibility:
-          Notifications.AndroidNotificationVisibility.PUBLIC,
-        enableVibrate: true,
-        enableLights: true,
-        showBadge: true,
-        bypassDnd: false,
-      });
+  // Effect 2: إدارة إشعارات FCM (يعمل فقط عند وجود user)
+  useEffect(() => {
+    let unsubscribeOnMessage;
+    let unsubscribeTokenRefresh;
 
-      // Also create a default channel for compatibility
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "Default",
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#779bdd",
-        sound: "default",
-        lockscreenVisibility:
-          Notifications.AndroidNotificationVisibility.PUBLIC,
-        enableVibrate: true,
-        enableLights: true,
-        showBadge: true,
-      });
+    const setupFcm = async () => {
+      if (user) {
+        console.log("✅ Initializing FCM for user:", user.uid);
 
-      // Request FCM permission
-      const authStatus = await messaging().requestPermission({
-        alert: true,
-        announcement: false,
-        badge: true,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
-        sound: true,
-      });
-      messaging().onNotificationOpenedApp((remoteMessage) => {
-        console.log(
-          "Notification opened app from background:",
-          remoteMessage.notification
-        );
-      });
-      messaging()
-        .getInitialNotification()
-        .then((remoteMessage) => {
-          if (remoteMessage) {
-            console.log(
-              "Notification opened app from quit state:",
-              remoteMessage.notification
-            );
-            // ✅ حذفنا دالة handleNotificationNavigation
-            // النتيجة: التطبيق سيفتح ويبدأ من الشاشة الرئيسية (Home)
-          }
-        });
-      const enabled =
-        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        try {
+          // ... (باقي كود إعداد القنوات والصلاحيات من دالتك القديمة initFcm) ...
 
-      if (!enabled) {
-        console.log("❌ FCM permission not granted:", authStatus);
-        return;
-      }
-      console.log("✅ FCM permission granted:", authStatus);
-
-      const token = await messaging().getToken();
-      console.log("📱 FCM token:", token);
-
-      // ✅ Updated: Save FCM token using the Service
-      await NotificationService.saveFCMToken(userId, token);
-
-      // ✅ Updated: Load and sync user notification preferences using the Service
-      const preferences = await NotificationService.getUserPreferences(userId);
-      await NotificationService.syncUserPreferences(userId, preferences);
-
-      const unsubscribeOnMessage = messaging().onMessage(
-        async (remoteMessage) => {
-          // console.log(
-          //   "📨 FCM foreground message received:",
-          //   remoteMessage?.messageId
-          // );
-
-          try {
-            const title =
-              remoteMessage?.notification?.title ||
-              remoteMessage?.data?.title ||
-              "📰 New News!";
-            const body =
-              remoteMessage?.notification?.body ||
-              remoteMessage?.data?.body ||
-              "";
-
-            // ✅ استخراج الصورة من الإشعار أو البيانات
-            const image =
-              remoteMessage?.notification?.android?.imageUrl ||
-              remoteMessage?.notification?.imageUrl ||
-              remoteMessage?.data?.thumbnail;
-
-            // إعداد محتوى الإشعار
-            const notificationContent = {
-              title,
-              body,
-              data: remoteMessage?.data || {},
+          // 1. القنوات (Channels)
+          await Notifications.setNotificationChannelAsync(
+            "news_notifications",
+            {
+              name: "News Notifications",
+              importance: Notifications.AndroidImportance.MAX,
+              vibrationPattern: [0, 250, 250, 250],
+              lightColor: "#779bdd",
               sound: "default",
-              badge: 1,
-              categoryIdentifier: "news_notifications",
-            };
-
-            // ✅ إذا وجدت صورة، أضفها للمرفقات
-            if (image) {
-              notificationContent.attachments = [
-                { url: image, identifier: "news-image", typeHint: "image" },
-              ];
+              lockscreenVisibility:
+                Notifications.AndroidNotificationVisibility.PUBLIC,
+              enableVibrate: true,
+              enableLights: true,
+              showBadge: true,
+              bypassDnd: false,
             }
+          );
 
-            await Notifications.scheduleNotificationAsync({
-              content: notificationContent,
-              trigger: null, // immediate
-            });
+          // 2. الصلاحيات (Permissions)
+          const authStatus = await messaging().requestPermission();
+          const enabled =
+            authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+            authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-            // console.log("✅ Local notification scheduled with image check");
-          } catch (err) {
-            console.error("❌ Failed to present foreground notification:", err);
+          if (enabled) {
+            // حفظ التوكن
+            const token = await messaging().getToken();
+            await NotificationService.saveFCMToken(user.uid, token);
+
+            // مزامنة التفضيلات
+            const preferences = await NotificationService.getUserPreferences(
+              user.uid
+            );
+            await NotificationService.syncUserPreferences(
+              user.uid,
+              preferences
+            );
+
+            // 3. الاستماع للإشعارات (Foreground Handler)
+            unsubscribeOnMessage = messaging().onMessage(
+              async (remoteMessage) => {
+                try {
+                  const title =
+                    remoteMessage?.notification?.title ||
+                    remoteMessage?.data?.title ||
+                    "📰 New News!";
+                  const body =
+                    remoteMessage?.notification?.body ||
+                    remoteMessage?.data?.body ||
+                    "";
+                  const image =
+                    remoteMessage?.notification?.android?.imageUrl ||
+                    remoteMessage?.notification?.imageUrl ||
+                    remoteMessage?.data?.thumbnail;
+
+                  const notificationContent = {
+                    title,
+                    body,
+                    data: remoteMessage?.data || {},
+                    sound: "default",
+                    badge: 1,
+                    categoryIdentifier: "news_notifications",
+                  };
+
+                  if (image) {
+                    notificationContent.attachments = [
+                      {
+                        url: image,
+                        identifier: "news-image",
+                        typeHint: "image",
+                      },
+                    ];
+                  }
+
+                  // جدولة الإشعار المحلي
+                  await Notifications.scheduleNotificationAsync({
+                    content: notificationContent,
+                    trigger: null,
+                  });
+                } catch (err) {
+                  console.error(
+                    "❌ Failed to present foreground notification:",
+                    err
+                  );
+                }
+              }
+            );
+
+            // 4. تحديث التوكن
+            unsubscribeTokenRefresh = messaging().onTokenRefresh(
+              async (newToken) => {
+                await NotificationService.saveFCMToken(user.uid, newToken);
+              }
+            );
           }
+        } catch (error) {
+          console.error("❌ FCM init error:", error);
         }
-      );
+      }
+    };
 
-      const unsubscribeTokenRefresh = messaging().onTokenRefresh(
-        async (newToken) => {
-          console.log("FCM token refreshed:", newToken);
-          // ✅ Updated: Save new FCM token using the Service
-          await NotificationService.saveFCMToken(userId, newToken);
-        }
-      );
+    setupFcm();
 
-      return () => {
-        unsubscribeOnMessage();
-        unsubscribeTokenRefresh();
-      };
-    } catch (e) {
-      console.error("FCM init error:", e);
-    }
-  };
+    // Cleanup Function: هذا الجزء هو الأهم لمنع التكرار
+    return () => {
+      if (unsubscribeOnMessage) unsubscribeOnMessage();
+      if (unsubscribeTokenRefresh) unsubscribeTokenRefresh();
+    };
+  }, [user]);
 
   if (loading) {
     return <Loading />;

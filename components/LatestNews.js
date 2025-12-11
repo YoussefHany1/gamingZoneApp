@@ -231,6 +231,7 @@ const styles = StyleSheet.create({
   },
   NewsContainer: {
     alignItems: "center",
+    alignSelf: "center",
     flexDirection: "row",
     borderRadius: 16,
     padding: 20,

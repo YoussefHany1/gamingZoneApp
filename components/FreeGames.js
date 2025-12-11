@@ -7,19 +7,27 @@ import {
   Linking,
   FlatList,
   ScrollView,
+  Alert,
 } from "react-native";
 import { useState, useEffect, useMemo, memo } from "react";
-import axios from "axios";
 import SkeletonGameCard from "../skeleton/SkeletonGameCard";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import COLORS from "../constants/colors";
+import { Ionicons } from "@expo/vector-icons"; // أو react-native-vector-icons
+import messaging from "@react-native-firebase/messaging"; // تأكد من تثبيت المكتبة
 
-const CACHE_KEY = "EPIC_GAMES_CACHE";
+import { databases } from "../lib/appwrite";
+import { Query } from "react-native-appwrite";
+import Constants from "expo-constants";
 
-// --- Sub-Component: Countdown Timer ---
-// التعديل: استقبال startDate كـ prop واستخدامه في الحساب
+const FREE_GAMES_COLLECTION_ID = "free_games";
+const NOTIFICATION_TOPIC = "free_games_alerts";
+const PREF_KEY = "NOTIF_FREE_GAMES_ENABLED"; // مفتاح التخزين المحلي
+
+// --- Sub-Component: Countdown Timer (بدون تغيير) ---
 const CountdownTimer = memo(({ t, startDate }) => {
+  // ... (نفس الكود السابق) ...
   const calculateTimeLeft = () => {
     const now = new Date();
     const targetDate = new Date(startDate);
@@ -64,110 +72,115 @@ const TimeUnit = ({ value, label }) => (
 // --- Main Component ---
 function FreeGames() {
   const { t } = useTranslation();
-  const [game, setGame] = useState(null);
+  const [gamesList, setGamesList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [notifEnabled, setNotifEnabled] = useState(false); // حالة الجرس
+
+  const dbId = Constants.expoConfig.extra.APPWRITE_DATABASE_ID;
 
   useEffect(() => {
     loadGames();
+    checkNotificationStatus();
   }, []);
+
+  // 1. تحميل حالة الإشعارات المحفوظة
+  const checkNotificationStatus = async () => {
+    try {
+      const storedPref = await AsyncStorage.getItem(PREF_KEY);
+      if (storedPref === "true") {
+        setNotifEnabled(true);
+      }
+    } catch (e) {
+      console.log("Error reading pref", e);
+    }
+  };
+
+  // 2. زر تبديل التفعيل (Subscribe/Unsubscribe)
+  const toggleNotifications = async () => {
+    try {
+      if (notifEnabled) {
+        // إلغاء الاشتراك
+        await messaging().unsubscribeFromTopic(NOTIFICATION_TOPIC);
+        await AsyncStorage.setItem(PREF_KEY, "false");
+        setNotifEnabled(false);
+        Alert.alert(t("notifications"), t("games.freeGames.unsubscribed"));
+      } else {
+        // طلب الإذن أولاً (للاحتياط)
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+        if (enabled) {
+          // الاشتراك
+          await messaging().subscribeToTopic(NOTIFICATION_TOPIC);
+          await AsyncStorage.setItem(PREF_KEY, "true");
+          setNotifEnabled(true);
+          Alert.alert(t("notifications"), t("games.freeGames.subscribed"));
+        } else {
+          Alert.alert(t("error"), t("notifications_permission_denied"));
+        }
+      }
+    } catch (error) {
+      console.error("Toggle error:", error);
+      Alert.alert(t("error"), "Failed to update subscription");
+    }
+  };
 
   const loadGames = async () => {
     // 1. Cache First Strategy
     try {
-      const cachedString = await AsyncStorage.getItem(CACHE_KEY);
+      const cachedString = await AsyncStorage.getItem(
+        "FREE_GAMES_APPWRITE_CACHE"
+      );
       if (cachedString) {
         const cachedObject = JSON.parse(cachedString);
-        setGame(cachedObject.data);
+        setGamesList(cachedObject.data);
         setLoading(false);
       }
     } catch (error) {
       console.error("Cache loading error:", error);
     }
 
-    // 2. Fetch Fresh Data using Axios
+    // 2. Fetch Fresh Data from Appwrite
     try {
-      const response = await axios.get(
-        "https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=en-US&country=US&allowCountries=US"
+      const response = await databases.listDocuments(
+        dbId,
+        FREE_GAMES_COLLECTION_ID,
+        [Query.orderAsc("type"), Query.limit(20)]
       );
 
-      const allGames = response.data.data.Catalog.searchStore.elements;
+      const fetchedGames = response.documents.map((doc) => ({
+        id: doc.$id,
+        title: doc.title,
+        image: doc.image,
+        slug: doc.slug,
+        description: doc.description,
+        type: doc.type,
+        startDate: doc.startDate,
+        endDate: doc.endDate,
+      }));
 
-      // Filter Current Free Games
-      const currentGames = allGames.filter((game) => {
-        const promotions = game.promotions;
-        if (!promotions || !promotions.promotionalOffers) return false;
-        return promotions.promotionalOffers.length > 0;
-      });
-
-      // Filter Upcoming Free Games
-      const nextGames = allGames.filter((game) => {
-        const promotions = game.promotions;
-        if (
-          !promotions ||
-          !promotions.upcomingPromotionalOffers ||
-          promotions.upcomingPromotionalOffers.length === 0
-        ) {
-          return false;
-        }
-
-        const offer =
-          promotions.upcomingPromotionalOffers[0].promotionalOffers[0];
-
-        if (!offer || !offer.discountSetting) return false;
-
-        return offer.discountSetting.discountPercentage === 0;
-      });
-
-      const processedData = {
-        currentGames: currentGames,
-        nextGames: nextGames,
-      };
-
-      setGame(processedData);
+      setGamesList(fetchedGames);
       setLoading(false);
 
       await AsyncStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({ data: processedData, timestamp: Date.now() })
+        "FREE_GAMES_APPWRITE_CACHE",
+        JSON.stringify({ data: fetchedGames, timestamp: Date.now() })
       );
     } catch (err) {
-      console.error("Error fetching games:", err);
-      setLoading(false);
+      console.error("Error fetching games from Appwrite:", err);
+      if (loading) setLoading(false);
     }
   };
 
-  const flatListData = useMemo(() => {
-    if (!game) return [];
-
-    const current = (game.currentGames || []).map((g) => ({
-      ...g,
-      type: "current",
-    }));
-    const next = (game.nextGames || []).map((g) => ({ ...g, type: "next" }));
-
-    return [...current, ...next];
-  }, [game]);
-
-  const renderGameItem = ({ item, index }) => {
-    const imageUrl = item.keyImages?.[2]?.url || item.keyImages?.[0]?.url;
-
-    // استخراج تاريخ البدء للألعاب القادمة
-    let startDate = null;
-    if (item.type === "next") {
-      const offer =
-        item.promotions?.upcomingPromotionalOffers?.[0]?.promotionalOffers?.[0];
-      if (offer && offer.startDate) {
-        startDate = offer.startDate;
-      }
-    }
-
+  const renderGameItem = ({ item }) => {
     return (
       <TouchableOpacity
         style={styles.gameCard}
         onPress={() => {
-          const slug = item.offerMappings?.[0]?.pageSlug || item.urlSlug;
-          if (slug) {
-            Linking.openURL(`https://store.epicgames.com/en-US/p/${slug}`);
+          if (item.slug) {
+            Linking.openURL(`https://store.epicgames.com/en-US/p/${item.slug}`);
           }
         }}
       >
@@ -178,15 +191,14 @@ function FreeGames() {
             </Text>
           )}
 
-          {/* تمرير تاريخ البدء للعداد */}
-          {item.type === "next" && startDate && (
-            <CountdownTimer t={t} startDate={startDate} />
+          {item.type === "next" && item.startDate && (
+            <CountdownTimer t={t} startDate={item.startDate} />
           )}
 
           <Image
             source={
-              imageUrl
-                ? { uri: imageUrl }
+              item.image
+                ? { uri: item.image }
                 : require("../assets/image-not-found.webp")
             }
             style={styles.cover}
@@ -203,23 +215,37 @@ function FreeGames() {
 
   return (
     <View style={styles.mainContainer}>
-      <Text style={styles.header}>{t("games.freeGames.header")}</Text>
+      {/* Header Container with Button */}
+      <View style={{}}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.header}>{t("games.freeGames.header")}</Text>
 
-      {loading ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-        >
+          <TouchableOpacity
+            onPress={toggleNotifications}
+            style={styles.bellButton}
+          >
+            <Ionicons
+              name={
+                notifEnabled ? "notifications" : "notifications-off-outline"
+              }
+              size={24}
+              color={notifEnabled ? "#779bdd" : "#666"}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {loading && gamesList.length === 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {[1, 2, 3].map((item) => (
             <SkeletonGameCard key={item} />
           ))}
         </ScrollView>
       ) : (
         <FlatList
-          data={flatListData}
+          data={gamesList}
           renderItem={renderGameItem}
-          keyExtractor={(item, index) => item.id || index.toString()}
+          keyExtractor={(item) => item.id}
           horizontal={true}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
@@ -232,8 +258,27 @@ function FreeGames() {
 export default FreeGames;
 
 const styles = StyleSheet.create({
-  container: {},
-  header: { fontSize: 28, color: "white", margin: 12, fontWeight: "bold" },
+  // ... (الستايلات السابقة) ...
+  mainContainer: {
+    // تأكد من وجود margin أو padding مناسب إذا لزم الأمر
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  header: {
+    fontSize: 28,
+    color: "white",
+    margin: 12,
+    fontWeight: "bold",
+    width: "80%",
+  },
+  bellButton: {
+    padding: 8,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
+  },
   gameCard: {
     borderWidth: 1,
     borderColor: COLORS.secondary,

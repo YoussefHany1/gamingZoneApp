@@ -73,6 +73,7 @@ const SkeletonNewsItem = ({ language }) => {
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
+    alignSelf: "center",
     flexDirection: "row",
     padding: 20,
     borderBottomWidth: 1,

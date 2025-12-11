@@ -146,6 +146,7 @@ const DropdownPicker = (props) => {
             )}
             <TouchableOpacity
               onPress={() => toggleSource(category, selectedItem?.name)}
+              style={styles.bellButton}
             >
               <Ionicons
                 name={
@@ -153,7 +154,6 @@ const DropdownPicker = (props) => {
                 }
                 size={24}
                 color={isNotifEnabled ? "#779bdd" : "#666"}
-                style={{ marginRight: 5 }}
               />
             </TouchableOpacity>
           </View>
@@ -305,6 +305,11 @@ const styles = StyleSheet.create({
   visitSiteText: {
     color: "white",
     fontWeight: "bold",
+  },
+  bellButton: {
+    padding: 8,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 20,
   },
 
   // Modal styles

@@ -1,12 +1,13 @@
-name: RSS fetch and write to Appwrite
+name: Trigger Games Fetch
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+    # هذا التعبير يعني: عند الدقيقة 0 من كل ساعة
+    - cron: "0 * * * *"
+  workflow_dispatch: # للسماح بالتشغيل اليدوي أيضاً
 
 jobs:
-  fetch:
+  run-hourly-script:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,16 +23,19 @@ jobs:
           npm ci
         working-directory: .
 
-      - name: Run RSS fetch script
+      - name: Trigger Games Fetch
         env:
+          # تأكد أن السكريبت الجديد يحتاج نفس المتغيرات، وإلا يمكنك حذف ما لا يلزم
           APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
           APPWRITE_PROJECT: ${{ secrets.APPWRITE_PROJECT }}
           APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
           APPWRITE_DATABASE_ID: ${{ secrets.APPWRITE_DATABASE_ID }}
 
+          # إذا كان السكريبت الجديد يحتاج متغيرات بيئة خاصة به، أضفها هنا
           RSS_COLLECTION_ID: "news_sources"
           ARTICLES_COLLECTION_ID: "articles"
-
           FCM_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+        # 👇👇 قم بتغيير اسم الملف هنا إلى اسم السكريبت الجديد الخاص بك 👇👇
         run: |
-          node scripts/fetchRss.cjs
+          node scripts/fetchFreeGames.cjs
