@@ -98,10 +98,7 @@ function UserGamesScreen({ route, navigation }) {
         if (mountedRef.current) {
           setLoading(false);
         }
-        Alert.alert(
-          "Error",
-          "An error occurred while loading the list, try again later."
-        );
+        Alert.alert(t("common.error"), t("userGames.messages.loadError"));
       }
     );
     return () => {
@@ -134,8 +131,8 @@ function UserGamesScreen({ route, navigation }) {
             } catch (error) {
               console.error("Error removing game: ", error);
               Alert.alert(
-                "Error",
-                "An error occurred while removing the game, try again later."
+                t("common.error"),
+                t("userGames.messages.removeError")
               );
             }
           },

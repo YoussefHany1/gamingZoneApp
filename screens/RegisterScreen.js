@@ -48,28 +48,12 @@ function SignupScreen({ navigation }) {
 
   // دالة للتحقق من قوة كلمة المرور
   const validatePassword = (pass) => {
-    // 1. شرط الطول (أكتر من 8 حروف)
-    if (pass.length < 8) {
-      return "Password must be:\n at least 8 characters long.\n at least one letter.\n at least one number.";
+    // فحص مبسط (أو يمكنك استخدام نفس شروطك السابقة ولكن بإرجاع نص مترجم)
+    if (pass.length < 8 || !/[a-z]/.test(pass) || !/[0-9]/.test(pass)) {
+      // نرجع true للإشارة إلى وجود خطأ، أو نرجع النص المترجم مباشرة
+      return t("auth.validation.passwordRequirements");
     }
-    // 2. شرط وجود حرف كبير (Uppercase)
-    // if (!/[A-Z]/.test(pass)) {
-    //   return "Password must contain at least one uppercase letter.";
-    // }
-    // 3. شرط وجود حرف صغير (Lowercase)
-    if (!/[a-z]/.test(pass)) {
-      return "Password must contain at least one lowercase letter.";
-    }
-    // 4. شرط وجود رقم (Number)
-    if (!/[0-9]/.test(pass)) {
-      return "Password must contain at least one number.";
-    }
-    // 5. (اختياري) شرط وجود رمز خاص (!@#$%)
-    // if (!/[!@#$%^&*]/.test(pass)) {
-    //   return "Password must contain at least one special character (!@#$%).";
-    // }
-
-    return null; // الباسورد سليم
+    return null;
   };
 
   // --- دالة تسجيل الدخول بالبريد الإلكتروني ---
@@ -81,7 +65,7 @@ function SignupScreen({ navigation }) {
 
     const passwordError = validatePassword(password);
     if (passwordError) {
-      Alert.alert("Weak Password", passwordError); // إظهار التنبيه بالشرط الناقص
+      Alert.alert(t("auth.validation.passwordTitle"), passwordError);
       return; // وقف العملية وماتكملش تسجيل
     }
 
@@ -92,7 +76,17 @@ function SignupScreen({ navigation }) {
       // سيقوم onAuthStateChanged في App.js بالباقي
     } catch (error) {
       console.error("❌ Sign up failed:", error);
-      Alert.alert("error while trying to login", error.message);
+      let msg = t("auth.errors.general");
+
+      if (error.code === "auth/email-already-in-use") {
+        msg = t("auth.errors.emailAlreadyInUse");
+      } else if (error.code === "auth/weak-password") {
+        msg = t("auth.errors.weakPassword");
+      } else if (error.code === "auth/invalid-email") {
+        msg = "البريد الإلكتروني غير صالح.";
+      }
+
+      Alert.alert(t("auth.errors.generalTitle"), msg);
     }
   };
 

@@ -162,9 +162,9 @@ function normalizeGame(item, type) {
 
   // محاولة استخراج الـ slug بأكثر من طريقة
   let rawSlug =
+    item.productSlug ||
     item.offerMappings?.[0]?.pageSlug ||
     item.urlSlug ||
-    item.productSlug ||
     null;
 
   const title = item.title;

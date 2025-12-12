@@ -15,8 +15,9 @@ import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import COLORS from "../constants/colors";
 import { Ionicons } from "@expo/vector-icons";
-import auth from "@react-native-firebase/auth"; // إضافة استيراد auth
-import NotificationService from "../notificationService"; // إضافة NotificationService
+import auth from "@react-native-firebase/auth";
+import NotificationService from "../notificationService";
+import analytics from "@react-native-firebase/analytics";
 
 import { databases } from "../lib/appwrite";
 import { Query } from "react-native-appwrite";
@@ -192,19 +193,23 @@ function FreeGames() {
     return (
       <TouchableOpacity
         style={styles.gameCard}
-        onPress={() => {
+        onPress={async () => {
+          try {
+            await analytics().logEvent("click_free_game", {
+              item_id: item.id,
+              item_name: item.title,
+              content_type: "free_game_card",
+              game_type: item.type,
+            });
+          } catch (error) {
+            console.log("Analytics Error:", error);
+          }
           if (item.slug) {
             Linking.openURL(`https://store.epicgames.com/en-US/p/${item.slug}`);
           }
         }}
       >
         <View>
-          {item.type === "current" && (
-            <Text style={styles.discountBadge}>
-              {t("games.freeGames.discount")}
-            </Text>
-          )}
-
           {item.type === "next" && item.startDate && (
             <CountdownTimer t={t} startDate={item.startDate} />
           )}
@@ -223,6 +228,11 @@ function FreeGames() {
         <Text style={styles.title} numberOfLines={2}>
           {item.title}
         </Text>
+        {item.type === "current" && (
+          <Text style={styles.discountBadge}>
+            {t("games.freeGames.discount")}
+          </Text>
+        )}
       </TouchableOpacity>
     );
   };
@@ -321,10 +331,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     borderBottomLeftRadius: 16,
     borderTopRightRadius: 16,
-    padding: 7,
+    padding: 5,
     top: 0,
     right: 0,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "bold",
   },
   overlay: {

@@ -37,14 +37,13 @@ function ForgotPasswordScreen({ navigation }) {
       // معالجة الأخطاء الشائعة
       if (error.code === "auth/user-not-found") {
         Alert.alert(
-          "Error",
-          "No account is registered with this email address."
+          t("auth.errors.generalTitle"),
+          t("auth.forgotPassword.errors.userNotFound")
         );
       } else {
         Alert.alert(
-          "Error",
-          "An error occurred while trying to send the email.",
-          "Try again later."
+          t("auth.errors.generalTitle"),
+          t("auth.forgotPassword.errors.general")
         );
       }
     }

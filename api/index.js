@@ -3,11 +3,12 @@ import express from "express";
 import cors from "cors";
 const app = express();
 
-app.use(cors()); // تفعيل CORS لجميع الطلبات
+app.use(cors());
 app.use(express.json());
 
 const CLIENT_ID = process.env.TWITCH_CLIENT_ID;
 const CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET;
+const MY_APP_SECRET = process.env.MY_APP_SECRET;
 
 if (!CLIENT_ID || !CLIENT_SECRET) {
   console.error(
@@ -16,8 +17,43 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
   process.exit(1);
 }
 
-// ----- كود المصادقة الخاص بك (ممتاز كما هو) -----
-let cachedToken = null; // { token, expiresAt }
+if (!MY_APP_SECRET) {
+  console.warn(
+    "تحذير هام: MY_APP_SECRET غير مضبوط في متغيرات البيئة. الـ API يعمل بمفتاح افتراضي غير آمن (default-insecure-key)."
+  );
+}
+
+const authenticateRequest = (req, res, next) => {
+  // استثناء الصفحة الرئيسية من الحماية (لأغراض الـ Health Check)
+  if (req.path === "/") return next();
+
+  const apiKey = req.headers["x-api-key"];
+
+  // استخدام المفتاح من البيئة أو مفتاح افتراضي مؤقت
+  const validKey = MY_APP_SECRET || "default-insecure-key";
+
+  if (!apiKey || apiKey !== validKey) {
+    return res
+      .status(403)
+      .json({ message: "Forbidden: Invalid or missing API Key" });
+  }
+
+  next();
+};
+
+const cacheMiddleware = (duration) => (req, res, next) => {
+  if (req.method === "GET") {
+    // s-maxage: مدة الكاش في الـ CDN (بالثواني)
+    // stale-while-revalidate: يسمح بتقديم نسخة قديمة بسرعة بينما يقوم بتحديث البيانات في الخلفية
+    res.setHeader(
+      "Cache-Control",
+      `s-maxage=${duration}, stale-while-revalidate=59`
+    );
+  }
+  next();
+};
+
+let cachedToken = null;
 
 async function getAppToken() {
   if (cachedToken && cachedToken.expiresAt > Date.now() + 10000) {
@@ -35,7 +71,7 @@ async function getAppToken() {
       body: params,
     });
     if (!res.ok) throw new Error("Failed to get token: " + res.statusText);
-    const data = await res.json(); // { access_token, expires_in, ... }
+    const data = await res.json();
     cachedToken = {
       token: data.access_token,
       expiresAt: Date.now() + data.expires_in * 1000,
@@ -43,7 +79,7 @@ async function getAppToken() {
     return cachedToken.token;
   } catch (error) {
     console.error("Error getting app token:", error);
-    throw error; // إرمي الخطأ ليتم التعامل معه في الـ endpoint
+    throw error;
   }
 }
 
@@ -62,7 +98,6 @@ async function callIgdb(apiEndpoint, queryBody) {
       body: queryBody,
     });
 
-    // اقرأ النص الكامل من الرد (حتى لو لم يكن json صالح)
     const text = await res.text();
 
     if (!res.ok) {
@@ -99,9 +134,8 @@ async function callIgdb(apiEndpoint, queryBody) {
     throw error;
   }
 }
-// ----- الـ Endpoints المطلوبة -----
+//  Endpoints
 
-// دالة مُساعدة لإنشاء الاستعلامات الأساسية
 const currentTimestamp = Math.floor(Date.now() / 1000);
 const BASE_QUERY_FIELDS =
   "fields id, name, cover.image_id, first_release_date, total_rating, game_type";
@@ -111,8 +145,8 @@ app.get("/", (req, res) => {
   res.send("Gaming Zone API is working! 🚀");
 });
 
-// 1. Top Rated
-app.get("/top-rated", async (req, res) => {
+// Top Rated
+app.get("/top-rated", cacheMiddleware(3600), async (req, res) => {
   try {
     const query = `
       ${BASE_QUERY_FIELDS};
@@ -123,12 +157,15 @@ app.get("/top-rated", async (req, res) => {
     const data = await callIgdb("games", query);
     res.json(data);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        "An error occurred on the server while fteching data. Please try again later.",
+    });
   }
 });
 
-// 2. Recently Released
-app.get("/recently-released", async (req, res) => {
+// Recently Released
+app.get("/recently-released", cacheMiddleware(3600), async (req, res) => {
   try {
     const query = `
       ${BASE_QUERY_FIELDS};
@@ -139,12 +176,15 @@ app.get("/recently-released", async (req, res) => {
     const data = await callIgdb("games", query);
     res.json(data);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        "An error occurred on the server while fteching data. Please try again later.",
+    });
   }
 });
 
 // 3. Coming Soon
-app.get("/coming-soon", async (req, res) => {
+app.get("/coming-soon", cacheMiddleware(3600), async (req, res) => {
   try {
     const query = `
       ${BASE_QUERY_FIELDS};
@@ -155,12 +195,15 @@ app.get("/coming-soon", async (req, res) => {
     const data = await callIgdb("games", query);
     res.json(data);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        "An error occurred on the server while fteching data. Please try again later.",
+    });
   }
 });
 
 // 4. Most Anticipated
-app.get("/most-anticipated", async (req, res) => {
+app.get("/most-anticipated", cacheMiddleware(3600), async (req, res) => {
   try {
     const query = `
       ${BASE_QUERY_FIELDS};
@@ -171,12 +214,15 @@ app.get("/most-anticipated", async (req, res) => {
     const data = await callIgdb("games", query);
     res.json(data);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        "An error occurred on the server while fteching data. Please try again later.",
+    });
   }
 });
 
 // 5. Popular Right Now
-app.get("/popular", async (req, res) => {
+app.get("/popular", cacheMiddleware(3600), async (req, res) => {
   try {
     // الخطوة 1: جلب الـ IDs من popularity_primitives
     // هنا نقوم بفرز النتائج حسب القيمة (value) تنازلياً للحصول على الأكثر شعبية
@@ -215,12 +261,15 @@ app.get("/popular", async (req, res) => {
 
     res.json(sortedGames);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        "An error occurred on the server while fteching data. Please try again later.",
+    });
   }
 });
 
-// old
-app.get("/nostalgia-corner", async (req, res) => {
+// Nostalgia Corner
+app.get("/nostalgia-corner", cacheMiddleware(3600), async (req, res) => {
   try {
     const query = `
 ${BASE_QUERY_FIELDS};
@@ -231,11 +280,14 @@ limit 50;
     const data = await callIgdb("games", query);
     res.json(data);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        "An error occurred on the server while fteching data. Please try again later.",
+    });
   }
 });
 
-app.get("/search", async (req, res) => {
+app.get("/search", cacheMiddleware(300), async (req, res) => {
   try {
     // search query parameter
     const { q } = req.query;
@@ -255,11 +307,14 @@ app.get("/search", async (req, res) => {
     const data = await callIgdb("games", query);
     res.json(data);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        "An error occurred on the server while fteching data. Please try again later.",
+    });
   }
 });
 
-app.get("/game-details", async (req, res) => {
+app.get("/game-details", cacheMiddleware(3600), async (req, res) => {
   try {
     const { id } = req.query;
 
@@ -322,7 +377,10 @@ app.get("/game-details", async (req, res) => {
 
     res.json(game);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message:
+        "An error occurred on the server while fteching data. Please try again later.",
+    });
   }
 });
 

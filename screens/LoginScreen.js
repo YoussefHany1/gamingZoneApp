@@ -46,6 +46,25 @@ function LoginScreen({ navigation }) {
     }, 100);
   };
 
+  const handleAuthError = (error, t) => {
+    let errorMessage = t("auth.errors.general"); // الرسالة الافتراضية
+
+    if (
+      error.code === "auth/invalid-credential" ||
+      error.code === "auth/user-not-found" ||
+      error.code === "auth/wrong-password"
+    ) {
+      errorMessage = t("auth.errors.invalidCredentials");
+    } else if (error.code === "auth/network-request-failed") {
+      errorMessage = t("auth.errors.network");
+    } else if (error.code === "auth/too-many-requests") {
+      errorMessage =
+        "تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار قليلاً.";
+    }
+
+    Alert.alert(t("auth.errors.generalTitle"), errorMessage);
+  };
+
   // --- دالة تسجيل الدخول بالبريد الإلكتروني ---
   const handleLogin = async () => {
     if (!email || !password) {
@@ -58,9 +77,9 @@ function LoginScreen({ navigation }) {
       navigateToMain();
       // سيقوم onAuthStateChanged في App.js بالباقي
     } catch (error) {
-      console.error(`${t("auth.login.failed")})`, error);
+      console.error("Login failed", error);
       // الخطأ [auth/invalid-credential] سيظهر هنا إذا كانت البيانات خاطئة
-      Alert.alert("error while trying to login", error.message);
+      handleAuthError(error, t);
     }
   };
 
@@ -96,9 +115,13 @@ function LoginScreen({ navigation }) {
     } catch (error) {
       console.error("❌ Google sign in error:", error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log("User cancelled the login flow");
+        console.log("User cancelled");
       } else {
-        Alert.alert("Error", error.message);
+        // رسالة ودية بدلاً من error.message
+        Alert.alert(
+          t("auth.errors.generalTitle"),
+          t("auth.errors.googleSignIn")
+        );
       }
     }
   };

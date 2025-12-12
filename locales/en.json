@@ -39,13 +39,26 @@
             "emptyEmail": "Please enter your email address.",
             "successTitle": "Sent successfully",
             "successMessage": "A password reset link has been sent to your email. (Please also check your Spam folder)",
-            "userNotFound": "No account is registered with this email address."
-        },
-        "alerts": {
-            "loginRequired": "Login required",
-            "loginRequiredMessage": "Please log in to be able to add games to your lists.",
-            "googleIdTokenError": "Google sign in error: idToken not found."
+            "userNotFound": "No account is registered with this email address.",
+            "errors": {
+            "userNotFound": "No account registered with this email.",
+            "general": "An error occurred while sending the link. Please try again later."
         }
+        },
+"errors": {
+    "generalTitle": "Alert",
+    "general": "An unexpected error occurred. Please try again later.",
+    "invalidCredentials": "Incorrect email or password.",
+    "userNotFound": "No account associated with this email.",
+    "emailAlreadyInUse": "This email is already in use.",
+    "network": "Please check your internet connection.",
+    "weakPassword": "The password is too weak.",
+    "googleSignIn": "Google Sign-In failed. Please try again."
+},
+"validation": {
+    "passwordTitle": "Inadequate Password",
+    "passwordRequirements": "Password must be at least 8 characters long and contain both letters and numbers."
+}
     },
     "navigation": {
         "tabs": {
@@ -117,7 +130,17 @@
             "nostalgiaCorner": "Nostalgia Corner",
             "searchResults": "Search Results",
             "noResults": "No games found.",
-            "serverError": "The connection to the server failed. Please ensure the server is running."
+            "serverError": "The connection to the server failed. Please ensure the server is running.",
+            "gameTypes": {
+    "1": "DLC",
+    "2": "Expansion",
+    "5": "MOD",
+    "6": "Episode",
+    "7": "Season",
+    "8": "Remake",
+    "9": "Remaster",
+    "10": "Expanded"
+  }
         },
         "details": {
             "availableStores": "Available at these stores",
@@ -190,7 +213,15 @@
             },
             "saveSuccessTitle": "Done!",
             "saveSuccessMessage": "Your data has been successfully updated.",
-            "permissionError": "Images permissions are required."
+            "permissionError": "Images permissions are required.",
+            "messages": {
+        "permissionTitle": "Photo Access Permission",
+        "permissionMsg": "We need access to your photo gallery to update your profile picture.",
+        "uploadFailed": "Failed to upload image. Please check your internet and try again.",
+        "saveError": "Unable to save changes.",
+        "saveSuccessTitle": "Saved",
+        "saveSuccessMsg": "Your profile details have been updated successfully."
+    }
         },
         "notifications": {
             "description": "Choose which news sources you want to receive notifications from\nMake sure to allow notifications for this app",
@@ -199,7 +230,11 @@
         "userGames": {
             "emptyText": "Your list is empty",
             "emptySubText": "Add the games you want.",
-            "findButton": "Find Your Game"
+            "findButton": "Find Your Game",
+            "messages": {
+        "loadError": "We encountered a problem loading your list. Please try again later.",
+        "removeError": "An error occurred while trying to remove the game."
+    }
         }
     }
 }

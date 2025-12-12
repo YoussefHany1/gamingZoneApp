@@ -89,8 +89,8 @@ function ProfileScreen() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
-        "images permissions are required.",
-        "We need access to the images."
+        t("profile.messages.permissionTitle"),
+        t("profile.messages.permissionMsg")
       );
       return;
     }
@@ -140,11 +140,11 @@ function ProfileScreen() {
         return json.secure_url; // 3. إرجاع الرابط الآمن
       } else {
         console.error("❌ Cloudinary error:", json);
-        throw new Error("Image upload to Cloudinary failed.");
+        throw new Error("Image upload failed.");
       }
     } catch (e) {
       console.error("❌ Error uploading image:", e);
-      Alert.alert("Error", "Image upload failed.");
+      Alert.alert(t("common.error"), t("profile.messages.uploadFailed"));
       throw e;
     }
   };
@@ -179,7 +179,7 @@ function ProfileScreen() {
     } catch (error) {
       setLoading(false);
       console.error("❌ Error saving profile:", error);
-      Alert.alert("Error!", "The changes failed to save.");
+      Alert.alert(t("common.error"), t("profile.messages.saveError"));
     }
   };
   const handleChange = (event, selectedDate) => {
