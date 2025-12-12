@@ -30,15 +30,65 @@ function SignupScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const navigateToMain = () => {
+    setTimeout(() => {
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: "MainApp",
+            params: {
+              screen: "Home", // اسم التاب اللي عايز تروحله
+            },
+          },
+        ],
+      });
+    }, 100);
+  };
+
+  // دالة للتحقق من قوة كلمة المرور
+  const validatePassword = (pass) => {
+    // 1. شرط الطول (أكتر من 8 حروف)
+    if (pass.length < 8) {
+      return "Password must be:\n at least 8 characters long.\n at least one letter.\n at least one number.";
+    }
+    // 2. شرط وجود حرف كبير (Uppercase)
+    // if (!/[A-Z]/.test(pass)) {
+    //   return "Password must contain at least one uppercase letter.";
+    // }
+    // 3. شرط وجود حرف صغير (Lowercase)
+    if (!/[a-z]/.test(pass)) {
+      return "Password must contain at least one lowercase letter.";
+    }
+    // 4. شرط وجود رقم (Number)
+    if (!/[0-9]/.test(pass)) {
+      return "Password must contain at least one number.";
+    }
+    // 5. (اختياري) شرط وجود رمز خاص (!@#$%)
+    // if (!/[!@#$%^&*]/.test(pass)) {
+    //   return "Password must contain at least one special character (!@#$%).";
+    // }
+
+    return null; // الباسورد سليم
+  };
+
   // --- دالة تسجيل الدخول بالبريد الإلكتروني ---
   const handleSignup = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter your email and password.");
+      Alert.alert(`${t("common.error")}`, `${t("auth.register.emptyFields")}`);
       return;
     }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      Alert.alert("Weak Password", passwordError); // إظهار التنبيه بالشرط الناقص
+      return; // وقف العملية وماتكملش تسجيل
+    }
+
     try {
       await auth().createUserWithEmailAndPassword(email, password);
       console.log("✅ Sign up successful");
+      navigateToMain();
       // سيقوم onAuthStateChanged في App.js بالباقي
     } catch (error) {
       console.error("❌ Sign up failed:", error);
@@ -74,6 +124,7 @@ function SignupScreen({ navigation }) {
       // تسجيل الدخول (أو التسجيل) في Firebase
       await auth().signInWithCredential(googleCredential);
       console.log("✅ Signed up with Google credential");
+      navigateToMain();
     } catch (error) {
       console.error("❌ Google sign up error:", error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -83,7 +134,17 @@ function SignupScreen({ navigation }) {
       }
     }
   };
-
+  const handleAnonymousLogin = async () => {
+    try {
+      await auth().signInAnonymously();
+      console.log("User signed in anonymously");
+      navigateToMain();
+      // App.js سيتولى تحويل المستخدم للصفحة الرئيسية تلقائياً
+    } catch (error) {
+      console.error("Anonymous login failed", error);
+      Alert.alert("Error", error.message);
+    }
+  };
   return (
     <ImageBackground
       source={require("../assets/background.png")}
@@ -96,7 +157,7 @@ function SignupScreen({ navigation }) {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder={t("auth.register.emailPlaceholder")}
+            placeholder={t("auth.emailPlaceholder")}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -104,7 +165,7 @@ function SignupScreen({ navigation }) {
           />
           <TextInput
             style={styles.input}
-            placeholder={t("auth.register.passwordPlaceholder")}
+            placeholder={t("auth.passwordPlaceholder")}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -138,6 +199,14 @@ function SignupScreen({ navigation }) {
         >
           <Text style={styles.buttonText}>
             {t("auth.register.haveAnAccount")}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleAnonymousLogin}
+          style={styles.guestButton}
+        >
+          <Text style={styles.guestButtonText}>
+            {t("auth.guest") || "Continue as Guest"}
           </Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -213,5 +282,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     justifyContent: "center",
     marginTop: 35,
+  },
+  guestButton: {
+    marginTop: 15,
+    padding: 10,
+    alignItems: "center",
+  },
+  guestButtonText: {
+    color: "#ccc",
+    fontSize: 16,
+    textDecorationLine: "underline",
   },
 });

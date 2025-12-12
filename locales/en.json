@@ -11,22 +11,21 @@
         "ad": "Advertisement"
     },
     "auth": {
+                    "emailPlaceholder": "Email",
+            "passwordPlaceholder": "Password",
+                        "guest": "Sign in Later",
+                                    "emptyFields": "Please enter your email and password.",
         "login": {
             "title": "Sign In",
-            "emailPlaceholder": "Email",
-            "passwordPlaceholder": "Password",
             "forgotPassword": "Forget Password?",
             "signInButton": "Sign In",
             "googleSignIn": "Sign In with Google",
             "createAccount": "Create new account",
-            "emptyFields": "Please enter your email and password.",
             "success": "Login successful",
             "failed": "Login failed"
         },
         "register": {
             "title": "Sign Up",
-            "emailPlaceholder": "Email",
-            "passwordPlaceholder": "Password",
             "signUpButton": "Sign Up",
             "googleSignUp": "Sign Up with Google",
             "haveAnAccount": "Already have an account?",
@@ -34,7 +33,6 @@
         },
         "forgotPassword": {
             "title": "Reset your Password",
-            "emailPlaceholder": "Email",
             "sendButton": "Send a reset password link",
             "sending": "Loading..",
             "backToLogin": "Back to Login",

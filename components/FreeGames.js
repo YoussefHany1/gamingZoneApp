@@ -14,20 +14,21 @@ import SkeletonGameCard from "../skeleton/SkeletonGameCard";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import COLORS from "../constants/colors";
-import { Ionicons } from "@expo/vector-icons"; // أو react-native-vector-icons
-import messaging from "@react-native-firebase/messaging"; // تأكد من تثبيت المكتبة
+import { Ionicons } from "@expo/vector-icons";
+import auth from "@react-native-firebase/auth"; // إضافة استيراد auth
+import NotificationService from "../notificationService"; // إضافة NotificationService
 
 import { databases } from "../lib/appwrite";
 import { Query } from "react-native-appwrite";
 import Constants from "expo-constants";
 
 const FREE_GAMES_COLLECTION_ID = "free_games";
-const NOTIFICATION_TOPIC = "free_games_alerts";
-const PREF_KEY = "NOTIF_FREE_GAMES_ENABLED"; // مفتاح التخزين المحلي
+// ثوابت الإشعارات الجديدة لتتوافق مع NotificationService
+const NOTIF_CATEGORY = "free_games";
+const NOTIF_SOURCE = "alerts";
 
 // --- Sub-Component: Countdown Timer (بدون تغيير) ---
 const CountdownTimer = memo(({ t, startDate }) => {
-  // ... (نفس الكود السابق) ...
   const calculateTimeLeft = () => {
     const now = new Date();
     const targetDate = new Date(startDate);
@@ -74,55 +75,68 @@ function FreeGames() {
   const { t } = useTranslation();
   const [gamesList, setGamesList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [notifEnabled, setNotifEnabled] = useState(false); // حالة الجرس
+  const [notifEnabled, setNotifEnabled] = useState(false);
 
   const dbId = Constants.expoConfig.extra.APPWRITE_DATABASE_ID;
+  const userId = auth().currentUser?.uid; // الحصول على معرف المستخدم
 
   useEffect(() => {
     loadGames();
     checkNotificationStatus();
-  }, []);
+  }, [userId]); // إعادة التحقق عند تغيير المستخدم
 
-  // 1. تحميل حالة الإشعارات المحفوظة
+  // 1. تحميل حالة الإشعارات من Firestore عبر الخدمة
   const checkNotificationStatus = async () => {
+    if (!userId) return;
     try {
-      const storedPref = await AsyncStorage.getItem(PREF_KEY);
-      if (storedPref === "true") {
+      // جلب تفضيلات المستخدم من Firestore
+      const prefs = await NotificationService.getUserPreferences(userId);
+      // اسم الموضوع المتوقع: free_games_alerts
+      const topicName = NotificationService.getTopicName(
+        NOTIF_CATEGORY,
+        NOTIF_SOURCE
+      );
+
+      // التحقق مما إذا كان مفعلاً
+      if (prefs[topicName] === true) {
         setNotifEnabled(true);
+      } else {
+        setNotifEnabled(false);
       }
     } catch (e) {
-      console.log("Error reading pref", e);
+      console.log("Error reading pref from Firestore", e);
     }
   };
 
-  // 2. زر تبديل التفعيل (Subscribe/Unsubscribe)
+  // 2. زر تبديل التفعيل باستخدام NotificationService
   const toggleNotifications = async () => {
-    try {
-      if (notifEnabled) {
-        // إلغاء الاشتراك
-        await messaging().unsubscribeFromTopic(NOTIFICATION_TOPIC);
-        await AsyncStorage.setItem(PREF_KEY, "false");
-        setNotifEnabled(false);
-        Alert.alert(t("notifications"), t("games.freeGames.unsubscribed"));
-      } else {
-        // طلب الإذن أولاً (للاحتياط)
-        const authStatus = await messaging().requestPermission();
-        const enabled =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+    if (!userId) {
+      Alert.alert(t("error"), t("common.loginRequired")); // تأكد من وجود ترجمة مناسبة
+      return;
+    }
 
-        if (enabled) {
-          // الاشتراك
-          await messaging().subscribeToTopic(NOTIFICATION_TOPIC);
-          await AsyncStorage.setItem(PREF_KEY, "true");
-          setNotifEnabled(true);
-          Alert.alert(t("notifications"), t("games.freeGames.subscribed"));
-        } else {
-          Alert.alert(t("error"), t("notifications_permission_denied"));
-        }
+    const newStatus = !notifEnabled;
+
+    // تحديث الواجهة فوراً (Optimistic Update)
+    setNotifEnabled(newStatus);
+
+    try {
+      // استدعاء الخدمة الموحدة للتعامل مع FCM و Firestore
+      await NotificationService.toggleNotificationPreference(
+        userId,
+        NOTIF_CATEGORY,
+        NOTIF_SOURCE,
+        newStatus
+      );
+
+      if (newStatus) {
+        Alert.alert(t("notifications"), t("games.freeGames.subscribed"));
+      } else {
+        Alert.alert(t("notifications"), t("games.freeGames.unsubscribed"));
       }
     } catch (error) {
       console.error("Toggle error:", error);
+      setNotifEnabled(!newStatus); // التراجع في حالة الخطأ
       Alert.alert(t("error"), "Failed to update subscription");
     }
   };
@@ -258,10 +272,7 @@ function FreeGames() {
 export default FreeGames;
 
 const styles = StyleSheet.create({
-  // ... (الستايلات السابقة) ...
-  mainContainer: {
-    // تأكد من وجود margin أو padding مناسب إذا لزم الأمر
-  },
+  mainContainer: {},
   headerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -276,7 +287,7 @@ const styles = StyleSheet.create({
   },
   bellButton: {
     padding: 8,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: COLORS.secondary + "50",
     borderRadius: 20,
   },
   gameCard: {
@@ -291,7 +302,7 @@ const styles = StyleSheet.create({
   cover: {
     width: 150,
     height: 200,
-    borderRadius: 10,
+    borderRadius: 16,
     backgroundColor: COLORS.secondary,
   },
   title: {

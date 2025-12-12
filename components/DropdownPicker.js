@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   },
   bellButton: {
     padding: 8,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: COLORS.secondary + "50",
     borderRadius: 20,
   },
 

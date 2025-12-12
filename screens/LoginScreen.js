@@ -30,15 +30,32 @@ function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const navigateToMain = () => {
+    setTimeout(() => {
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: "MainApp",
+            params: {
+              screen: "Home", // اسم التاب اللي عايز تروحله
+            },
+          },
+        ],
+      });
+    }, 100);
+  };
+
   // --- دالة تسجيل الدخول بالبريد الإلكتروني ---
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter your email and password.");
+      Alert.alert(`${t("common.error")}`, `${t("auth.emptyFields")}`);
       return;
     }
     try {
       await auth().signInWithEmailAndPassword(email, password);
       console.log(`${t("auth.login.success")})`);
+      navigateToMain();
       // سيقوم onAuthStateChanged في App.js بالباقي
     } catch (error) {
       console.error(`${t("auth.login.failed")})`, error);
@@ -53,15 +70,6 @@ function LoginScreen({ navigation }) {
       await GoogleSignin.hasPlayServices();
 
       const userInfoResponse = await GoogleSignin.signIn();
-
-      // طباعة اللوج (كما هي)
-      console.log(
-        "Google User Info:",
-        JSON.stringify(userInfoResponse, null, 2)
-      );
-
-      // [تم التصحيح] التحقق من المسار الصحيح: userInfoResponse.data.idToken
-      // اللوغ الذي أرسلته يثبت أن التوكن موجود داخل .data
       const idToken = userInfoResponse.data?.idToken;
 
       if (!idToken) {
@@ -83,6 +91,7 @@ function LoginScreen({ navigation }) {
       await auth().signInWithCredential(googleCredential);
 
       console.log("✅ Signed in with Google credential");
+      navigateToMain();
       // سيقوم onAuthStateChanged في App.js بالباقي
     } catch (error) {
       console.error("❌ Google sign in error:", error);
@@ -91,6 +100,18 @@ function LoginScreen({ navigation }) {
       } else {
         Alert.alert("Error", error.message);
       }
+    }
+  };
+
+  const handleAnonymousLogin = async () => {
+    try {
+      await auth().signInAnonymously();
+      console.log("User signed in anonymously");
+      navigateToMain();
+      // App.js سيتولى تحويل المستخدم للصفحة الرئيسية تلقائياً
+    } catch (error) {
+      console.error("Anonymous login failed", error);
+      Alert.alert("Error", error.message);
     }
   };
 
@@ -106,7 +127,7 @@ function LoginScreen({ navigation }) {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder={t("auth.login.emailPlaceholder")}
+            placeholder={t("auth.emailPlaceholder")}
             placeholderTextColor="#aaa" // تحسين الوضوح
             value={email}
             onChangeText={setEmail}
@@ -115,7 +136,7 @@ function LoginScreen({ navigation }) {
           />
           <TextInput
             style={styles.input}
-            placeholder={t("auth.login.passwordPlaceholder")}
+            placeholder={t("auth.passwordPlaceholder")}
             placeholderTextColor="#aaa" // تحسين الوضوح
             value={password}
             onChangeText={setPassword}
@@ -155,6 +176,14 @@ function LoginScreen({ navigation }) {
           style={styles.newAccButton}
         >
           <Text style={styles.buttonText}>{t("auth.login.createAccount")}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleAnonymousLogin}
+          style={styles.guestButton}
+        >
+          <Text style={styles.guestButtonText}>
+            {t("auth.guest") || "Continue as Guest"}
+          </Text>
         </TouchableOpacity>
       </SafeAreaView>
     </ImageBackground>
@@ -234,5 +263,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     justifyContent: "center",
     marginTop: 35,
+  },
+  guestButton: {
+    marginTop: 15,
+    padding: 10,
+    alignItems: "center",
+  },
+  guestButtonText: {
+    color: "#ccc",
+    fontSize: 16,
+    textDecorationLine: "underline",
   },
 });

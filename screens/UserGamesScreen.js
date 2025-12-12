@@ -152,7 +152,7 @@ function UserGamesScreen({ route, navigation }) {
         {t("settings.userGames.emptySubText")}
       </Text>
       <TouchableOpacity
-        onPress={() => navigation.navigate("GamesScreen")}
+        onPress={() => navigation.navigate("Games")}
         style={styles.findGameButton}
       >
         <Text style={styles.findGameText}>

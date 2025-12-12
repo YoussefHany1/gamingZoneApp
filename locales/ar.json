@@ -11,24 +11,24 @@
         "ad": "مساحة إعلانية"
     },
     "auth": {
+                    "emailPlaceholder": "البريد الإلكتروني",
+            "passwordPlaceholder": "كلمة السر",
+                        "guest": "تسجيل الدخول لاحقاً",
+                                    "emptyFields": "الرجاء إدخال بريدك الإلكتروني وكلمة السر.",
         "login": {
             "title": "تسجيل الدخول",
-            "emailPlaceholder": "البريد الإلكتروني",
-            "passwordPlaceholder": "كلمة السر",
             "forgotPassword": "هل نسيت كلمة السر؟",
             "signInButton": "تسجيل الدخول",
             "googleSignIn": "تسجيل الدخول باستخدام جوجل",
             "createAccount": "إنشاء حساب جديد",
-            "emptyFields": "الرجاء إدخال بريدك الإلكتروني وكلمة السر.",
             "success": "تم تسجيل الدخول بنجاح",
             "failed": "فشل تسجيل الدخول"
         },
         "register": {
             "title": "إنشاء حساب جديد",
-            "emailPlaceholder": "البريد الإلكتروني",
-            "passwordPlaceholder": "كلمة السر",
             "signUpButton": "إنشاء حساب",
             "googleSignUp": "سجل باستخدام جوجل",
+            "guest": "التسجيل لاحقاً",
             "haveAnAccount": "هل لديك حساب بالفعل؟",
             "success": "تم التسجيل بنجاح"
         },

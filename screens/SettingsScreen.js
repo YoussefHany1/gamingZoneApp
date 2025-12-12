@@ -18,8 +18,8 @@ function SettingsScreen() {
   const navigation = useNavigation();
   const [currentUser, setCurrentUser] = useState(auth().currentUser);
   const { t } = useTranslation();
-
-  // console.log(currentUser._user)
+  const isAnonymous = currentUser?.isAnonymous;
+  // console.log(currentUser);
 
   const handleSignOut = async () => {
     try {
@@ -35,24 +35,36 @@ function SettingsScreen() {
       <SafeAreaView style={styles.container} edges={["top", "right", "left"]}>
         {/* <Image source={require('../assets/logo.png')} style={styles.logo} /> */}
         <ScrollView showsVerticalScrollIndicator={false}>
-          {currentUser?._user && (
-            <TouchableOpacity
-              style={styles.userContainer}
-              onPress={() => navigation.navigate("Profile")}
-            >
+          <TouchableOpacity
+            style={styles.userContainer}
+            onPress={() =>
+              isAnonymous
+                ? navigation.navigate("Auth", { screen: "Login" })
+                : navigation.navigate("Profile")
+            }
+          >
+            {isAnonymous ? (
+              <Image
+                source={require("../assets/anonymous.png")}
+                style={styles.avatar}
+              />
+            ) : (
               <Image
                 source={
-                  currentUser._user.photoURL
+                  currentUser?._user?.photoURL
                     ? { uri: currentUser._user.photoURL }
                     : require("../assets/default_profile.png")
                 }
                 style={styles.avatar}
               />
-              <Text style={styles.displayName}>
-                {currentUser._user.displayName}
-              </Text>
-            </TouchableOpacity>
-          )}
+            )}
+
+            <Text style={styles.displayName}>
+              {currentUser?._user?.displayName
+                ? currentUser?._user?.displayName
+                : t("auth.login.signInButton")}
+            </Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.categoryHeader}
             onPress={() => navigation.navigate("NotificationSettings")}
@@ -145,7 +157,7 @@ function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.categoryHeader}
-            onPress={console.log("Pressed")}
+            onPress={() => console.log("Pressed")}
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons
@@ -159,21 +171,22 @@ function SettingsScreen() {
               </Text>
             </View>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.categoryHeader, styles.categoryHeaderSignout]}
-            onPress={handleSignOut}
-          >
-            <View style={styles.categoryHeaderLeft}>
-              <Ionicons
-                name="log-out-outline"
-                size={20}
-                color="#779bdd"
-                style={styles.chevronIcon}
-              />
-              <Text style={styles.signout}>{t("settings.menu.signOut")}</Text>
-            </View>
-          </TouchableOpacity>
+          {isAnonymous ? null : (
+            <TouchableOpacity
+              style={[styles.categoryHeader, styles.categoryHeaderSignout]}
+              onPress={handleSignOut}
+            >
+              <View style={styles.categoryHeaderLeft}>
+                <Ionicons
+                  name="log-out-outline"
+                  size={20}
+                  color="#779bdd"
+                  style={styles.chevronIcon}
+                />
+                <Text style={styles.signout}>{t("settings.menu.signOut")}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </SafeAreaView>
     </>

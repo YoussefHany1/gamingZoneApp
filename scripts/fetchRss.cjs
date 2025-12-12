@@ -341,6 +341,8 @@ async function processSource(sourceData, summary) {
           fetchedAt: new Date().toISOString(),
           siteName: name,
           category: category,
+          siteImage: rawSourceData?.image || null,
+          language: rawSourceData?.language || null,
         };
 
         try {

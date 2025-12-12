@@ -118,11 +118,7 @@ function SettingsStack() {
         component={LanguageScreen}
         options={{ title: t("settings.menu.changeLanguage") }}
       />
-      <Stack.Screen
-        name="GamesScreen"
-        component={GamesScreen}
-        options={{ headerShown: false }}
-      />
+
       <Stack.Screen
         name="GameDetails"
         component={GameDetails}
@@ -366,12 +362,19 @@ function App() {
           <NavigationContainer theme={MyTheme}>
             <Suspense fallback={<Loading />}>
               {/* if user not signed in register screen will show up */}
-              <Stack.Navigator screenOptions={{ headerShown: false }}>
-                {user ? (
-                  <Stack.Screen name="MainApp" component={MainAppTabs} />
+              <Stack.Navigator
+                key={user ? "user-active" : "user-guest"}
+                screenOptions={{ headerShown: false }}
+              >
+                {auth().currentUser ? (
+                  <>
+                    <Stack.Screen name="Auth" component={AuthStack} />
+                    <Stack.Screen name="MainApp" component={MainAppTabs} />
+                  </>
                 ) : (
                   <Stack.Screen name="Auth" component={AuthStack} />
                 )}
+                <></>
               </Stack.Navigator>
             </Suspense>
           </NavigationContainer>

@@ -20,13 +20,16 @@ import { useNotificationPreferences } from "../hooks/useNotificationPreferences"
 import useRssFeeds from "../hooks/useRssFeeds";
 import COLORS from "../constants/colors";
 
+// تعريف ثوابت الفئة والمصدر لتطابق ما تم وضعه في FreeGames.js
+const FREE_GAMES_CATEGORY = "free_games";
+const FREE_GAMES_SOURCE = "alerts";
+
 const Notification = () => {
   const { rssFeeds, loading: loadingRss } = useRssFeeds();
   const [expandedCategories, setExpandedCategories] = useState({});
   const [showAds, setShowAds] = useState(false);
   const { t } = useTranslation();
 
-  // تفعيل الإعلانات بعد تحميل القائمة
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
       setShowAds(true);
@@ -37,17 +40,40 @@ const Notification = () => {
   const { preferences, loadingPreferences, toggleSource, setPreferences } =
     useNotificationPreferences();
 
-  /**
-   * Toggle entire category
-   */
+  // --- دالة جديدة: تبديل حالة إشعارات الألعاب المجانية ---
+  const toggleFreeGames = async () => {
+    const userId = auth().currentUser?.uid;
+    if (!userId) return;
+
+    // تكوين اسم الموضوع (Topic Name) بنفس الطريقة الموحدة
+    const topicId = NotificationService.getTopicName(
+      FREE_GAMES_CATEGORY,
+      FREE_GAMES_SOURCE
+    );
+
+    // معرفة الحالة الحالية
+    const isEnabled = preferences[topicId] || false;
+    const newValue = !isEnabled;
+
+    // 1. تحديث الواجهة فوراً (Optimistic Update)
+    const newPreferences = { ...preferences, [topicId]: newValue };
+    setPreferences(newPreferences);
+
+    // 2. استدعاء الخدمة لحفظ التغيير في Firestore و FCM
+    await NotificationService.toggleNotificationPreference(
+      userId,
+      FREE_GAMES_CATEGORY,
+      FREE_GAMES_SOURCE,
+      newValue
+    );
+  };
+
   const toggleCategory = useCallback(
     async (category) => {
       const userId = auth().currentUser?.uid;
       if (!userId) return;
 
       const categorySources = rssFeeds[category] || [];
-
-      // Check if all are currently enabled to determine toggle direction
       const allEnabled = categorySources.every((source) => {
         const topic = NotificationService.getTopicName(category, source.name);
         return preferences[topic];
@@ -57,14 +83,10 @@ const Notification = () => {
       const newPreferences = { ...preferences };
       const updatePromises = [];
 
-      // Prepare batch updates
       categorySources.forEach((source) => {
         const prefId = NotificationService.getTopicName(category, source.name);
-
-        // Only update if the value is changing
         if (newPreferences[prefId] !== newValue) {
           newPreferences[prefId] = newValue;
-
           updatePromises.push(
             NotificationService.toggleNotificationPreference(
               userId,
@@ -76,10 +98,7 @@ const Notification = () => {
         }
       });
 
-      // 1. Optimistic Update
       setPreferences(newPreferences);
-
-      // 2. Execute Service calls in parallel
       await Promise.all(updatePromises);
     },
     [rssFeeds, preferences, setPreferences]
@@ -92,12 +111,10 @@ const Notification = () => {
     }));
   }, []);
 
-  // Helper: Check category status (All Checked)
   const getCategoryToggleValue = useCallback(
     (category) => {
       const categorySources = rssFeeds[category] || [];
       if (categorySources.length === 0) return false;
-
       return categorySources.every((source) => {
         const topic = NotificationService.getTopicName(category, source.name);
         return preferences[topic];
@@ -106,21 +123,55 @@ const Notification = () => {
     [rssFeeds, preferences]
   );
 
-  // Helper: Check category status (Partially Checked)
   const getCategoryToggleIndeterminate = useCallback(
     (category) => {
       const categorySources = rssFeeds[category] || [];
       if (categorySources.length === 0) return false;
-
       const enabledCount = categorySources.filter((source) => {
         const topic = NotificationService.getTopicName(category, source.name);
         return preferences[topic];
       }).length;
-
       return enabledCount > 0 && enabledCount < categorySources.length;
     },
     [rssFeeds, preferences]
   );
+
+  // --- دالة جديدة: عرض قسم الألعاب المجانية ---
+  const renderFreeGamesSection = () => {
+    // جلب المفتاح الصحيح من الخدمة
+    const topicId = NotificationService.getTopicName(
+      FREE_GAMES_CATEGORY,
+      FREE_GAMES_SOURCE
+    );
+    const isEnabled = preferences[topicId] || false;
+
+    return (
+      <View style={styles.categorySection}>
+        {/* نستخدم نفس تصميم الهيدر ولكن بدون أيقونة التوسيع لأنها عنصر واحد */}
+        <View style={styles.categoryHeader}>
+          <View style={styles.categoryHeaderLeft}>
+            <Ionicons
+              name="gift" // أيقونة مناسبة
+              size={24}
+              color="#779bdd"
+              style={styles.chevronIcon}
+            />
+            <Text style={styles.categoryTitle}>
+              {t("games.freeGames.header") || "Free Games Alerts"}
+            </Text>
+          </View>
+
+          <Switch
+            value={isEnabled}
+            onValueChange={toggleFreeGames}
+            trackColor={{ false: "#3e3e3e", true: "#779bdd" }}
+            thumbColor={isEnabled ? "#ffffff" : "#f4f3f4"}
+            style={styles.categorySwitch}
+          />
+        </View>
+      </View>
+    );
+  };
 
   const renderCategorySection = (category, title) => {
     const sources = rssFeeds[category] || [];
@@ -148,7 +199,6 @@ const Notification = () => {
             <Text style={styles.sourceCount}>({sources.length})</Text>
           </View>
 
-          {/* Stop propagation to prevent expanding when clicking switch */}
           <TouchableOpacity onPress={() => toggleCategory(category)}>
             <Switch
               value={allEnabled}
@@ -214,12 +264,14 @@ const Notification = () => {
         {renderCategorySection("reviews", "Reviews")}
         {renderCategorySection("esports", "Esports")}
         {renderCategorySection("hardware", "Hardware")}
+        {renderFreeGamesSection()}
+
         {showAds && (
           <View style={styles.ad}>
             <Text style={styles.adText}>{t("common.ad")}</Text>
             <BannerAd
               unitId={adUnitId}
-              size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
+              size={BannerAdSize.MEDIUM_RECTANGLE}
               requestOptions={{
                 requestNonPersonalizedAdsOnly: true,
               }}
@@ -256,7 +308,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   scrollView: {
-    // flex: 1,
     paddingHorizontal: 20,
   },
   Textheader: {
