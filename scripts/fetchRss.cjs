@@ -1,4 +1,3 @@
-const axios = require("axios");
 const xml2js = require("xml2js");
 const crypto = require("crypto");
 const striptags = require("striptags");
@@ -139,35 +138,103 @@ const extractThumbnail = (item, baseUrl, isJson = false) => {
 // --- FETCHING ---
 async function fetchFeed(url) {
   try {
-    const res = await axios.get(url, {
-      timeout: CONFIG.AXIOS_TIMEOUT,
-      maxRedirects: 10,
-      headers: {
-        "User-Agent": CONFIG.USER_AGENT,
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9,ar;q=0.8", // إضافة اللغة العربية
-        "Accept-Encoding": "gzip, deflate, br",
-        Connection: "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "Cache-Control": "max-age=0",
+    const { gotScraping } = await import("got-scraping");
+    const { CookieJar } = await import("tough-cookie");
+
+    // تفعيل وضع looseMode لتقليل صرامة الكوكيز (قد يساعد في بعض الحالات)
+    const cookieJar = new CookieJar(null, { looseMode: true });
+
+    const response = await gotScraping({
+      url,
+      timeout: { request: CONFIG.AXIOS_TIMEOUT },
+      cookieJar,
+      headerGeneratorOptions: {
+        locales: ["ar", "en-US"],
       },
+      maxRedirects: 5,
     });
 
-    if (typeof res.data === "object" && !res.data["rss"] && !res.data["feed"]) {
-      return { type: "json", data: res.data };
-    }
-    const parsed = await parser.parseStringPromise(res.data);
-    return { type: "xml", data: parsed };
+    return await parseResponse(response.body);
   } catch (error) {
-    if (error.response && error.response.status === 403) {
-      console.warn(`      ⚠️ 403 Blocked by ${url}. Consider using a proxy.`);
+    // التحقق من أنواع الأخطاء التي تستدعي استخدام Puppeteer
+    const isRedirectLoop =
+      error.message.includes("Redirected") ||
+      error.response?.statusCode === 301;
+    const isBlocked =
+      error.response?.statusCode === 403 || error.response?.statusCode === 503;
+
+    // إضافة التحقق من خطأ النطاق (Cookie Domain)
+    const isCookieDomainError = error.message.includes(
+      "Cookie not in this host's domain"
+    );
+
+    if (isRedirectLoop || isBlocked || isCookieDomainError) {
+      console.log(
+        `      ⚠️ Protection or Domain mismatch at ${url}. Switching to Puppeteer...`
+      );
+      return await fetchWithPuppeteer(url);
     }
+
     throw new Error(`Fetch failed: ${error.message}`);
+  }
+}
+
+// دالة مساعدة لتحليل النص
+async function parseResponse(body) {
+  let parsedJson = null;
+  try {
+    parsedJson = JSON.parse(body);
+  } catch (e) {}
+
+  if (parsedJson && !parsedJson["rss"] && !parsedJson["feed"]) {
+    return { type: "json", data: parsedJson };
+  }
+  const parsed = await parser.parseStringPromise(body);
+  return { type: "xml", data: parsed };
+}
+
+// دالة الجلب باستخدام متصفح حقيقي (Puppeteer)
+// دالة الجلب باستخدام متصفح حقيقي (Puppeteer)
+async function fetchWithPuppeteer(url) {
+  let browser = null;
+  try {
+    const puppeteer = require("puppeteer");
+
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--no-first-run",
+        "--no-zygote",
+        "--disable-gpu",
+      ],
+    });
+
+    const page = await browser.newPage();
+
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+    );
+
+    const response = await page.goto(url, {
+      waitUntil: "networkidle2",
+      timeout: 60000,
+    });
+
+    // --- التعديل هنا ---
+    // بدلاً من response.text() نستخدم buffer() ثم نحوله لـ UTF-8
+    // هذا يجبر الكود على قراءة الأحرف العربية بشكل صحيح
+    const buffer = await response.buffer();
+    const rawBody = buffer.toString("utf8");
+
+    return await parseResponse(rawBody);
+  } catch (error) {
+    throw new Error(`Puppeteer failed: ${error.message}`);
+  } finally {
+    if (browser) await browser.close();
   }
 }
 
