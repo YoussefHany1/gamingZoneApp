@@ -15,6 +15,7 @@ import NotificationService from "./notificationService";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { View, InteractionManager } from "react-native";
+import analytics from "@react-native-firebase/analytics";
 import COLORS from "./constants/colors";
 import { adUnitId } from "./constants/config";
 import Loading from "./Loading";
@@ -28,21 +29,7 @@ import NotificationSettings from "./components/Notification";
 import Profile from "./components/Profile";
 import LanguageScreen from "./screens/LanguageSelect";
 import GameNewsScreen from "./screens/GameNewsScreen";
-// import NotificationService from "./notificationService";
-// import LoginScreen from './screens/LoginScreen';
-// import RegisterScreen from './screens/RegisterScreen';
-// import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 
-// const NewsScreen = React.lazy(() => import("./screens/NewsScreen"));
-// const GamesScreen = React.lazy(() => import("./screens/GamesScreen"));
-// const SettingsScreen = React.lazy(() => import("./screens/SettingsScreen"));
-// const GameDetails = React.lazy(() => import("./components/GameDetails"));
-// const NotificationSettings = React.lazy(() =>
-//   import("./components/Notification")
-// );
-// const Profile = React.lazy(() => import("./components/Profile"));
-// const UserGamesScreen = React.lazy(() => import("./screens/UserGamesScreen"));
-// const LanguageScreen = React.lazy(() => import("./screens/LanguageSelect"));
 const LoginScreen = React.lazy(() => import("./screens/LoginScreen"));
 const RegisterScreen = React.lazy(() => import("./screens/RegisterScreen"));
 const ForgotPasswordScreen = React.lazy(() =>
@@ -212,10 +199,26 @@ const queryClient = new QueryClient({
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const routeNameRef = React.useRef();
+  const navigationRef = React.useRef();
 
   useEffect(() => {
     const unsubscribeAuth = auth().onAuthStateChanged(async (newUser) => {
       setUser(newUser);
+
+      if (newUser) {
+        // عند تسجيل الدخول، نحدد الـ User ID للـ Analytics
+        await analytics().setUserId(newUser.uid);
+        // يمكن أيضًا إضافة خصائص للمستخدم
+        await analytics().setUserProperty(
+          "email_verified",
+          String(newUser.emailVerified)
+        );
+      } else {
+        // عند تسجيل الخروج (اختياري)
+        await analytics().setUserId(null);
+      }
+
       setLoading(false);
     });
     return () => unsubscribeAuth();
@@ -351,7 +354,7 @@ function App() {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      background: COLORS.primary, // <--- هذا هو اللون الذي سيظهر خلف الـ Suspense
+      background: COLORS.primary, // Suspense background color
     },
   };
   return (
@@ -359,7 +362,28 @@ function App() {
       <SafeAreaProvider>
         <View style={{ flex: 1, backgroundColor: COLORS.primary }}>
           <StatusBar style="light" translucent={true} />
-          <NavigationContainer theme={MyTheme}>
+          <NavigationContainer
+            ref={navigationRef}
+            theme={MyTheme}
+            onReady={() => {
+              routeNameRef.current =
+                navigationRef.current.getCurrentRoute().name;
+            }}
+            onStateChange={async () => {
+              const previousRouteName = routeNameRef.current;
+              const currentRouteName =
+                navigationRef.current.getCurrentRoute().name;
+
+              if (previousRouteName !== currentRouteName) {
+                // تسجيل الشاشة الجديدة في Analytics
+                await analytics().logScreenView({
+                  screen_name: currentRouteName,
+                  screen_class: currentRouteName,
+                });
+              }
+              routeNameRef.current = currentRouteName;
+            }}
+          >
             <Suspense fallback={<Loading />}>
               {/* if user not signed in register screen will show up */}
               <Stack.Navigator
@@ -368,8 +392,8 @@ function App() {
               >
                 {auth().currentUser ? (
                   <>
-                    <Stack.Screen name="Auth" component={AuthStack} />
                     <Stack.Screen name="MainApp" component={MainAppTabs} />
+                    <Stack.Screen name="Auth" component={AuthStack} />
                   </>
                 ) : (
                   <Stack.Screen name="Auth" component={AuthStack} />

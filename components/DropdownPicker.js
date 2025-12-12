@@ -55,7 +55,6 @@ const DropdownPicker = (props) => {
     }
 
     return result;
-    // 3. إضافة i18n.language للمصفوفة عشان يعيد الترتيب لو اللغة اتغيرت
   }, [websites, i18n.language]);
 
   if (websites.length === 0 || !selectedItem) {
@@ -109,6 +108,7 @@ const DropdownPicker = (props) => {
           <Text style={styles.siteName}>{selectedItem?.name || ""}</Text>
           <Text style={styles.siteAbout}>{selectedItem?.aboutSite || ""}</Text>
           <View style={styles.buttons}>
+            {/* change language based on site language */}
             {selectedItem?.language === "ar" ? (
               <TouchableOpacity
                 onPress={() =>
@@ -159,6 +159,7 @@ const DropdownPicker = (props) => {
           </View>
         </View>
       </View>
+      {/* Modal */}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -236,7 +237,7 @@ const DropdownPicker = (props) => {
 
 const styles = StyleSheet.create({
   wrapper: {
-    flex: 1,
+    width: "100%",
     alignItems: "center",
     paddingBottom: 20,
   },

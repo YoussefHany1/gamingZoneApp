@@ -260,10 +260,10 @@ const Notification = () => {
           </Text>
         </View>
 
-        {renderCategorySection("news", "News")}
-        {renderCategorySection("reviews", "Reviews")}
-        {renderCategorySection("esports", "Esports")}
-        {renderCategorySection("hardware", "Hardware")}
+        {renderCategorySection("news", `${t("news.tabs.news")}`)}
+        {renderCategorySection("reviews", `${t("news.tabs.reviews")}`)}
+        {renderCategorySection("esports", `${t("news.tabs.esports")}`)}
+        {renderCategorySection("hardware", `${t("news.tabs.hardware")}`)}
         {renderFreeGamesSection()}
 
         {showAds && (

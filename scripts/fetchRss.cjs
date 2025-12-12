@@ -152,9 +152,10 @@ async function fetchFeed(url) {
         locales: ["ar", "en-US"],
       },
       maxRedirects: 5,
+      responseType: "buffer",
     });
-
-    return await parseResponse(response.body);
+    const bodyString = response.body.toString("utf8");
+    return await parseResponse(bodyString);
   } catch (error) {
     // التحقق من أنواع الأخطاء التي تستدعي استخدام Puppeteer
     const isRedirectLoop =

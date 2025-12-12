@@ -202,14 +202,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    padding: 20,
-    // backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
   },
   logo: {
-    width: 250,
-    height: 250,
+    width: 220,
+    height: 220,
     alignSelf: "center",
-    // marginBottom: 2
   },
   title: {
     fontSize: 28,
@@ -240,7 +238,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 15,
   },
   gradient: {
     padding: 15,

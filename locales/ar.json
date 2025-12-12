@@ -13,7 +13,7 @@
     "auth": {
                     "emailPlaceholder": "البريد الإلكتروني",
             "passwordPlaceholder": "كلمة السر",
-                        "guest": "تسجيل الدخول لاحقاً",
+                        "guest": "تسجيل الدخول لاحقا",
                                     "emptyFields": "الرجاء إدخال بريدك الإلكتروني وكلمة السر.",
         "login": {
             "title": "تسجيل الدخول",
@@ -99,8 +99,8 @@
             "header": "اعثر على مغامرتك القادمة"
         },
         "freeGames": {
-            "header": "احصل على اللعبة المجانية الأسبوعية من Epic Games",
-            "freeOn": "مجانية على",
+            "header": "ألعاب Epic Games المجانية الأسبوعية",
+            "freeOn": "مجانية بعد",
             "days": "يوم",
             "hours": "ساعة",
             "minutes": "دقيقة",
@@ -168,7 +168,7 @@
         "currentLang": "العربية",
         "menu": {
             "notifications": "إعدادات الإشعارات",
-            "wantList": "قائمة اللعاب أريد لعبها",
+            "wantList": "قائمة العاب أريد لعبها",
             "playedList": "قائمة ألعاب تم لعبها",
             "changeLanguage": "تغيير اللغة",
             "rateUs": "قيمنا",

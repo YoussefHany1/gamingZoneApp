@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import auth from '@react-native-firebase/auth';
-import NotificationService from '../notificationService'; // تأكد من صحة المسار
+import { useState, useEffect, useCallback } from "react";
+import auth from "@react-native-firebase/auth";
+import NotificationService from "../notificationService"; // تأكد من صحة المسار
 
 export const useNotificationPreferences = () => {
   const [preferences, setPreferences] = useState({});
@@ -31,27 +31,30 @@ export const useNotificationPreferences = () => {
    * دالة تفعيل/تعطيل مصدر معين
    * تقبل اسم المصدر كنص (String) لتكون عامة أكثر
    */
-  const toggleSource = useCallback(async (category, sourceName) => {
-    const userId = auth().currentUser?.uid;
-    if (!userId) return;
+  const toggleSource = useCallback(
+    async (category, sourceName) => {
+      const userId = auth().currentUser?.uid;
+      if (!userId) return;
 
-    const prefId = NotificationService.getTopicName(category, sourceName);
-    const newValue = !preferences[prefId];
+      const prefId = NotificationService.getTopicName(category, sourceName);
+      const newValue = !preferences[prefId];
 
-    // 1. تحديث فوري للواجهة (Optimistic Update)
-    setPreferences((prev) => ({
-      ...prev,
-      [prefId]: newValue,
-    }));
+      // 1. تحديث فوري للواجهة (Optimistic Update)
+      setPreferences((prev) => ({
+        ...prev,
+        [prefId]: newValue,
+      }));
 
-    // 2. استدعاء الخدمة للتعامل مع قاعدة البيانات و FCM
-    await NotificationService.toggleNotificationPreference(
-      userId,
-      category,
-      sourceName,
-      newValue
-    );
-  }, [preferences]);
+      // 2. استدعاء الخدمة للتعامل مع قاعدة البيانات و FCM
+      await NotificationService.toggleNotificationPreference(
+        userId,
+        category,
+        sourceName,
+        newValue
+      );
+    },
+    [preferences]
+  );
 
   return {
     preferences,

@@ -224,22 +224,20 @@ export default function GamesList({ endpoint, query, header }) {
   return (
     <View style={styles.container}>
       {isLoading && (
-        <View style={styles.container}>
-          <FlatList
-            data={skeletons}
-            horizontal={!!endpoint} // نفس منطق العرض (أفقي أو عمودي)
-            numColumns={query ? 2 : 1}
-            key={query ? "skeleton-grid" : "skeleton-list"}
-            renderItem={() => <SkeletonGameCard />}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingVertical: 12,
-              paddingHorizontal: 5,
-              // محاكاة نفس الـ styling للقائمة الأصلية
-              ...(query && { alignItems: "center", paddingBottom: 320 }),
-            }}
-          />
-        </View>
+        <FlatList
+          data={skeletons}
+          horizontal={!!endpoint} // نفس منطق العرض (أفقي أو عمودي)
+          numColumns={query ? 2 : 1}
+          key={query ? "skeleton-grid" : "skeleton-list"}
+          renderItem={() => <SkeletonGameCard />}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingVertical: 12,
+            paddingHorizontal: 5,
+            // محاكاة نفس الـ styling للقائمة الأصلية
+            ...(query && { alignItems: "center", paddingBottom: 320 }),
+          }}
+        />
       )}
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -259,11 +257,12 @@ export default function GamesList({ endpoint, query, header }) {
             keyExtractor={(item) => String(item.id)}
             renderItem={renderGame}
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingVertical: 12,
-              paddingHorizontal: 5,
-              ...(query && { alignItems: "center", paddingBottom: 320 }),
-            }}
+            contentContainerStyle={[
+              styles.listContent,
+              {
+                ...(query && { alignItems: "center", paddingBottom: 220 }),
+              },
+            ]}
           />
         </>
       )}
@@ -272,9 +271,7 @@ export default function GamesList({ endpoint, query, header }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginBottom: 10,
-  },
+  container: {},
   header: { fontSize: 28, color: "white", margin: 12, fontWeight: "bold" },
   gameCard: {
     borderWidth: 1,
@@ -335,5 +332,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 16,
     marginVertical: 20,
+  },
+  listContent: {
+    paddingVertical: 12,
+    paddingHorizontal: 5,
   },
 });

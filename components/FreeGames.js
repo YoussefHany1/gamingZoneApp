@@ -363,5 +363,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginBottom: 2,
   },
-  listContent: {},
+  listContent: {
+    paddingVertical: 12,
+    paddingHorizontal: 5,
+  },
 });

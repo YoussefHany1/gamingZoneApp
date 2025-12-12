@@ -54,7 +54,6 @@ function LatestNews({
     setModalVisible(true);
   }, []);
 
-  // ✅ 1. تحسين الأداء: استخدام useCallback لمنع إعادة إنشاء الدالة وتدمير الإعلانات
   const renderItem = useCallback(
     ({ item, index }) => {
       const siteLabel = item?.siteName || website || "";
@@ -118,7 +117,6 @@ function LatestNews({
     [language, website, handlePressArticle]
   );
 
-  // ✅ 2. تحسين الأداء: تثبيت الهيدر أيضاً
   const renderHeader = useCallback(() => {
     const safeCategory = category ? String(category).toLowerCase() : "";
     const translatedCategory = safeCategory
@@ -186,10 +184,10 @@ function LatestNews({
             tintColor={COLORS.secondary}
           />
         }
-        removeClippedSubviews={true} // مهم للأداء
-        initialNumToRender={5} // تقليل العدد الأولي
-        maxToRenderPerBatch={5} // تقليل الدفعات
-        windowSize={10} // ✅ تقليل حجم النافذة في الذاكرة (الحل السحري لمشاكل الذاكرة)
+        removeClippedSubviews={true}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={10}
       />
       {filteredArticles.length === 0 ? (
         <Text style={{ color: "white", textAlign: "center" }}>
@@ -213,9 +211,7 @@ function LatestNews({
 export default memo(LatestNews);
 
 const styles = StyleSheet.create({
-  container: {
-    // marginBottom: 40
-  },
+  container: {},
   header: {
     textAlign: "center",
     alignSelf: "center",

@@ -105,8 +105,27 @@ async function fetchEpicGames() {
     const currentGames = allGames
       .filter((game) => {
         const promotions = game.promotions;
-        if (!promotions || !promotions.promotionalOffers) return false;
-        return promotions.promotionalOffers.length > 0;
+        // التأكد من وجود الهيكل الأساسي للعروض
+        if (
+          !promotions ||
+          !promotions.promotionalOffers ||
+          promotions.promotionalOffers.length === 0
+        )
+          return false;
+
+        // الوصول للعرض الفعلي (عادة يكون داخل مصفوفة متداخلة)
+        const offerGroup = promotions.promotionalOffers[0];
+        if (
+          !offerGroup.promotionalOffers ||
+          offerGroup.promotionalOffers.length === 0
+        )
+          return false;
+
+        const offer = offerGroup.promotionalOffers[0];
+
+        // التحقق من أن الخصم موجود وأن النسبة 0 (يعني مجانية)
+        if (!offer || !offer.discountSetting) return false;
+        return offer.discountSetting.discountPercentage === 0;
       })
       .map((game) => normalizeGame(game, "current"));
 

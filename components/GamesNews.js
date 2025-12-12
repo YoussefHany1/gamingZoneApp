@@ -103,10 +103,7 @@ function GamesNews() {
 export default GamesNews;
 
 const styles = StyleSheet.create({
-  container: {
-    // يفضل عدم وضع ستايل للـ ScrollView نفسه بل للـ ContentContainer أو الـ Wrapper
-    marginBottom: 20,
-  },
+  container: {},
   header: {
     fontSize: 28,
     color: "white",
@@ -116,17 +113,18 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   listContent: {
-    paddingHorizontal: 10, // لإعطاء مساحة في بداية ونهاية القائمة
+    paddingVertical: 12,
+    paddingHorizontal: 5,
   },
   gameCard: {
     borderWidth: 1,
     borderColor: COLORS.secondary,
     padding: 10,
     borderRadius: 16,
-    marginRight: 15, // مسافة بين الكروت بدلاً من margin من كل الجهات
+    margin: 10,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.2)", // خلفية خفيفة اختيارية
+    backgroundColor: "rgba(0,0,0,0.2)",
   },
   cover: {
     width: 150,

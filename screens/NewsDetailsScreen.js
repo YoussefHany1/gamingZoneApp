@@ -15,11 +15,18 @@ import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { useEffect, useState } from "react";
 import COLORS from "../constants/colors";
 import { adUnitId } from "../constants/config";
+import { format } from "date-fns";
+import { ar } from "date-fns/locale";
 
 function NewsDetails({ article, visible, onClose }) {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [showAds, setShowAds] = useState(false);
-
+  const currentLang = i18n.language;
+  const formattedDate = format(
+    new Date(article?.pubDate),
+    "dd MMMM yyyy - hh:mm a",
+    { locale: currentLang === "ar" ? ar : undefined }
+  );
   useEffect(() => {
     // activate ads after the list loads
     const task = InteractionManager.runAfterInteractions(() => {
@@ -62,12 +69,7 @@ function NewsDetails({ article, visible, onClose }) {
             <Text style={styles.siteName}>{article.siteName}</Text>
           </View>
           <Text style={styles.date}>
-            {article?.pubDate?.seconds
-              ? new Date(article.pubDate.seconds * 1000)
-                  .toString()
-                  .replace(/GMT.*/, "")
-                  .trim()
-              : ""}
+            {article?.pubDate ? formattedDate : ""}
           </Text>
           <View style={styles.description}>
             {article.description &&
@@ -75,7 +77,6 @@ function NewsDetails({ article, visible, onClose }) {
             article.description !== null &&
             article.description !== "" ? (
               <Text style={styles.description}>
-                {" "}
                 {article.description.substring(0, 400)}..
               </Text>
             ) : (
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     color: "#b7becb",
     lineHeight: 26,
     // marginBottom: 30,
-    textAlign: "center",
+    // textAlign: "center",
   },
   ad: {
     alignItems: "center",
