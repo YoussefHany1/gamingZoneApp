@@ -121,6 +121,7 @@ const extractThumbnail = (item, baseUrl, isJson = false) => {
     const getImgFromHtml = (html) =>
       (html || "").match(/<img[^>]+src=['"]([^'"]+)['"]/i)?.[1];
     img =
+      item["media:content"]?.["media:thumbnail"]?.url ||
       (item.thumbnail &&
         (Array.isArray(item.thumbnail) ? item.thumbnail[0] : item.thumbnail)) ||
       item["media:content"]?.url ||
@@ -140,10 +141,20 @@ async function fetchFeed(url) {
   try {
     const res = await axios.get(url, {
       timeout: CONFIG.AXIOS_TIMEOUT,
+      maxRedirects: 10,
       headers: {
         "User-Agent": CONFIG.USER_AGENT,
         Accept:
-          "application/json, application/rss+xml, text/xml;q=0.9, */*;q=0.8",
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9,ar;q=0.8", // إضافة اللغة العربية
+        "Accept-Encoding": "gzip, deflate, br",
+        Connection: "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0",
       },
     });
 
@@ -153,6 +164,9 @@ async function fetchFeed(url) {
     const parsed = await parser.parseStringPromise(res.data);
     return { type: "xml", data: parsed };
   } catch (error) {
+    if (error.response && error.response.status === 403) {
+      console.warn(`      ⚠️ 403 Blocked by ${url}. Consider using a proxy.`);
+    }
     throw new Error(`Fetch failed: ${error.message}`);
   }
 }
