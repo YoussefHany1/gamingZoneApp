@@ -18,11 +18,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import COLORS from "../constants/colors";
+import Constants from "expo-constants";
+
+const { GOOGLE_WEB_CLIENT_ID } = Constants.expoConfig.extra;
 
 GoogleSignin.configure({
-  webClientId:
-    "1003577837647-jpm4m77muign33bu3inaihqf6p82b50v.apps.googleusercontent.com",
+  webClientId: GOOGLE_WEB_CLIENT_ID,
 });
 
 function SignupScreen({ navigation }) {
