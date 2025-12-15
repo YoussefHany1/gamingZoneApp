@@ -21,7 +21,7 @@ import NotificationSettings from "../components/Notification";
 import Profile from "../components/Profile";
 import LanguageScreen from "../screens/LanguageSelect";
 import GameNewsScreen from "../screens/GameNewsScreen";
-
+const ContactScreen = React.lazy(() => import("../screens/ContactScreen"));
 // Lazy Loaded Screens
 const LoginScreen = React.lazy(() => import("../screens/LoginScreen"));
 const RegisterScreen = React.lazy(() => import("../screens/RegisterScreen"));
@@ -100,6 +100,11 @@ function SettingsStack() {
         component={GameDetails}
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="ContactScreen"
+        component={ContactScreen}
+        options={{ title: t("settings.contact.title") }}
+      />
     </Stack.Navigator>
   );
 }
@@ -151,7 +156,7 @@ export function MainAppTabs() {
         <Tab.Screen name="Settings" component={SettingsStack} />
       </Tab.Navigator>
 
-      {showAds && (
+      {/* {showAds && (
         <View style={{ alignItems: "center", width: "100%" }}>
           <BannerAd
             unitId={adUnitId}
@@ -159,7 +164,7 @@ export function MainAppTabs() {
             requestOptions={{ requestNonPersonalizedAdsOnly: true }}
           />
         </View>
-      )}
+      )} */}
     </>
   );
 }

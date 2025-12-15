@@ -112,7 +112,7 @@ function UserGamesScreen({ route, navigation }) {
 
     Alert.alert(
       `${t("userLists.actions.confirmDeleteTitle")}`,
-      `${t("userLists.actions.confirmDeleteMessage")}`,
+      `${t("userLists.actions.confirmDeleteMessage", { gameName: gameName })}`,
       [
         { text: "cancel", style: "cancel" },
         {
@@ -173,7 +173,7 @@ function UserGamesScreen({ route, navigation }) {
               <GameItem game={item} onRemove={handleRemoveGame} />
 
               {/* شرط ظهور الإعلان: إذا كان الترتيب يقبل القسمة على 4 */}
-              {showAds && // 1. نتحقق أولاً أن الإعلانات مفعلة بشكل عام
+              {/* {showAds && // 1. نتحقق أولاً أن الإعلانات مفعلة بشكل عام
                 ((index + 1) % 4 === 0 || // 2. إما يظهر كل 4 عناصر
                   (games.length < 4 && index === games.length - 1)) && ( // 3. أو يظهر في نهاية القائمة القصيرة
                   <View style={styles.ad}>
@@ -186,7 +186,7 @@ function UserGamesScreen({ route, navigation }) {
                       }}
                     />
                   </View>
-                )}
+                )} */}
             </>
           )}
           ListEmptyComponent={renderEmptyList}

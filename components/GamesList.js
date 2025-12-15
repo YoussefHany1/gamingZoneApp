@@ -197,8 +197,8 @@ const styles = StyleSheet.create({
   gameCard: {
     borderWidth: 1,
     borderColor: COLORS.secondary,
-    padding: 10,
     borderRadius: 16,
+    padding: 10,
     margin: 10,
     alignItems: "center",
     justifyContent: "center",

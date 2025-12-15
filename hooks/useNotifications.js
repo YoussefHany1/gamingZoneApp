@@ -55,10 +55,16 @@ const useNotifications = (user) => {
             unsubscribeOnMessage = messaging().onMessage(
               async (remoteMessage) => {
                 try {
+                  const hasNotificationContent =
+                    remoteMessage?.notification?.title ||
+                    remoteMessage?.data?.title;
+                  // إذا لم يكن هناك عنوان، نعتبرها رسالة صامتة ونتجاهل عرض الإشعار
+                  if (!hasNotificationContent) {
+                    return;
+                  }
                   const title =
                     remoteMessage?.notification?.title ||
-                    remoteMessage?.data?.title ||
-                    "📰 New News!";
+                    remoteMessage?.data?.title;
                   const body =
                     remoteMessage?.notification?.body ||
                     remoteMessage?.data?.body ||

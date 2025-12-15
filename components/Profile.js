@@ -264,7 +264,7 @@ function ProfileScreen() {
               />
             </Picker>
           </View>
-          {showAds && (
+          {/* {showAds && (
             <View style={styles.ad}>
               <Text style={styles.adText}>{t("common.ad")}</Text>
               <BannerAd
@@ -275,7 +275,7 @@ function ProfileScreen() {
                 }}
               />
             </View>
-          )}
+          )} */}
           <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
             <Text style={styles.saveText}>{t("common.saveChanges")}</Text>
           </TouchableOpacity>

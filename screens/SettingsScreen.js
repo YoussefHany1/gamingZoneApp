@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  Linking,
 } from "react-native";
 import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -140,6 +141,23 @@ function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.categoryHeader}
+            onPress={() => navigation.navigate("ContactScreen")}
+          >
+            <View style={styles.categoryHeaderLeft}>
+              <Ionicons
+                name="chatbubble-ellipses-sharp" // أو mail-open
+                size={20}
+                color="#779bdd"
+                style={styles.chevronIcon}
+              />
+              <Text style={styles.categoryTitle}>
+                {t("settings.menu.contactUs")}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.categoryHeader}
             onPress={() => navigation.navigate("LanguageScreen")}
           >
             <View style={styles.categoryHeaderLeft}>
@@ -157,7 +175,9 @@ function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.categoryHeader}
-            onPress={() => console.log("Pressed")}
+            onPress={() =>
+              Linking.openURL("https://youssefhany1.github.io/gamingZoneApp2/")
+            }
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons

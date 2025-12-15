@@ -20,5 +20,8 @@ export default {
 
       GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID,
     },
+    android: {
+      package: "com.yh.gamingzone",
+    },
   },
 };

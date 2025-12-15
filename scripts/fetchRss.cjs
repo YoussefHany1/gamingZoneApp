@@ -155,6 +155,18 @@ async function fetchFeed(url) {
       responseType: "buffer",
     });
     const bodyString = response.body.toString("utf8");
+    if (url.includes("arabhardware") || bodyString.includes("Ø¢")) {
+      try {
+        const fixed = Buffer.from(bodyString, "binary").toString("utf8");
+        // نتأكد أن الإصلاح أنتج نصاً عربياً صالحاً
+        if (fixed.match(/[\u0600-\u06FF]/)) {
+          bodyString = fixed;
+        }
+      } catch (e) {
+        console.warn("Encoding fix failed:", e.message);
+      }
+    }
+
     return await parseResponse(bodyString);
   } catch (error) {
     // التحقق من أنواع الأخطاء التي تستدعي استخدام Puppeteer
@@ -225,11 +237,19 @@ async function fetchWithPuppeteer(url) {
       timeout: 60000,
     });
 
-    // --- التعديل هنا ---
     // بدلاً من response.text() نستخدم buffer() ثم نحوله لـ UTF-8
     // هذا يجبر الكود على قراءة الأحرف العربية بشكل صحيح
     const buffer = await response.buffer();
     const rawBody = buffer.toString("utf8");
+
+    if (url.includes("arabhardware") || rawBody.includes("Ø¢")) {
+      try {
+        const fixed = Buffer.from(rawBody, "binary").toString("utf8");
+        if (fixed.match(/[\u0600-\u06FF]/)) {
+          rawBody = fixed;
+        }
+      } catch (e) {}
+    }
 
     return await parseResponse(rawBody);
   } catch (error) {

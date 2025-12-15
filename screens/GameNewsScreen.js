@@ -248,7 +248,7 @@ function GameNewsScreen({ route, navigation }) {
           defaultExpanded={true}
         />
         {/* <Text>Ad </Text> */}
-        {showAds && (
+        {/* {showAds && (
           <View style={styles.ad}>
             <Text style={styles.adText}>{t("common.ad")}</Text>
             <BannerAd
@@ -259,7 +259,7 @@ function GameNewsScreen({ route, navigation }) {
               }}
             />
           </View>
-        )}
+        )} */}
         {/* Arabic News Section */}
         <NewsSection
           gameName={Currentgame}

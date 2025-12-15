@@ -32,11 +32,11 @@ function Home() {
     () => [
       { type: "slideshow", website: website, category: "news" },
       { type: "news", category: "news", limit: 5, language: currentLang },
-      { type: "ad" },
+      // { type: "ad" },
       { type: "news", category: "reviews", limit: 5, language: currentLang },
-      { type: "ad" },
+      // { type: "ad" },
       { type: "news", category: "esports", limit: 5, language: currentLang },
-      { type: "ad" },
+      // { type: "ad" },
       { type: "news", category: "hardware", limit: 5, language: currentLang },
     ],
     []
@@ -58,20 +58,20 @@ function Home() {
           />
         );
 
-      case "ad":
-        if (!showAds) return null;
-        return (
-          <View style={styles.ad}>
-            <Text style={styles.adText}>{t("common.ad")}</Text>
-            <BannerAd
-              unitId={adUnitId}
-              size={BannerAdSize.MEDIUM_RECTANGLE}
-              requestOptions={{
-                requestNonPersonalizedAdsOnly: true,
-              }}
-            />
-          </View>
-        );
+      // case "ad":
+      //   if (!showAds) return null;
+      //   return (
+      //     <View style={styles.ad}>
+      //       <Text style={styles.adText}>{t("common.ad")}</Text>
+      //       <BannerAd
+      //         unitId={adUnitId}
+      //         size={BannerAdSize.MEDIUM_RECTANGLE}
+      //         requestOptions={{
+      //           requestNonPersonalizedAdsOnly: true,
+      //         }}
+      //       />
+      //     </View>
+      //   );
 
       default:
         return null;

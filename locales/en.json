@@ -194,6 +194,7 @@
             "playedList": "Played Games List",
             "changeLanguage": "Change Language",
             "rateUs": "Rate Us",
+            "contactUs": "Contact Us / Suggestions",
             "supportUs": "Support Us",
             "privacyPolicy": "Privacy Policy",
             "signOut": "Sign Out"
@@ -235,6 +236,24 @@
         "loadError": "We encountered a problem loading your list. Please try again later.",
         "removeError": "An error occurred while trying to remove the game."
     }
-        }
+        },
+        "contact": {
+        "title": "Contact Us",
+        "typeLabel": "Message Type",
+        "types": {
+            "suggestion": "Suggestion",
+            "problem": "Report a Problem",
+            "other": "General Inquiry"
+        },
+        "messageLabel": "Your Message *",
+        "messagePlaceholder": "Write the details of your suggestion or problem here...",
+        "emailLabel": "Email (to contact you)",
+        "send": "Send",
+        "sending": "Sending...",
+        "success": "Sent successfully. Thank you for contacting us!",
+        "error": "An error occurred while sending. Please try again.",
+        "messageTooLong": "Message is too long. Maximum limit is 5000 characters.",
+        "invalidEmail": "The email address is invalid."
+    }
     }
 }

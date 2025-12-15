@@ -11,6 +11,8 @@ import useRssFeeds from "../hooks/useRssFeeds";
 // دالة موحدة لكل التبويبات
 const GenericNewsRoute = ({ rssFeeds, categoryKey }) => {
   // --- بداية التعديل: ترتيب وفصل المصادر ---
+  const { i18n } = useTranslation();
+
   const feedList = useMemo(() => {
     const list = rssFeeds[categoryKey] || [];
 
@@ -23,8 +25,12 @@ const GenericNewsRoute = ({ rssFeeds, categoryKey }) => {
     enList.sort((a, b) => a.name.localeCompare(b.name, "en"));
 
     // 3. الدمج: هنا نضع العربي أولاً ثم الإنجليزي (يمكنك عكس الترتيب بتبديلهم)
-    return [...arList, ...enList];
-  }, [rssFeeds, categoryKey]);
+    if (i18n.language === "ar") {
+      return [...arList, ...enList];
+    } else {
+      return [...enList, ...arList];
+    }
+  }, [rssFeeds, categoryKey, i18n.language]);
   // --- نهاية التعديل ---
 
   const [selected, setSelected] = useState(feedList?.[0]);
@@ -68,12 +74,29 @@ export default function TabViewExample() {
 
   const { rssFeeds } = useRssFeeds();
 
-  const [routes] = useState([
-    { key: "news", title: t("news.tabs.news") || "News" },
-    { key: "reviews", title: t("news.tabs.reviews") || "Reviews" },
-    { key: "esports", title: t("news.tabs.esports") || "Esports" },
-    { key: "hardware", title: t("news.tabs.hardware") || "Hardware" },
-  ]);
+  const routes = useMemo(
+    () => [
+      { key: "news", title: t("news.tabs.news") || "News" },
+      { key: "reviews", title: t("news.tabs.reviews") || "Reviews" },
+      { key: "esports", title: t("news.tabs.esports") || "Esports" },
+      { key: "hardware", title: t("news.tabs.hardware") || "Hardware" },
+    ],
+    [t]
+  );
+
+  const renderTabBar = useCallback(
+    (props) => (
+      <TabBar
+        {...props}
+        style={styles.tabBar}
+        indicatorStyle={styles.tabIndicator}
+        labelStyle={styles.tabLabel}
+        activeColor={COLORS.secondary}
+        inactiveColor="#a9b7d0"
+      />
+    ),
+    [] // مصفوفة فارغة تعني أن الدالة لن يُعاد إنشاؤها أبداً
+  );
 
   const renderScene = useCallback(
     ({ route }) => {
@@ -103,16 +126,7 @@ export default function TabViewExample() {
         onIndexChange={setIndex}
         lazy={true}
         initialLayout={{ width: layout.width }}
-        renderTabBar={(props) => (
-          <TabBar
-            {...props}
-            style={styles.tabBar}
-            indicatorStyle={styles.tabIndicator}
-            labelStyle={styles.tabLabel}
-            activeColor={COLORS.secondary}
-            inactiveColor="#a9b7d0"
-          />
-        )}
+        renderTabBar={renderTabBar}
       />
     </SafeAreaView>
   );
@@ -136,7 +150,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
   },
   tabLabel: {
-    color: "#a9b7d0",
+    // color: "#a9b7d0",
     fontSize: 16,
     fontWeight: "600",
   },

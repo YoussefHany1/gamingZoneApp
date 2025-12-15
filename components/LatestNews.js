@@ -98,7 +98,7 @@ function LatestNews({
               <Text style={styles.website}>{item.siteName}</Text>
             </View>
           </TouchableOpacity>
-          {shouldShowAd && (
+          {/* {shouldShowAd && (
             <View style={styles.ad}>
               <Text style={styles.adText}>{t("common.ad")}</Text>
               <BannerAd
@@ -110,7 +110,7 @@ function LatestNews({
                 }}
               />
             </View>
-          )}
+          )} */}
         </View>
       );
     },

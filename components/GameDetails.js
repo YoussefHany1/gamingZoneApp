@@ -760,7 +760,7 @@ function GameDetails({ route, navigation }) {
                 </View>
               </>
             )}
-            <View style={styles.ad}>
+            {/* <View style={styles.ad}>
               <Text style={styles.adText}>{t("common.ad")}</Text>
               <BannerAd
                 unitId={adUnitId}
@@ -769,7 +769,7 @@ function GameDetails({ route, navigation }) {
                   requestNonPersonalizedAdsOnly: true,
                 }}
               />
-            </View>
+            </View> */}
             {/* Game Trailer section */}
             {game.videos && (
               <View style={styles.trailerContainer}>

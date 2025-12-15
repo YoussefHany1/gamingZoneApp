@@ -85,7 +85,7 @@ function NewsDetails({ article, visible, onClose }) {
               </Text>
             )}
           </View>
-          {showAds && (
+          {/* {showAds && (
             <View style={styles.ad}>
               <Text style={styles.adText}>{t("common.ad")}</Text>
               <BannerAd
@@ -96,7 +96,7 @@ function NewsDetails({ article, visible, onClose }) {
                 }}
               />
             </View>
-          )}
+          )} */}
           <TouchableOpacity
             style={styles.button}
             android_ripple={{ color: "#779bdd" }}
@@ -181,14 +181,11 @@ const styles = StyleSheet.create({
   date: {
     color: "white",
     marginVertical: 20,
-    // marginBottom: 20,
   },
   description: {
     fontSize: 16,
     color: "#b7becb",
     lineHeight: 26,
-    // marginBottom: 30,
-    // textAlign: "center",
   },
   ad: {
     alignItems: "center",
@@ -206,7 +203,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 20,
+    marginVertical: 20,
   },
   buttonText: {
     color: "white",

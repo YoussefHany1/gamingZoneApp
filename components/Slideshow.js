@@ -1,15 +1,28 @@
-import { Linking, Text, StyleSheet, Image, Pressable } from "react-native";
+import { useState } from "react";
+import { Text, StyleSheet, Image, Pressable } from "react-native";
 import Swiper from "react-native-swiper";
 import { LinearGradient } from "expo-linear-gradient";
 import useFeed from "../hooks/useFeed";
 import SkeletonSlideshow from "../skeleton/SkeletonSlideshow";
 import COLORS from "../constants/colors";
+import NewsDetails from "../screens/NewsDetailsScreen"; // 1. استيراد شاشة التفاصيل
 
 function Slideshow({ website, category }) {
   const { articles, loading, error } = useFeed(category, website);
 
+  // 2. تعريف State للتحكم في ظهور التفاصيل
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedArticle, setSelectedArticle] = useState(null);
+
   if (loading) return <SkeletonSlideshow />;
   if (error) return <Text>Error: {error.message}</Text>;
+
+  // 3. دالة التعامل مع الضغط على الخبر
+  const handlePressArticle = (item) => {
+    setSelectedArticle(item);
+    setModalVisible(true);
+  };
+
   return (
     <>
       <Swiper
@@ -26,10 +39,7 @@ function Slideshow({ website, category }) {
           <Pressable
             key={index}
             style={{ position: "relative", width: "100%" }}
-            onPress={() => {
-              // Open the link in a web browser
-              Linking.openURL(item.link[0]);
-            }}
+            onPress={() => handlePressArticle(item)} // 4. استدعاء دالة فتح التفاصيل بدلاً من الرابط
           >
             <Image
               style={styles.thumbnail}
@@ -51,6 +61,18 @@ function Slideshow({ website, category }) {
           </Pressable>
         ))}
       </Swiper>
+
+      {/* 5. عرض مكون التفاصيل عند اختيار خبر */}
+      {selectedArticle && (
+        <NewsDetails
+          article={selectedArticle}
+          visible={modalVisible}
+          onClose={() => {
+            setModalVisible(false);
+            setTimeout(() => setSelectedArticle(null), 300);
+          }}
+        />
+      )}
     </>
   );
 }

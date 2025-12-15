@@ -266,7 +266,7 @@ const Notification = () => {
         {renderCategorySection("hardware", `${t("news.tabs.hardware")}`)}
         {renderFreeGamesSection()}
 
-        {showAds && (
+        {/* {showAds && (
           <View style={styles.ad}>
             <Text style={styles.adText}>{t("common.ad")}</Text>
             <BannerAd
@@ -277,7 +277,7 @@ const Notification = () => {
               }}
             />
           </View>
-        )}
+        )} */}
 
         <View style={styles.footer}>
           <TouchableOpacity

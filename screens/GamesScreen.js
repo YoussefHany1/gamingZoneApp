@@ -24,21 +24,21 @@ import { adUnitId } from "../constants/config";
 import COLORS from "../constants/colors";
 
 // --- Sub-Component: Ad Container (Reusable) ---
-const AdContainer = () => {
-  const { t } = useTranslation();
-  return (
-    <View style={styles.adContainer}>
-      <Text style={styles.adLabel}>{t("common.ad")}</Text>
-      <BannerAd
-        unitId={adUnitId}
-        size={BannerAdSize.MEDIUM_RECTANGLE}
-        requestOptions={{
-          requestNonPersonalizedAdsOnly: true,
-        }}
-      />
-    </View>
-  );
-};
+// const AdContainer = () => {
+//   const { t } = useTranslation();
+//   return (
+//     <View style={styles.adContainer}>
+//       <Text style={styles.adLabel}>{t("common.ad")}</Text>
+//       <BannerAd
+//         unitId={adUnitId}
+//         size={BannerAdSize.MEDIUM_RECTANGLE}
+//         requestOptions={{
+//           requestNonPersonalizedAdsOnly: true,
+//         }}
+//       />
+//     </View>
+//   );
+// };
 
 function GamesScreen() {
   const { t } = useTranslation();
@@ -79,7 +79,7 @@ function GamesScreen() {
     () => [
       { id: "free_games", type: "COMPONENT", component: <FreeGames /> },
       { id: "news", type: "COMPONENT", component: <GamesNews /> },
-      { id: "ad_1", type: "AD" },
+      // { id: "ad_1", type: "AD" },
       {
         id: "popular",
         type: "LIST",
@@ -92,7 +92,7 @@ function GamesScreen() {
         endpoint: "/recently-released",
         titleKey: "games.list.recentlyReleased",
       },
-      { id: "ad_2", type: "AD" },
+      // { id: "ad_2", type: "AD" },
       {
         id: "top_rated",
         type: "LIST",
@@ -105,7 +105,7 @@ function GamesScreen() {
         endpoint: "/coming-soon",
         titleKey: "games.list.comingSoon",
       },
-      { id: "ad_3", type: "AD" },
+      // { id: "ad_3", type: "AD" },
       {
         id: "anticipated",
         type: "LIST",
@@ -129,8 +129,8 @@ function GamesScreen() {
         case "COMPONENT":
           return <View style={styles.sectionSpacing}>{item.component}</View>;
 
-        case "AD":
-          return showAds ? <AdContainer /> : null;
+        // case "AD":
+        //   return showAds ? <AdContainer /> : null;
 
         case "LIST":
           return (
@@ -202,19 +202,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.primary,
   },
-  // header: {
-  //     color: "white",
-  //     fontSize: 28,
-  //     textAlign: "center",
-  //     alignSelf: "center",
-  //     fontWeight: "bold",
-  //     backgroundColor: COLORS.secondary,
-  //     paddingHorizontal: 15,
-  //     paddingVertical: 8,
-  //     margin: 30,
-  //     marginTop: 10,
-  //     borderRadius: 16
-  // },
   searchBarContainer: {
     flexDirection: "row",
     alignItems: "center",

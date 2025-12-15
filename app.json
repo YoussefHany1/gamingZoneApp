@@ -22,7 +22,10 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.yh.gamingzone",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMobileAdsAppId": "ca-app-pub-4635812020796700~2053599689"
+      }
     },
     "notification": {
       "icon": "./assets/icon.png",

@@ -80,7 +80,7 @@ function LanguageSelect() {
             )}
           </View>
         </TouchableOpacity>
-        {showAds && (
+        {/* {showAds && (
           <View style={styles.ad}>
             <Text style={styles.adText}>{t("common.ad")}</Text>
             <BannerAd
@@ -91,7 +91,7 @@ function LanguageSelect() {
               }}
             />
           </View>
-        )}
+        )} */}
       </ScrollView>
     </SafeAreaView>
   );

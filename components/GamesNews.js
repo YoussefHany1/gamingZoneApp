@@ -119,18 +119,20 @@ const styles = StyleSheet.create({
   gameCard: {
     borderWidth: 1,
     borderColor: COLORS.secondary,
-    padding: 10,
     borderRadius: 16,
+    padding: 10,
     margin: 10,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(0,0,0,0.2)",
+    height: 270,
+    width: 160,
   },
   cover: {
-    width: 150,
-    height: 200,
+    width: 140,
+    height: 190,
     borderRadius: 10,
-    backgroundColor: COLORS.secondary, // يظهر أثناء تحميل الصورة
+    backgroundColor: COLORS.secondary,
   },
   title: {
     color: "white",
