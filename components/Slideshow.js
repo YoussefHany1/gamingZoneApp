@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Text, StyleSheet, Image, Pressable } from "react-native";
+import { Text, StyleSheet, Pressable } from "react-native";
+import { Image } from "expo-image";
 import Swiper from "react-native-swiper";
 import { LinearGradient } from "expo-linear-gradient";
 import useFeed from "../hooks/useFeed";
@@ -44,12 +45,13 @@ function Slideshow({ website, category }) {
             <Image
               style={styles.thumbnail}
               source={
-                item.thumbnail
-                  ? {
-                      uri: item.thumbnail,
-                    }
+                item?.thumbnail
+                  ? item.thumbnail
                   : require("../assets/image-not-found.webp")
               }
+              contentFit="cover"
+              transition={500}
+              cachePolicy="memory-disk"
             />
             <LinearGradient
               colors={["transparent", COLORS.primary]}

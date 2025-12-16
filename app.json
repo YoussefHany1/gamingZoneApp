@@ -4,18 +4,16 @@
     "slug": "gaming-zone",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo-background.png",
+    "icon": "./assets/logo-background.jpg",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/logo-background.png",
+      "image": "./assets/logo-background.jpg",
       "resizeMode": "cover",
       "backgroundColor": "#0c1a33"
     },
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0c1a33"
@@ -34,7 +32,7 @@
       "androidCollapsedTitle": "#{unread_notifications} new interactions"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "extra": {
       "eas": {
@@ -46,8 +44,7 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-4635812020796700~2053599689",
-          "iosAppId": "ca-app-pub-xxxxxxxx~xxxxxxxx"
+          "androidAppId": "ca-app-pub-4635812020796700~2053599689"
         }
       ]
     ]

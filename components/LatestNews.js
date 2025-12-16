@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   TouchableOpacity,
   RefreshControl,
 } from "react-native";
+import { Image } from "expo-image";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
@@ -91,9 +91,12 @@ function LatestNews({
                 style={styles.thumbnail}
                 source={
                   item?.thumbnail
-                    ? { uri: item.thumbnail }
+                    ? item.thumbnail
                     : require("../assets/image-not-found.webp")
                 }
+                contentFit="cover"
+                transition={500}
+                cachePolicy="memory-disk"
               />
               <Text style={styles.website}>{item.siteName}</Text>
             </View>
@@ -163,7 +166,7 @@ function LatestNews({
   if (error)
     return (
       <Text style={{ color: "white", textAlign: "center", marginTop: 20 }}>
-        Error: {error.message}, please try again later
+        Error while fetching data, please try again later
       </Text>
     );
 

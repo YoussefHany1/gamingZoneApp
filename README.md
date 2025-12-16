@@ -85,7 +85,11 @@ These are triggered automatically via **GitHub Actions** to ensure the Appwrite 
 
 ## 🤝 Screenshots
 
-| ![Home](assets/screenshots/home.jpg) | ![News](assets/screenshots/news.jpg) | ![News Screen](assets/screenshots/news-details.jpg) |
+<p align="center">
+  <img src="assets/screenshots/home.jpg" width="30%" />
+  <img src="assets/screenshots/news.jpg" width="30%" />
+  <img src="assets/screenshots/news-details.jpg" width="30%" />
+</p>
 
 ## 🤝 Contributing
 

@@ -8,8 +8,8 @@ import {
   ScrollView,
   Linking,
   InteractionManager,
-  Image,
 } from "react-native";
+import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -59,7 +59,7 @@ const NewsSection = ({
   const isEnabled = !!preferences[topicName];
 
   const API_URL = `${apiUrl}${lang}`;
-  console.log("API_URL:", API_URL);
+
   useEffect(() => {
     fetchNews();
   }, [gameName, apiUrl]);
@@ -116,7 +116,7 @@ const NewsSection = ({
             docId,
             payload
           );
-          console.log("✅ RSS Source updated in Appwrite");
+          // console.log("✅ RSS Source updated in Appwrite");
         } else {
           // ✅ المصدر غير موجود: ننشئه بمعرف فريد جديد
           await databases.createDocument(
@@ -125,7 +125,7 @@ const NewsSection = ({
             ID.unique(), // نستخدم ID تلقائي لتجنب مشكلة الطول المحدود (36 حرف)
             payload
           );
-          console.log("✅ RSS Source created in Appwrite");
+          // console.log("✅ RSS Source created in Appwrite");
         }
       } catch (error) {
         console.error(
@@ -203,8 +203,11 @@ const NewsSection = ({
                       {/* <Text style={styles.desc}>{item.description}</Text> */}
                     </View>
                     <Image
-                      source={{ uri: item.image || item.tileImage }}
+                      source={item.image || item.tileImage}
                       style={styles.cover}
+                      contentFit="cover"
+                      transition={500}
+                      cachePolicy="memory-disk"
                     />
                   </View>
                 </TouchableOpacity>

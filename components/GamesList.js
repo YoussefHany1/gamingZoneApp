@@ -2,11 +2,11 @@ import React, { useCallback, useMemo } from "react";
 import {
   View,
   Text,
-  Image,
   FlatList,
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
+import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
@@ -56,12 +56,13 @@ const GameCard = React.memo(({ item }) => {
       <Image
         source={
           item.cover
-            ? {
-                uri: `https://images.igdb.com/igdb/image/upload/t_cover_big/${item.cover.image_id}.jpg`,
-              }
+            ? `https://images.igdb.com/igdb/image/upload/t_cover_big/${item.cover.image_id}.jpg`
             : require("../assets/image-not-found.webp")
         }
         style={styles.cover}
+        contentFit="cover"
+        transition={500}
+        cachePolicy="memory-disk"
       />
       {shouldShowLabel && <Text style={styles.gameType}>{label}</Text>}
       {item.total_rating != null && (

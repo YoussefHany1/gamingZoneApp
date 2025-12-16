@@ -1,9 +1,12 @@
 import "dotenv/config";
 
-export default {
-  expo: {
-    name: "GamingZone",
-    slug: "GamingZone",
+export default ({ config }) => {
+  return {
+    ...config,
+    android: {
+      ...config.android,
+      package: "com.yh.gamingzone",
+    },
     extra: {
       APPWRITE_ENDPOINT: process.env.APPWRITE_ENDPOINT,
       APPWRITE_PROJECT: process.env.APPWRITE_PROJECT,
@@ -20,8 +23,5 @@ export default {
 
       GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID,
     },
-    android: {
-      package: "com.yh.gamingzone",
-    },
-  },
+  };
 };

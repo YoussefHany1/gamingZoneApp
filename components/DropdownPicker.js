@@ -2,12 +2,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Linking,
   Modal,
   SectionList,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import COLORS from "../constants/colors";
 import { useNotificationPreferences } from "../hooks/useNotificationPreferences";
@@ -83,9 +83,10 @@ const DropdownPicker = (props) => {
       >
         {selectedItem?.image ? (
           <Image
-            source={{ uri: selectedItem?.image }}
+            source={selectedItem?.image}
             style={styles.avatar}
-            resizeMethod="resize"
+            contentFit="cover"
+            cachePolicy="memory-disk"
           />
         ) : null}
 
@@ -98,7 +99,12 @@ const DropdownPicker = (props) => {
 
       <View style={styles.siteDesc}>
         {selectedItem?.image ? (
-          <Image source={{ uri: selectedItem?.image }} style={styles.siteImg} />
+          <Image
+            source={selectedItem?.image}
+            style={styles.siteImg}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
         ) : (
           <View
             style={[styles.siteImg, { backgroundColor: COLORS.secondary }]}
@@ -195,8 +201,10 @@ const DropdownPicker = (props) => {
                 >
                   <View style={{ alignItems: "center", flexDirection: "row" }}>
                     <Image
-                      source={{ uri: item?.image }}
+                      source={item?.image}
                       style={styles.modalItemLogo}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
                     />
                     <Text
                       style={[

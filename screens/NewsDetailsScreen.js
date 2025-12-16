@@ -2,13 +2,13 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   ScrollView,
   Linking,
   Modal,
   TouchableOpacity,
   InteractionManager,
 } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
@@ -54,17 +54,23 @@ function NewsDetails({ article, visible, onClose }) {
         <Image
           style={styles.image}
           source={
-            article.thumbnail
-              ? { uri: article.thumbnail }
+            article?.thumbnail
+              ? article.thumbnail
               : require("../assets/image-not-found.webp")
           }
+          contentFit="cover"
+          transition={500}
+          cachePolicy="memory-disk"
         />
         <View style={styles.content}>
           <Text style={styles.title}>{article.title}</Text>
           <View style={styles.site}>
             <Image
               style={styles.siteImage}
-              source={{ uri: article.siteImage }}
+              source={article.siteImage}
+              contentFit="cover"
+              transition={500}
+              cachePolicy="memory-disk"
             />
             <Text style={styles.siteName}>{article.siteName}</Text>
           </View>

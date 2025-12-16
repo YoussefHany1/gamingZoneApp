@@ -202,14 +202,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 10,
-    // backgroundColor: "#fff",
     borderRadius: 8,
     marginHorizontal: 4,
     borderWidth: 1,
     borderColor: COLORS.secondary,
   },
   typeButtonActive: {
-    backgroundColor: COLORS.secondary || "#779bdd", // استخدام لونك الثانوي
+    backgroundColor: COLORS.secondary || "#779bdd",
     borderColor: "#779bdd",
   },
   typeText: {
@@ -223,11 +222,11 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   inputContainer: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: COLORS.secondary + "33",
     borderRadius: 8,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "#779bdd",
   },
   input: {
     color: "#fff",

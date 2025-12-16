@@ -3,10 +3,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   View,
   FlatList,
 } from "react-native";
+import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
@@ -30,14 +30,14 @@ const GAMES_DATA = [
   {
     id: "3",
     name: "Fortnite",
-    image: "https://howlongtobeat.com/games/3657_Fortnite.jpg",
+    image: "https://e.snmc.io/lk/f/x/8c434690de9afaac992d0c20fc870bfc/11579669",
     apiUrl: "https://fortnite-api.com/v2/news?language=",
   },
   {
     id: "4",
     name: "EA Sports FC 26",
     image:
-      "https://howlongtobeat.com/games/171044_EA_Sports_FC_26.jpg?width=720",
+      "https://file.booster.gearupportal.com/file/689ef73d36a337f883dbcddeI0uOdssK03.png?fop=imageView/2/w/280/f/webp",
     apiUrl: "https://games-news-api.vercel.app/eafc/",
   },
   {
@@ -58,9 +58,11 @@ const GameCard = React.memo(({ item, onPress }) => {
       activeOpacity={0.7} // تحسين تجربة المستخدم البصرية
     >
       <Image
-        source={{ uri: item.image }}
+        source={item.image}
         style={styles.cover}
-        resizeMode="cover" // ضمان ظهور الصورة بشكل جيد
+        contentFit="cover"
+        transition={500}
+        cachePolicy="memory-disk"
       />
       <Text style={styles.title} numberOfLines={2}>
         {item.name}

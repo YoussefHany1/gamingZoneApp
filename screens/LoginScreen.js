@@ -6,9 +6,9 @@ import {
   StyleSheet,
   Text,
   Alert,
-  Image,
   ImageBackground,
 } from "react-native";
+import { Image } from "expo-image";
 import auth from "@react-native-firebase/auth";
 import {
   GoogleSignin,
@@ -31,22 +31,6 @@ function LoginScreen({ navigation }) {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const navigateToMain = () => {
-    setTimeout(() => {
-      navigation.reset({
-        index: 0,
-        routes: [
-          {
-            name: "MainApp",
-            params: {
-              screen: "Home", // اسم التاب اللي عايز تروحله
-            },
-          },
-        ],
-      });
-    }, 100);
-  };
 
   const handleAuthError = (error, t) => {
     let errorMessage = t("auth.errors.general"); // الرسالة الافتراضية
@@ -76,7 +60,6 @@ function LoginScreen({ navigation }) {
     try {
       await auth().signInWithEmailAndPassword(email, password);
       console.log(`${t("auth.login.success")})`);
-      navigateToMain();
       // سيقوم onAuthStateChanged في App.js بالباقي
     } catch (error) {
       console.error("Login failed", error);
@@ -111,8 +94,7 @@ function LoginScreen({ navigation }) {
       // تسجيل الدخول (أو التسجيل) في Firebase
       await auth().signInWithCredential(googleCredential);
 
-      console.log("✅ Signed in with Google credential");
-      navigateToMain();
+      // console.log("✅ Signed in with Google credential");
       // سيقوم onAuthStateChanged في App.js بالباقي
     } catch (error) {
       console.error("❌ Google sign in error:", error);
@@ -131,8 +113,7 @@ function LoginScreen({ navigation }) {
   const handleAnonymousLogin = async () => {
     try {
       await auth().signInAnonymously();
-      console.log("User signed in anonymously");
-      navigateToMain();
+      // console.log("User signed in anonymously");
       // App.js سيتولى تحويل المستخدم للصفحة الرئيسية تلقائياً
     } catch (error) {
       console.error("Anonymous login failed", error);
@@ -147,7 +128,13 @@ function LoginScreen({ navigation }) {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container}>
-        <Image source={require("../assets/logo.png")} style={styles.logo} />
+        <Image
+          source={require("../assets/logo.png")}
+          style={styles.logo}
+          contentFit="cover"
+          transition={500}
+          cachePolicy="memory-disk"
+        />
         <Text style={styles.title}>{t("auth.login.title")}</Text>
         <View style={styles.inputContainer}>
           <TextInput

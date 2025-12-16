@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   TextInput,
-  Image,
   Alert,
   InteractionManager,
   TouchableOpacity,
 } from "react-native";
+import { Image } from "expo-image";
 import { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import auth from "@react-native-firebase/auth";
@@ -200,10 +200,11 @@ function ProfileScreen() {
             <Image
               style={styles.avatar}
               source={
-                imageUri
-                  ? { uri: imageUri }
-                  : require("../assets/default_profile.png")
+                imageUri ? imageUri : require("../assets/default_profile.png")
               }
+              contentFit="cover"
+              transition={500}
+              cachePolicy="memory-disk"
             />
             <Text style={styles.changePicText}>
               {t("settings.profile.changePic")}

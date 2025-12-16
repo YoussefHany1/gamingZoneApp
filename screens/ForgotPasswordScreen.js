@@ -5,9 +5,9 @@ import {
   StyleSheet,
   Text,
   Alert,
-  Image,
   ImageBackground,
 } from "react-native";
+import { Image } from "expo-image";
 import auth from "@react-native-firebase/auth";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -57,7 +57,13 @@ function ForgotPasswordScreen({ navigation }) {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container}>
-        <Image source={require("../assets/logo.png")} style={styles.logo} />
+        <Image
+          source={require("../assets/logo.png")}
+          style={styles.logo}
+          contentFit="cover"
+          transition={500}
+          cachePolicy="memory-disk"
+        />
         <Text style={styles.title}>{t("auth.forgotPassword.title")}</Text>
         <TextInput
           style={styles.input}

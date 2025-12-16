@@ -3,10 +3,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ScrollView,
   Linking,
 } from "react-native";
+import { Image } from "expo-image";
 import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,15 +39,16 @@ function SettingsScreen() {
           <TouchableOpacity
             style={styles.userContainer}
             onPress={() =>
-              isAnonymous
-                ? navigation.navigate("Auth", { screen: "Login" })
-                : navigation.navigate("Profile")
+              isAnonymous ? handleSignOut() : navigation.navigate("Profile")
             }
           >
             {isAnonymous ? (
               <Image
                 source={require("../assets/anonymous.png")}
                 style={styles.avatar}
+                contentFit="cover"
+                transition={500}
+                cachePolicy="memory-disk"
               />
             ) : (
               <Image
@@ -57,6 +58,9 @@ function SettingsScreen() {
                     : require("../assets/default_profile.png")
                 }
                 style={styles.avatar}
+                contentFit="cover"
+                transition={500}
+                cachePolicy="memory-disk"
               />
             )}
 

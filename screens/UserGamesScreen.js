@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   TouchableOpacity,
   Alert,
   InteractionManager,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -33,7 +33,13 @@ function GameItem({ game, onRemove }) {
       style={styles.gameItemContainer}
       onPress={() => navigation.navigate("GameDetails", { gameID: game.id })}
     >
-      <Image source={coverUrl} style={styles.gameImage} />
+      <Image
+        source={coverUrl}
+        style={styles.gameImage}
+        contentFit="cover"
+        transition={500}
+        cachePolicy="memory-disk"
+      />
       <View style={styles.gameInfo}>
         <Text style={styles.gameName} numberOfLines={2}>
           {game.name}

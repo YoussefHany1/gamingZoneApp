@@ -6,9 +6,9 @@ import {
   StyleSheet,
   Text,
   Alert,
-  Image,
   ImageBackground,
 } from "react-native";
+import { Image } from "expo-image";
 import auth from "@react-native-firebase/auth";
 import {
   GoogleSignin,
@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import Constants from "expo-constants";
+import COLORS from "../constants/colors";
 
 const { GOOGLE_WEB_CLIENT_ID } = Constants.expoConfig.extra;
 
@@ -30,22 +31,6 @@ function SignupScreen({ navigation }) {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const navigateToMain = () => {
-    setTimeout(() => {
-      navigation.reset({
-        index: 0,
-        routes: [
-          {
-            name: "MainApp",
-            params: {
-              screen: "Home", // اسم التاب اللي عايز تروحله
-            },
-          },
-        ],
-      });
-    }, 100);
-  };
 
   // دالة للتحقق من قوة كلمة المرور
   const validatePassword = (pass) => {
@@ -72,8 +57,7 @@ function SignupScreen({ navigation }) {
 
     try {
       await auth().createUserWithEmailAndPassword(email, password);
-      console.log("✅ Sign up successful");
-      navigateToMain();
+      // console.log("✅ Sign up successful");
       // سيقوم onAuthStateChanged في App.js بالباقي
     } catch (error) {
       console.error("❌ Sign up failed:", error);
@@ -118,8 +102,7 @@ function SignupScreen({ navigation }) {
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
       // تسجيل الدخول (أو التسجيل) في Firebase
       await auth().signInWithCredential(googleCredential);
-      console.log("✅ Signed up with Google credential");
-      navigateToMain();
+      // console.log("✅ Signed up with Google credential");
     } catch (error) {
       console.error("❌ Google sign up error:", error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
@@ -132,8 +115,7 @@ function SignupScreen({ navigation }) {
   const handleAnonymousLogin = async () => {
     try {
       await auth().signInAnonymously();
-      console.log("User signed in anonymously");
-      navigateToMain();
+      // console.log("User signed in anonymously");
       // App.js سيتولى تحويل المستخدم للصفحة الرئيسية تلقائياً
     } catch (error) {
       console.error("Anonymous login failed", error);
@@ -147,7 +129,13 @@ function SignupScreen({ navigation }) {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container}>
-        <Image source={require("../assets/logo.png")} style={styles.logo} />
+        <Image
+          source={require("../assets/logo.png")}
+          style={styles.logo}
+          contentFit="cover"
+          transition={500}
+          cachePolicy="memory-disk"
+        />
         <Text style={styles.title}>{t("auth.register.title")}</Text>
         <View style={styles.inputContainer}>
           <TextInput

@@ -2,14 +2,14 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   Linking,
   FlatList,
   ScrollView,
   Alert,
 } from "react-native";
-import { useState, useEffect, useMemo, memo } from "react";
+import { Image } from "expo-image";
+import { useState, useEffect, memo } from "react";
 import SkeletonGameCard from "../skeleton/SkeletonGameCard";
 import { useTranslation } from "react-i18next";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -217,11 +217,13 @@ function FreeGames() {
           <Image
             source={
               item.image
-                ? { uri: item.image }
+                ? item.image
                 : require("../assets/image-not-found.webp")
             }
             style={styles.cover}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={500}
+            cachePolicy="memory-disk"
           />
         </View>
 
@@ -261,7 +263,7 @@ function FreeGames() {
 
       {loading && gamesList.length === 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {[1, 2, 3].map((item) => (
+          {[1, 2].map((item) => (
             <SkeletonGameCard key={item} />
           ))}
         </ScrollView>

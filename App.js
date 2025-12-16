@@ -98,13 +98,12 @@ function App() {
           >
             <Suspense fallback={<Loading />}>
               <Stack.Navigator
-                key={user ? "user-active" : "user-guest"}
+                key={user ? user.uid : "guest"}
                 screenOptions={{ headerShown: false }}
               >
-                {auth().currentUser ? (
+                {user ? (
                   <>
                     <Stack.Screen name="MainApp" component={MainAppTabs} />
-                    <Stack.Screen name="Auth" component={AuthStack} />
                   </>
                 ) : (
                   <Stack.Screen name="Auth" component={AuthStack} />

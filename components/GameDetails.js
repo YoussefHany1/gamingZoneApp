@@ -2,13 +2,13 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   ImageBackground,
   ScrollView,
   TouchableOpacity,
   Linking,
   Alert,
 } from "react-native";
+import { Image } from "expo-image";
 import { useEffect, useState, useRef } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import axios from "axios";
@@ -115,7 +115,7 @@ function GameDetails({ route, navigation }) {
         const cachedString = await AsyncStorage.getItem(cacheKey);
         if (cachedString && !cancelled) {
           const cachedData = JSON.parse(cachedString);
-          console.log(`📦 Showing Cached Game Details for: ${currentId}`);
+
           setGame(cachedData.data);
           setLoading(false); // عرض البيانات فوراً
           cacheFound = true;
@@ -137,7 +137,6 @@ function GameDetails({ route, navigation }) {
 
         if (cancelled || !mountedRef.current) return;
 
-        console.log(`🔥 Fresh Game Details received for: ${currentId}`);
         setGame(fetchedGame);
         setLoading(false);
 
@@ -366,7 +365,7 @@ function GameDetails({ route, navigation }) {
     );
     images.push(...screenshotImages);
   }
-  console.log(game);
+
   return (
     <SafeAreaView edges={["right", "left"]} style={styles.container}>
       <View style={styles.header}>
@@ -405,14 +404,18 @@ function GameDetails({ route, navigation }) {
           {game.cover?.image_id ? (
             <Image
               style={styles.image}
-              source={{
-                uri: `https://images.igdb.com/igdb/image/upload/t_720p/${game.cover?.image_id}.jpg`,
-              }}
+              source={`https://images.igdb.com/igdb/image/upload/t_720p/${game.cover?.image_id}.jpg`}
+              contentFit="cover"
+              transition={500}
+              cachePolicy="memory-disk"
             />
           ) : (
             <Image
               style={styles.image}
               source={require("../assets/image-not-found.webp")}
+              contentFit="cover"
+              transition={500}
+              cachePolicy="memory-disk"
             />
           )}
           <View style={styles.backgroundContainer}>
@@ -478,8 +481,10 @@ function GameDetails({ route, navigation }) {
                   >
                     <Image
                       style={styles.storeImg}
-                      resizeMode="contain"
                       source={icon}
+                      contentFit="contain"
+                      transition={500}
+                      cachePolicy="memory-disk"
                     />
                   </TouchableOpacity>
                 );
@@ -826,11 +831,12 @@ function GameDetails({ route, navigation }) {
                         style={styles.similarImg}
                         source={
                           g?.cover?.image_id
-                            ? {
-                                uri: `https://images.igdb.com/igdb/image/upload/t_cover_small/${g.cover.image_id}.jpg`,
-                              }
+                            ? `https://images.igdb.com/igdb/image/upload/t_cover_small/${g.cover.image_id}.jpg`
                             : require("../assets/image-not-found.webp")
                         }
+                        contentFit="cover"
+                        transition={500}
+                        cachePolicy="memory-disk"
                       />
                       <Text style={styles.similarName} numberOfLines={2}>
                         {g.name}
@@ -863,11 +869,12 @@ function GameDetails({ route, navigation }) {
                         style={styles.similarImg}
                         source={
                           sg?.cover?.image_id
-                            ? {
-                                uri: `https://images.igdb.com/igdb/image/upload/t_cover_small/${sg.cover.image_id}.jpg`,
-                              }
+                            ? `https://images.igdb.com/igdb/image/upload/t_cover_small/${sg.cover.image_id}.jpg`
                             : require("../assets/image-not-found.webp")
                         }
+                        contentFit="cover"
+                        transition={500}
+                        cachePolicy="memory-disk"
                       />
                       <Text style={styles.similarName} numberOfLines={2}>
                         {sg.name}
