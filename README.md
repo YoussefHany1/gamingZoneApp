@@ -83,14 +83,22 @@ The project includes automation scripts located in the `scripts/` folder:
 
 These are triggered automatically via **GitHub Actions** to ensure the Appwrite database is always up-to-date.
 
-## 🤝 Screenshots
+## 📸 Screenshots
 
 <p align="center">
   <img src="assets/screenshots/home.jpg" width="30%" />
   <img src="assets/screenshots/news.jpg" width="30%" />
   <img src="assets/screenshots/news-details.jpg" width="30%" />
 </p>
-
+<p align="center">
+  <img src="assets/screenshots/games.jpg" width="30%" />
+  <img src="assets/screenshots/games-search.jpg" width="30%" />
+  <img src="assets/screenshots/game-details.jpg" width="30%" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/games-list.jpg" width="30%" />
+  <img src="assets/screenshots/notifications.jpg" width="30%" />
+</p>
 ## 🤝 Contributing
 
 Contributions are welcome! If you have suggestions for improvements or find any bugs:
