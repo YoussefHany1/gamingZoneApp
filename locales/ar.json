@@ -15,6 +15,7 @@
             "passwordPlaceholder": "كلمة السر",
                         "guest": "تسجيل الدخول لاحقا",
                                     "emptyFields": "الرجاء إدخال بريدك الإلكتروني وكلمة السر.",
+                                    "idTokenError": "تعذر إيجاد رمز تعريف جوجل (ID token).",
         "login": {
             "title": "تسجيل الدخول",
             "forgotPassword": "هل نسيت كلمة السر؟",
@@ -28,6 +29,11 @@
             "title": "إنشاء حساب جديد",
             "signUpButton": "إنشاء حساب",
             "googleSignUp": "سجل باستخدام جوجل",
+            "namePlaceholder": "الاسم بالكامل",
+        "countryPlaceholder": "البلد",
+                "genderPlaceholder": "الجنس",
+        "male": "ذكر",
+        "female": "أنثى",
             "guest": "التسجيل لاحقاً",
             "haveAnAccount": "هل لديك حساب بالفعل؟",
             "success": "تم التسجيل بنجاح"
@@ -94,6 +100,7 @@
             "hardware": "أخبار الهاردوير"
         },
         "latestHeader": "أحدث {{category}}",
+        "noArticles": "لا توجد مقالات متاحة في الوقت الحالي.",
         "details": {
             "readFullArticle": "قراءة المقال كاملاً",
             "noDescription": "لا يوجد وصف متاح الأن"

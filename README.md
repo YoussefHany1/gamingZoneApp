@@ -99,6 +99,7 @@ These are triggered automatically via **GitHub Actions** to ensure the Appwrite 
   <img src="assets/screenshots/games-list.jpg" width="30%" />
   <img src="assets/screenshots/notifications.jpg" width="30%" />
 </p>
+
 ## 🤝 Contributing
 
 Contributions are welcome! If you have suggestions for improvements or find any bugs:

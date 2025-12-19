@@ -2,7 +2,7 @@
   "expo": {
     "name": "Gaming Zone",
     "slug": "gaming-zone",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/logo-background.jpg",
     "userInterfaceStyle": "light",
@@ -13,7 +13,7 @@
       "backgroundColor": "#0c1a33"
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0c1a33"
@@ -36,15 +36,28 @@
     },
     "extra": {
       "eas": {
-        "projectId": "5c13a973-4e34-44a7-8866-10891377353e"
-      }
+        "projectId": "25078fb9-8a54-4056-b988-2ac45be30e52"
+      },
+      "APPWRITE_ENDPOINT": "https://fra.cloud.appwrite.io/v1",
+      "APPWRITE_PROJECT": "6930387e0009494a1c2a",
+      "APPWRITE_API_KEY": "standard_173b455cc77644f57f376420fcd409a7087d4a32e53bcde4bfb7ebeba22d1131ce955d8513623cdb396545e0d51c6948e87a91894a6995f5c6c13d330d6caa65ecb907556093ecd29ff36bd42abcfaee94e885e899a961626b0eb29f8b8b4013b3df1bca884ab9a33103576c7be44eb8b22efb4b7a93f01c2b88ed70fa54fdd3",
+      "APPWRITE_DATABASE_ID": "6930389a0033ba85bfe1",
+      "RSS_COLLECTION_ID": "news_sources",
+      "COLLECTION_FREE_GAMES": "free_games",
+      "ARTICLES_COLLECTION_ID": "articles",
+      "FCM_SERVICE_ACCOUNT": "{\"type\":\"service_account\",\"project_id\":\"gaming-zone-ca485\",\"private_key_id\":\"7082e0c7a42973d4f615fef2377f55b0aa908b50\",\"private_key\":\"-----BEGIN PRIVATE KEY-----\\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDDBLYEIoBl6bb/\\nPO8znqjr+mIM4MPNfvvtPj53Tgkm25Hhv7fkIekI9pcLfpUV61Kn8ogShdu4aBuL\\n9pferQhrBY/FV/rBTLPb0Zt4MhffIfS0pE65jsA3taXlyoIUyHbj5KJOvIms38dP\\nUfmcYOyPFgSw6/2qaenEuVYF8RRxffhlJvO/ms+claasW9Yoo2DUfj1OyGDrdwpz\\nxY4GBGo0aHmxs+pTeex6JgIshh38rVUvNWeWqkk1fjgR14coQdyPm1D6GvEMbPoj\\nofGg4vSOMgA6huMTV5yHu1FJIQZDGArM4KMl9LnuzN8gVrCCVBjg9mg04Q0ELSvs\\nB9fZQjepAgMBAAECggEAUFMU61AQpallg+yjs5XCiuvGzfoX/AC1IEsWbIp6T4R5\\nqkuOoQrskpIKtaPOIUibc2x8anCzBtnumrAXbpLDmF0ikgyCTnLa1AwaJqAvX+r7\\nARp6CIjJGEkbyzGlcYz+FzC5P4f9hvRnAf9IOgZb+TV++iZBhZr5O9uAmJLrMjER\\nAi3bEDelmAyZ+Gw+rePhqN7NcshDJQ7ZxbCWSq2v5876unY18AC5Sll0z3dLJxbZ\\neeSelgD2vR62HAa6pE38jZcEr7pFH8TKYABomaGUVKxewgCXmq7CUrHA9bwjp/c4\\npy36cyQ2hj7zYqxqtG8D9ZxMq/qFQwynDleBuPfcfwKBgQD3jXVJD0SgIjd7q0r6\\nbYkPIWLyDNQ9eBtfWwQ8hgjv+d1iiyt6JC1aZgVIgNZ+2hQ7yH+tkdpdoQOPwKuO\\nQdLap/9ZyKH6SvbPWakgvAol0vHQnPo/dqp/NTiAKv6oTcdFanjyGSQCapyTKYKO\\nVbM3+puAm9Ts8NCOJa7QZJJVLwKBgQDJrFSuTmGw6RppOhb1zOrgSlb++WL7DS4X\\nSrZTrIccYdN/pd8+e6pkBldBYlGR666qKLpSXC5PUeiHiy5FPn5wWheCCu+GzeLZ\\nh39e5NrMq8uG4HMDUc7VgccA8JBWSO9d7UxbsLeH+YH/hOR/ttB0cAOkUnZuZ/ee\\nMmaDsYA6pwKBgCgkLQeKzUL2KW8JSKAxEM9+R3Aeem/5QN8GgDpcNajMKITpMkSd\\nBymob2ThV2a8cBl9mo6HnxQdntk5kdgAfnNsWHCzouhWLY1T6aPgOfkGKqX8Pmv6\\nDw2PkLjfv+mEqzJrYG9JelhV90u5qGzyIpyKK5sAKde9+OOD4sPx+vSLAoGATKHu\\nP5nLJ1U8UvXe2aH3Mikta4/KG8mDVRhvtdXeNVu66UtXTD/jnESIjXDVvBQJd+Eo\\nA7nBYySlrjOl7mvz0a96NVEAeYHsjGofbSibN6CkIulQ6tcAOEMrImFHB3KJenB8\\nTm8VHlciHb0asqj+BvC1gZBQLl3VSsiuCaa+KgsCgYBbv8JUC/yI9XxCL+Qc3S1U\\ndHR6ap6oAcAyeiiCoD5IHKMh24oc75HpaQKehigx1nuNjbuv33ymhGA+UBg6rwTQ\\nz2xUSqI1HXagWsF0RGnGFJqKiazM3onu990EGpt2o8TSGlefRN5TaVz0BRcxUWDd\\nFy+/+Aru58OHigCg715/Uw==\\n-----END PRIVATE KEY-----\\n\",\"client_email\":\"firebase-adminsdk-fbsvc@gaming-zone-ca485.iam.gserviceaccount.com\",\"client_id\":\"101803983715594527381\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40gaming-zone-ca485.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"}",
+      "CLOUDINARY_CLOUD_NAME": "\"dewusw0db\";",
+      "CLOUDINARY_API_KEY": "\"848952698676177\";",
+      "CLOUDINARY_UPLOAD_PRESET": "\"Gaming Zone\";",
+      "GOOGLE_WEB_CLIENT_ID": "1003577837647-jpm4m77muign33bu3inaihqf6p82b50v.apps.googleusercontent.com"
     },
     "plugins": [
       "expo-localization",
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-4635812020796700~2053599689"
+          "androidAppId": "ca-app-pub-4635812020796700~2053599689",
+          "iosAppId": "ca-app-pub-4635812020796700~1466759291"
         }
       ]
     ]

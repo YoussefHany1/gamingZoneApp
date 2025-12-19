@@ -2,7 +2,7 @@ const xml2js = require("xml2js");
 const crypto = require("crypto");
 const striptags = require("striptags");
 const he = require("he");
-require("dotenv").config({ path: "E:\\Programing\\GamingZone2\\.env" });
+require("dotenv").config({ path: "E:\\Programing\\GamingZone\\.env" });
 
 const { Client, Databases, Query, ID } = require("node-appwrite");
 
@@ -176,12 +176,16 @@ async function fetchFeed(url) {
     const isBlocked =
       error.response?.statusCode === 403 || error.response?.statusCode === 503;
 
+    const isParsingError =
+      error.message.includes("Unencoded <") ||
+      error.message.includes("Non-whitespace before first tag");
+
     // إضافة التحقق من خطأ النطاق (Cookie Domain)
     const isCookieDomainError = error.message.includes(
       "Cookie not in this host's domain"
     );
 
-    if (isRedirectLoop || isBlocked || isCookieDomainError) {
+    if (isRedirectLoop || isBlocked || isCookieDomainError || isParsingError) {
       console.log(
         `      ⚠️ Protection or Domain mismatch at ${url}. Switching to Puppeteer...`
       );
@@ -191,7 +195,22 @@ async function fetchFeed(url) {
     throw new Error(`Fetch failed: ${error.message}`);
   }
 }
+function cleanXmlBody(body) {
+  if (!body) return "";
 
+  // 1. إصلاح علامة & التي لا تتبعها صيغة entity صحيحة
+  // يحول "Radeon & Nvidia" إلى "Radeon &amp; Nvidia"
+  // ويتجاهل "Tom &amp; Jerry" لأنها صحيحة
+  let cleaned = body.replace(
+    /&(?!(?:apos|quot|[gl]t|amp|#\d+|#x[a-f\d]+);)/gi,
+    "&amp;"
+  );
+
+  // 2. إزالة الحروف غير المطبوعة (Control Characters) التي قد تسبب مشاكل
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+
+  return cleaned;
+}
 // دالة مساعدة لتحليل النص
 async function parseResponse(body) {
   let parsedJson = null;
@@ -202,8 +221,23 @@ async function parseResponse(body) {
   if (parsedJson && !parsedJson["rss"] && !parsedJson["feed"]) {
     return { type: "json", data: parsedJson };
   }
-  const parsed = await parser.parseStringPromise(body);
-  return { type: "xml", data: parsed };
+
+  // محاولة التحليل الأولى (للنص الأصلي)
+  try {
+    const parsed = await parser.parseStringPromise(body);
+    return { type: "xml", data: parsed };
+  } catch (e) {
+    // إذا فشل التحليل، نحاول تنظيف النص وإعادة المحاولة
+    // هذا يحل مشكلة Invalid character in entity name
+    try {
+      const cleanedBody = cleanXmlBody(body);
+      const parsedCleaned = await parser.parseStringPromise(cleanedBody);
+      return { type: "xml", data: parsedCleaned };
+    } catch (e2) {
+      // إذا فشل حتى بعد التنظيف، نرمي الخطأ الأصلي
+      throw new Error(`XML Parsing failed: ${e.message}`);
+    }
+  }
 }
 
 // دالة الجلب باستخدام متصفح حقيقي (Puppeteer)
@@ -377,6 +411,23 @@ async function processSource(sourceData, summary) {
     console.log(`📥 Processing: ${name}`);
     const fetched = await fetchFeed(rssUrl);
     let items = normalizeItems(fetched, rssUrl);
+
+    if (
+      name.toLowerCase().includes("techpowerup") ||
+      rssUrl.includes("techpowerup")
+    ) {
+      items = items.map((item) => {
+        // نستخدم العنوان كبصمة فريدة (مع تنظيفه)
+        const stableKey = (item.title || "").trim().toLowerCase();
+        // نعيد توليد docId
+        const newDocId = crypto
+          .createHash("sha1")
+          .update(stableKey)
+          .digest("hex")
+          .substring(0, 36);
+        return { ...item, docId: newDocId };
+      });
+    }
 
     if (!items.length) return;
 

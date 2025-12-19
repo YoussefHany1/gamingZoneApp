@@ -1,7 +1,7 @@
 // scripts/fetchFreeGames.cjs
 const axios = require("axios");
 const crypto = require("crypto");
-require("dotenv").config({ path: "E:\\Programing\\GamingZone2\\.env" });
+require("dotenv").config({ path: "E:\\Programing\\GamingZone\\.env" });
 
 const { Client, Databases, Query } = require("node-appwrite");
 

@@ -150,6 +150,12 @@ function LatestNews({
     refetch();
   }, [refetch]);
 
+  const renderEmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.noDataText}>{t("news.noArticles")}</Text>
+    </View>
+  );
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -191,13 +197,9 @@ function LatestNews({
         initialNumToRender={5}
         maxToRenderPerBatch={5}
         windowSize={10}
+        contentContainerStyle={listData.length === 0 ? { flexGrow: 1 } : null}
+        ListEmptyComponent={renderEmptyComponent}
       />
-      {filteredArticles.length === 0 ? (
-        <Text style={{ color: "white", textAlign: "center" }}>
-          no data to show
-          {/* {t("news.noArticles")} */}
-        </Text>
-      ) : null}
       {selectedArticle && (
         <NewsDetails
           article={selectedArticle}
@@ -276,5 +278,15 @@ const styles = StyleSheet.create({
   adText: {
     color: "#fff",
     marginBottom: 10,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noDataText: {
+    color: "white",
+    textAlign: "center",
+    borderRadius: 8,
   },
 });

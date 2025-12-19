@@ -15,6 +15,7 @@
             "passwordPlaceholder": "Password",
                         "guest": "Sign in Later",
                                     "emptyFields": "Please enter your email and password.",
+                                    "idTokenError": "Unable to retrieve Google ID token.",
         "login": {
             "title": "Sign In",
             "forgotPassword": "Forget Password?",
@@ -27,6 +28,11 @@
         "register": {
             "title": "Sign Up",
             "signUpButton": "Sign Up",
+            "namePlaceholder": "Full Name",
+        "countryPlaceholder": "Country",
+        "genderPlaceholder": "Select Gender",
+        "male": "Male",
+        "female": "Female",
             "googleSignUp": "Sign Up with Google",
             "haveAnAccount": "Already have an account?",
             "success": "Sign up successful"
@@ -92,6 +98,7 @@
             "hardware": "Hardware"
         },
         "latestHeader": "Latest {{category}}",
+        "noArticles": "No articles available at the moment.",
         "details": {
             "readFullArticle": "Read the full article",
             "noDescription": "No description available here"
