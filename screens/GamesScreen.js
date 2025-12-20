@@ -94,23 +94,23 @@ function GamesScreen() {
       },
       // { id: "ad_2", type: "AD" },
       {
-        id: "top_rated",
-        type: "LIST",
-        endpoint: "/top-rated",
-        titleKey: "games.list.topRated",
-      },
-      {
         id: "coming_soon",
         type: "LIST",
         endpoint: "/coming-soon",
         titleKey: "games.list.comingSoon",
       },
-      // { id: "ad_3", type: "AD" },
       {
         id: "anticipated",
         type: "LIST",
         endpoint: "/most-anticipated",
         titleKey: "games.list.mostAnticipated",
+      },
+      // { id: "ad_3", type: "AD" },
+      {
+        id: "top_rated",
+        type: "LIST",
+        endpoint: "/top-rated",
+        titleKey: "games.list.topRated",
       },
       {
         id: "nostalgia",

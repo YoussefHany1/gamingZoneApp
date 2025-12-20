@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons"; // To show a dropdown arrow
 import COLORS from "../constants/colors";
-
+import { SafeAreaView } from "react-native-safe-area-context";
 const CustomPicker = ({
   options, // Array of objects { label, value }
   selectedValue, // The currently selected value
@@ -58,7 +58,7 @@ const CustomPicker = ({
           activeOpacity={1}
           onPress={() => setModalVisible(false)}
         >
-          <View style={styles.modalContent}>
+          <SafeAreaView style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{placeholder}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -91,7 +91,7 @@ const CustomPicker = ({
                 </TouchableOpacity>
               )}
             />
-          </View>
+          </SafeAreaView>
         </TouchableOpacity>
       </Modal>
     </View>
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   pickerText: {
-    fontSize: 16,
+    fontSize: 14,
     color: "white",
   },
   modalOverlay: {

@@ -128,7 +128,11 @@ function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.categoryHeader}
-            // onPress={() => navigation.navigate('Profile')}
+            onPress={() =>
+              Linking.openURL(
+                "https://play.google.com/store/apps/details?id=com.yh.gamingzone"
+              )
+            }
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons
@@ -227,7 +231,8 @@ const styles = StyleSheet.create({
     marginVertical: 15,
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 15,
+    paddingVertical: 20,
     backgroundColor: "rgba(119, 155, 221, 0.2)",
     borderRadius: 12,
   },
@@ -248,7 +253,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   categoryHeader: {
-    marginVertical: 15,
+    marginVertical: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

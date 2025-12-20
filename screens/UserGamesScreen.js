@@ -17,6 +17,8 @@ import firestore from "@react-native-firebase/firestore";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { adUnitId } from "../constants/config";
 import UserGamesSkeleton from "../skeleton/SkeletonUserGames";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
 import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
 
@@ -66,7 +68,9 @@ function UserGamesScreen({ route, navigation }) {
   const currentUser = auth().currentUser;
   const mountedRef = useRef(true);
   const { t } = useTranslation();
-
+  const CACHE_KEY = currentUser
+    ? `USER_GAMES_${currentUser.uid}_${collection}`
+    : null;
   // تفعيل الإعلانات بعد تحميل القائمة
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
@@ -83,35 +87,72 @@ function UserGamesScreen({ route, navigation }) {
       return;
     }
 
-    const collectionRef = firestore()
-      .collection("users")
-      .doc(currentUser.uid)
-      .collection(collection);
+    let unsubscribe = () => {};
 
-    const unsubscribe = collectionRef.onSnapshot(
-      (querySnapshot) => {
-        if (!mountedRef.current) return;
-
-        const gamesList = [];
-        querySnapshot.forEach((doc) => {
-          gamesList.push({ ...doc.data(), id: doc.id });
-        });
-        setGames(gamesList);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error fetching want list: ", error);
-        if (mountedRef.current) {
-          setLoading(false);
+    const init = async () => {
+      // 1. تحميل الكاش أولاً (السرعة القصوى)
+      try {
+        const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+        if (cachedData && mountedRef.current) {
+          const parsedGames = JSON.parse(cachedData);
+          if (parsedGames && parsedGames.length > 0) {
+            setGames(parsedGames);
+            setLoading(false); // إخفاء التحميل فوراً لأن البيانات ظهرت
+          }
         }
-        Alert.alert(t("common.error"), t("userGames.messages.loadError"));
+      } catch (e) {
+        console.error("Failed to load cache", e);
       }
-    );
+
+      // 2. التحقق من الإنترنت
+      const netState = await NetInfo.fetch();
+
+      // إذا كنا أوفلاين ولدينا بيانات، نتوقف هنا
+      if (!netState.isConnected) {
+        if (mountedRef.current) setLoading(false);
+        // ملاحظة: Firestore لديه ميزة أوفلاين خاصة به، لكننا نفضل التحكم اليدوي هنا
+        // لضمان عدم ظهور دائرة تحميل لا نهائية
+      }
+
+      const collectionRef = firestore()
+        .collection("users")
+        .doc(currentUser.uid)
+        .collection(collection);
+
+      unsubscribe = collectionRef.onSnapshot(
+        (querySnapshot) => {
+          if (!mountedRef.current) return;
+
+          const gamesList = [];
+          querySnapshot.forEach((doc) => {
+            gamesList.push({ ...doc.data(), id: doc.id });
+          });
+          setGames(gamesList);
+          setLoading(false);
+
+          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(gamesList)).catch(
+            (e) => console.error(e)
+          );
+        },
+        (error) => {
+          console.error("Error fetching want list: ", error);
+          if (mountedRef.current) {
+            setLoading(false);
+          }
+          if (games.length === 0) {
+            Alert.alert(t("common.error"), t("userGames.messages.loadError"));
+          }
+        }
+      );
+    };
+
+    init();
+
     return () => {
       mountedRef.current = false;
-      unsubscribe();
+      if (unsubscribe) unsubscribe();
     };
-  }, [currentUser]);
+  }, [currentUser, collection, CACHE_KEY]);
 
   const handleRemoveGame = (gameId, gameName) => {
     if (!currentUser) return;
@@ -126,6 +167,13 @@ function UserGamesScreen({ route, navigation }) {
           style: "destructive",
           onPress: async () => {
             const gameIdStr = String(gameId);
+            const oldGames = [...games];
+            const newGames = games.filter((g) => g.id !== gameIdStr);
+            setGames(newGames);
+            AsyncStorage.setItem(CACHE_KEY, JSON.stringify(newGames)).catch(
+              console.error
+            );
+            // delete from firestore
             const gameRef = firestore()
               .collection("users")
               .doc(currentUser.uid)
@@ -136,6 +184,11 @@ function UserGamesScreen({ route, navigation }) {
               await gameRef.delete();
             } catch (error) {
               console.error("Error removing game: ", error);
+              // إعادة الحالة القديمة عند الفشل
+              setGames(oldGames);
+              AsyncStorage.setItem(CACHE_KEY, JSON.stringify(oldGames)).catch(
+                console.error
+              );
               Alert.alert(
                 t("common.error"),
                 t("userGames.messages.removeError")
@@ -167,7 +220,7 @@ function UserGamesScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right"]}>
-      {loading ? (
+      {loading && games.length === 0 ? (
         <UserGamesSkeleton />
       ) : (
         <FlatList

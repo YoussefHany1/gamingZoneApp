@@ -7,6 +7,7 @@ import {
   Text,
   Alert,
   ImageBackground,
+  ScrollView,
 } from "react-native";
 import { Image } from "expo-image";
 import auth from "@react-native-firebase/auth";
@@ -128,75 +129,88 @@ function LoginScreen({ navigation }) {
       resizeMode="cover"
     >
       <SafeAreaView style={styles.container}>
-        <Image
-          source={require("../assets/logo.png")}
-          style={styles.logo}
-          contentFit="cover"
-          transition={500}
-          cachePolicy="memory-disk"
-        />
-        <Text style={styles.title}>{t("auth.login.title")}</Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder={t("auth.emailPlaceholder")}
-            placeholderTextColor="#aaa" // تحسين الوضوح
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
+        <ScrollView>
+          <Image
+            source={require("../assets/logo.png")}
+            style={styles.logo}
+            contentFit="cover"
+            transition={500}
+            cachePolicy="memory-disk"
           />
-          <TextInput
-            style={styles.input}
-            placeholder={t("auth.passwordPlaceholder")}
-            placeholderTextColor="#aaa" // تحسين الوضوح
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-          <TouchableOpacity
-            onPress={() => navigation.navigate("ForgotPassword")}
-            style={styles.forgotPasswordButton}
-          >
-            <Text style={styles.forgotPasswordText}>
-              {t("auth.login.forgotPassword")}
-            </Text>
+          <Text style={styles.title}>{t("auth.login.title")}</Text>
+          <View style={styles.inputContainer}>
+            {/* Email Input */}
+            <TextInput
+              style={styles.input}
+              placeholder={t("auth.emailPlaceholder")}
+              placeholderTextColor="#aaa"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            {/* Password Input */}
+            <TextInput
+              style={styles.input}
+              placeholder={t("auth.passwordPlaceholder")}
+              placeholderTextColor="#aaa"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            {/* Forgot Password Button */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate("ForgotPassword")}
+              style={styles.forgotPasswordButton}
+            >
+              <Text style={styles.forgotPasswordText}>
+                {t("auth.login.forgotPassword")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity onPress={handleLogin} style={styles.button}>
+            <Text style={styles.buttonText}>{t("auth.login.title")}</Text>
           </TouchableOpacity>
-        </View>
-        <TouchableOpacity onPress={handleLogin} style={styles.button}>
-          <Text style={styles.buttonText}>{t("auth.login.title")}</Text>
-        </TouchableOpacity>
-        <LinearGradient
-          colors={["#10574b", "#3174f1", "#e92d18", "#c38d0c"]}
-          style={styles.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
+          {/* Google Sign In Button */}
           <TouchableOpacity
             onPress={onGoogleButtonPress}
-            style={{ alignItems: "center", flexDirection: "row" }}
+            style={{
+              textAlign: "center",
+              justifyContent: "center",
+            }}
           >
-            <Ionicons name="logo-google" size={28} color="white" />
+            <LinearGradient
+              colors={["#10574b", "#3174f1", "#e92d18", "#c38d0c"]}
+              style={styles.gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Ionicons name="logo-google" size={28} color="white" />
+              <Text style={styles.buttonText}>
+                {" "}
+                {t("auth.login.googleSignIn")}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          {/* Create Account Button */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Register")}
+            style={styles.newAccButton}
+          >
             <Text style={styles.buttonText}>
-              {" "}
-              {t("auth.login.googleSignIn")}
+              {t("auth.login.createAccount")}
             </Text>
           </TouchableOpacity>
-        </LinearGradient>
-        <TouchableOpacity
-          onPress={() => navigation.navigate("Register")}
-          style={styles.newAccButton}
-        >
-          <Text style={styles.buttonText}>{t("auth.login.createAccount")}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleAnonymousLogin}
-          style={styles.guestButton}
-        >
-          <Text style={styles.guestButtonText}>
-            {t("auth.guest") || "Continue as Guest"}
-          </Text>
-        </TouchableOpacity>
+          {/* Continue as Guest Button */}
+          <TouchableOpacity
+            onPress={handleAnonymousLogin}
+            style={styles.guestButton}
+          >
+            <Text style={styles.guestButtonText}>
+              {t("auth.guest") || "Continue as Guest"}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </SafeAreaView>
     </ImageBackground>
   );
@@ -234,14 +248,13 @@ const styles = StyleSheet.create({
   input: {
     color: "white",
     backgroundColor: "rgba(119, 155, 221, 0.2)",
-    fontSize: 16,
     padding: 15,
     borderRadius: 5,
     marginBottom: 10,
   },
   forgotPasswordButton: {},
   forgotPasswordText: {
-    color: "gray",
+    color: "#779bdd",
   },
   button: {
     backgroundColor: COLORS.secondary,
@@ -261,7 +274,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "white",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
   },
@@ -275,12 +288,12 @@ const styles = StyleSheet.create({
     marginTop: 35,
   },
   guestButton: {
-    marginTop: 15,
+    marginVertical: 15,
     padding: 10,
     alignItems: "center",
   },
   guestButtonText: {
-    color: "#ccc",
+    color: "#779bdd",
     fontSize: 16,
     textDecorationLine: "underline",
   },

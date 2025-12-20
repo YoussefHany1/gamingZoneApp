@@ -6,9 +6,11 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+import NetInfo from "@react-native-community/netinfo";
 import useFeed from "../hooks/useFeed";
 import DropdownPicker from "../components/DropdownPicker";
 import SkeletonNewsItem from "../skeleton/SkeletonNewsItem";
@@ -146,9 +148,18 @@ function LatestNews({
     );
   }, [category, t, showDropdown, selectedItem, websitesList, onChangeFeed]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
+    // التحقق من الإنترنت قبل محاولة التحديث
+    const state = await NetInfo.fetch();
+    if (!state.isConnected) {
+      Alert.alert(
+        t("common.notice") || "Notice",
+        t("common.noInternet") || "No Internet Connection. Showing cached data."
+      );
+      return; // إلغاء التحديث للحفاظ على البيانات المعروضة
+    }
     refetch();
-  }, [refetch]);
+  }, [refetch, t]);
 
   const renderEmptyComponent = () => (
     <View style={styles.emptyContainer}>
@@ -156,7 +167,7 @@ function LatestNews({
     </View>
   );
 
-  if (loading) {
+  if (loading && articles.length === 0) {
     return (
       <View style={styles.container}>
         {renderHeader()}
@@ -169,7 +180,7 @@ function LatestNews({
     );
   }
 
-  if (error)
+  if (error && articles.length === 0)
     return (
       <Text style={{ color: "white", textAlign: "center", marginTop: 20 }}>
         Error while fetching data, please try again later
@@ -225,8 +236,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
     paddingHorizontal: 80,
     paddingVertical: 10,
-    marginBottom: 30,
-    marginTop: 20,
+    marginVertical: 20,
     borderRadius: 16,
     color: "white",
   },

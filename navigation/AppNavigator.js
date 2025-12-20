@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { View, InteractionManager } from "react-native";
+import { InteractionManager } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
-
+import * as Notifications from "expo-notifications";
 // Constants & Config
 import COLORS from "../constants/colors";
 import { adUnitId } from "../constants/config";
@@ -116,6 +116,19 @@ export function MainAppTabs() {
   const [showAds, setShowAds] = useState(false);
 
   useEffect(() => {
+    const getPermission = async () => {
+      // هذه الدالة تطلب الإذن من المستخدم
+      const { status } = await Notifications.requestPermissionsAsync();
+
+      // (اختياري) يمكنك التحقق من الحالة هنا
+      if (status === "granted") {
+        console.log("تم السماح بالإشعارات!");
+      } else {
+        console.log("لم يتم السماح بالإشعارات");
+      }
+    };
+
+    getPermission();
     const task = InteractionManager.runAfterInteractions(() => {
       setShowAds(true);
     });

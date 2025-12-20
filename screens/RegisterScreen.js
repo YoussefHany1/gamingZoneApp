@@ -12,7 +12,7 @@ import {
 import { Image } from "expo-image";
 import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
-import { Picker } from "@react-native-picker/picker";
+// import { Picker } from "@react-native-picker/picker";
 import {
   GoogleSignin,
   statusCodes,
@@ -56,7 +56,7 @@ function SignupScreen({ navigation }) {
 
   // --- دالة تسجيل الدخول بالبريد الإلكتروني ---
   const handleSignup = async () => {
-    if (!email || !password || !name || !country) {
+    if (!email || !password || !name) {
       Alert.alert(`${t("common.error")}`, `${t("auth.register.emptyFields")}`);
       return;
     }
@@ -201,11 +201,13 @@ function SignupScreen({ navigation }) {
               secureTextEntry
             />
           </View>
+          {/* Sign Up Button */}
           <TouchableOpacity style={styles.button} onPress={handleSignup}>
             <Text style={styles.buttonText}>
               {t("auth.register.signUpButton")}
             </Text>
           </TouchableOpacity>
+          {/* Google Sign Up Button */}
           <TouchableOpacity
             onPress={onGoogleButtonPress}
             style={{
@@ -226,6 +228,7 @@ function SignupScreen({ navigation }) {
               </Text>
             </LinearGradient>
           </TouchableOpacity>
+          {/* Have an Account Button */}
           <TouchableOpacity
             style={styles.newAccButton}
             onPress={() => navigation.navigate("Login")}
@@ -234,6 +237,7 @@ function SignupScreen({ navigation }) {
               {t("auth.register.haveAnAccount")}
             </Text>
           </TouchableOpacity>
+          {/* Continue as Guest Button */}
           <TouchableOpacity
             onPress={handleAnonymousLogin}
             style={styles.guestButton}
@@ -280,7 +284,7 @@ const styles = StyleSheet.create({
   input: {
     color: "white",
     backgroundColor: "rgba(119, 155, 221, 0.2)",
-    fontSize: 16,
+    fontSize: 14,
     padding: 15,
     borderRadius: 5,
     marginBottom: 10,
@@ -303,7 +307,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "white",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
   },
@@ -317,12 +321,12 @@ const styles = StyleSheet.create({
     marginTop: 35,
   },
   guestButton: {
-    marginTop: 15,
+    marginVertical: 15,
     padding: 10,
     alignItems: "center",
   },
   guestButtonText: {
-    color: "#ccc",
+    color: "#779bdd",
     fontSize: 16,
     textDecorationLine: "underline",
   },

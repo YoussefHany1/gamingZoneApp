@@ -1,59 +1,96 @@
-import { useQuery } from "@tanstack/react-query";
-import { databases } from "../lib/appwrite"; // استيراد databases من إعدادات Appwrite لديك
-import Constants from "expo-constants";
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Query } from "react-native-appwrite";
+import { databases } from "../lib/appwrite";
+import Constants from "expo-constants";
+import NetInfo from "@react-native-community/netinfo";
 
-// جلب الثوابت من إعدادات Expo
 const { APPWRITE_DATABASE_ID, RSS_COLLECTION_ID } = Constants.expoConfig.extra;
-
-const fetchRssFeeds = async () => {
-  console.log("📡 Fetching RSS feeds from Appwrite...");
-
-  // 1. جلب كل المستندات من Appwrite (تأكد من زيادة الـ limit إذا كان لديك مصادر كثيرة)
-  const response = await databases.listDocuments(
-    APPWRITE_DATABASE_ID,
-    RSS_COLLECTION_ID,
-    [Query.limit(100)]
-  );
-
-  const documents = response.documents;
-  const feeds = {};
-
-  // 2. تحويل القائمة المسطحة (Flat List) من Appwrite إلى هيكل كائن (Object) مفهرس حسب التصنيف
-  // ليتناسب مع NewsScreen.js الذي يتوقع: rssFeeds['news'], rssFeeds['reviews'], ...
-  documents.forEach((doc) => {
-    const category = doc.category; // تأكد أن حقل التصنيف اسمه 'category' في Appwrite
-
-    if (!feeds[category]) {
-      feeds[category] = [];
-    }
-
-    // إضافة المصدر للقائمة الخاصة بتصنيفه
-    feeds[category].push({
-      ...doc,
-      // تنظيف البيانات إذا لزم الأمر، أو تمرير المستند كما هو
-      name: doc.name,
-      language: doc.language || "en", // قيمة افتراضية إذا لم تحدد اللغة
-      image: doc.image,
-      website: doc.rssUrl || doc.website, // حسب تسمية الحقول عندك
-    });
-  });
-
-  return feeds;
-};
+const CACHE_KEY = "RSS_FEEDS_CACHE";
 
 const useRssFeeds = () => {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["rssFeeds"],
-    queryFn: fetchRssFeeds,
-    staleTime: 1000 * 60 * 5, // 5 دقائق كاش
-    gcTime: 1000 * 60 * 60,
-    retry: 2,
-  });
+  const [rssFeeds, setRssFeeds] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchFeeds = async () => {
+      // 1. تحميل الكاش وعرضه فوراً (السرعة القصوى)
+      try {
+        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        if (cached && mounted) {
+          const parsed = JSON.parse(cached);
+          // إذا وجدنا بيانات، نعرضها ونوقف التحميل فوراً
+          if (Object.keys(parsed).length > 0) {
+            setRssFeeds(parsed);
+            setLoading(false);
+          }
+        }
+      } catch (e) {
+        console.error("Cache load error:", e);
+      }
+
+      // 2. التحقق من الإنترنت
+      const net = await NetInfo.fetch();
+      if (!net.isConnected) {
+        if (mounted) setLoading(false);
+        return; // توقف إذا لا يوجد نت
+      }
+
+      // 3. جلب البيانات الحديثة من السيرفر (في الخلفية)
+      try {
+        const response = await databases.listDocuments(
+          APPWRITE_DATABASE_ID,
+          RSS_COLLECTION_ID,
+          [Query.limit(100)]
+        );
+
+        if (!mounted) return;
+
+        const documents = response.documents;
+        const feeds = {};
+
+        // تحويل البيانات
+        documents.forEach((doc) => {
+          const category = doc.category;
+          if (!feeds[category]) {
+            feeds[category] = [];
+          }
+          feeds[category].push({
+            ...doc,
+            name: doc.name,
+            language: doc.language || "en",
+            image: doc.image,
+            website: doc.rssUrl || doc.website,
+          });
+        });
+
+        // تحديث الحالة وتحديث الكاش للمرة القادمة
+        setRssFeeds(feeds);
+        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(feeds)).catch((e) =>
+          console.error("Failed to save cache:", e)
+        );
+      } catch (err) {
+        console.error("Appwrite RSS error:", err);
+        // نعرض الخطأ فقط إذا لم يكن لدينا بيانات قديمة معروضة
+        if (mounted && Object.keys(rssFeeds).length === 0) setError(err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchFeeds();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return {
-    rssFeeds: data || {},
-    loading: isLoading,
+    rssFeeds,
+    loading,
     error,
   };
 };

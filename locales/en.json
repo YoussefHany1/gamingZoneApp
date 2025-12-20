@@ -35,7 +35,8 @@
         "female": "Female",
             "googleSignUp": "Sign Up with Google",
             "haveAnAccount": "Already have an account?",
-            "success": "Sign up successful"
+            "success": "Sign up successful",
+             "emptyFields": "Please fill in all required fields."
         },
         "forgotPassword": {
             "title": "Reset your Password",
@@ -124,7 +125,9 @@
             "minutes": "Min",
             "seconds": "Sec",
             "discount": "100%\nOFF",
-            "not": "New Free Game!"
+            "not": "New Free Game!",
+            "subscribed": "You are subscribed to free game notifications.",
+            "unsubscribed": "You have unsubscribed from free game notifications."
         },
         "list": {
                         "gamesNews": "Game News",

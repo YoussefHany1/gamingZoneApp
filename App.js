@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import auth from "@react-native-firebase/auth";
 import analytics from "@react-native-firebase/analytics";
+import * as SplashScreen from "expo-splash-screen";
 
 // Imports
 import "./i18n";
@@ -29,6 +30,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+// منع الإخفاء التلقائي حتى يصبح التطبيق جاهزاً
+SplashScreen.preventAutoHideAsync();
 
 function App() {
   const [user, setUser] = useState(null);
@@ -51,8 +54,11 @@ function App() {
       }
       setLoading(false);
     });
+    if (!loading) {
+      SplashScreen.hideAsync();
+    }
     return () => unsubscribeAuth();
-  }, []);
+  }, [loading]);
 
   // 2. Notifications Logic (Extracted to Hook)
   useNotifications(user);

@@ -18,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import auth from "@react-native-firebase/auth";
 import NotificationService from "../notificationService";
 import analytics from "@react-native-firebase/analytics";
-
+import NetInfo from "@react-native-community/netinfo";
 import { databases } from "../lib/appwrite";
 import { Query } from "react-native-appwrite";
 import Constants from "expo-constants";
@@ -143,7 +143,8 @@ function FreeGames() {
   };
 
   const loadGames = async () => {
-    // 1. Cache First Strategy
+    // 1. تحميل الكاش أولاً
+    let hasCachedData = false;
     try {
       const cachedString = await AsyncStorage.getItem(
         "FREE_GAMES_APPWRITE_CACHE"
@@ -152,12 +153,21 @@ function FreeGames() {
         const cachedObject = JSON.parse(cachedString);
         setGamesList(cachedObject.data);
         setLoading(false);
+        hasCachedData = true;
       }
     } catch (error) {
       console.error("Cache loading error:", error);
     }
 
-    // 2. Fetch Fresh Data from Appwrite
+    // 2. التحقق من الإنترنت قبل طلب التحديث
+    const netState = await NetInfo.fetch();
+    if (!netState.isConnected) {
+      // إذا لا يوجد نت ولدينا كاش، انتهينا.
+      if (hasCachedData) setLoading(false);
+      return;
+    }
+
+    // 3. جلب بيانات جديدة من Appwrite وتحديث الكاش
     try {
       const response = await databases.listDocuments(
         dbId,
@@ -176,9 +186,11 @@ function FreeGames() {
         endDate: doc.endDate,
       }));
 
+      // تحديث الحالة
       setGamesList(fetchedGames);
       setLoading(false);
 
+      // تحديث الكاش
       await AsyncStorage.setItem(
         "FREE_GAMES_APPWRITE_CACHE",
         JSON.stringify({ data: fetchedGames, timestamp: Date.now() })
@@ -213,11 +225,10 @@ function FreeGames() {
           {item.type === "next" && item.startDate && (
             <CountdownTimer t={t} startDate={item.startDate} />
           )}
-
           <Image
             source={
               item.image
-                ? item.image
+                ? `https://wsrv.nl/?url=${item.image}&w=400&q=80&output=webp`
                 : require("../assets/image-not-found.webp")
             }
             style={styles.cover}

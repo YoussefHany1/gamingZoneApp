@@ -6,6 +6,7 @@ import {
   Linking,
   Modal,
   SectionList,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +16,7 @@ import NotificationService from "../notificationService";
 import { useState, memo, useMemo } from "react";
 import SkeletonDropdown from "../skeleton/SkeletonDropdown";
 import { useTranslation } from "react-i18next";
+import NetInfo from "@react-native-community/netinfo";
 
 const DropdownPicker = (props) => {
   const { t, i18n } = useTranslation();
@@ -56,6 +58,32 @@ const DropdownPicker = (props) => {
 
     return result;
   }, [websites, i18n.language]);
+
+  const handleToggleNotification = async () => {
+    const state = await NetInfo.fetch();
+    if (!state.isConnected) {
+      Alert.alert(
+        t("common.notice") || "Notice",
+        t("common.noInternet") || "No Internet Connection"
+      );
+      return;
+    }
+    // تنفيذ التبديل فقط إذا كان هناك إنترنت
+    toggleSource(category, selectedItem?.name);
+  };
+
+  const handleVisitSite = async (url) => {
+    if (!url) return;
+    const state = await NetInfo.fetch();
+    if (!state.isConnected) {
+      Alert.alert(
+        t("common.notice") || "Notice",
+        t("common.noInternet") || "No Internet Connection"
+      );
+      return;
+    }
+    Linking.openURL(url).catch(() => {});
+  };
 
   if (websites.length === 0 || !selectedItem) {
     return <SkeletonDropdown />;
@@ -117,10 +145,7 @@ const DropdownPicker = (props) => {
             {/* change language based on site language */}
             {selectedItem?.language === "ar" ? (
               <TouchableOpacity
-                onPress={() =>
-                  selectedItem?.website &&
-                  Linking.openURL(selectedItem?.website).catch(() => {})
-                }
+                onPress={() => handleVisitSite(selectedItem?.website)}
                 style={styles.visitSiteBtn}
               >
                 <Text style={styles.visitSiteText}>
@@ -151,7 +176,7 @@ const DropdownPicker = (props) => {
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              onPress={() => toggleSource(category, selectedItem?.name)}
+              onPress={handleToggleNotification}
               style={styles.bellButton}
             >
               <Ionicons

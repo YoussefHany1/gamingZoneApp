@@ -9,9 +9,9 @@ import COLORS from "../constants/colors";
 import useRssFeeds from "../hooks/useRssFeeds";
 
 // دالة موحدة لكل التبويبات
-const GenericNewsRoute = ({ rssFeeds, categoryKey }) => {
+const GenericNewsRoute = ({ rssFeeds, categoryKey, loading }) => {
   // --- بداية التعديل: ترتيب وفصل المصادر ---
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
 
   const feedList = useMemo(() => {
     const list = rssFeeds[categoryKey] || [];
@@ -45,7 +45,23 @@ const GenericNewsRoute = ({ rssFeeds, categoryKey }) => {
     }
   }, [feedList, selected]);
 
-  if (!selected) {
+  if (selected) {
+    return (
+      <View style={styles.scene}>
+        <LatestNews
+          website={selected?.name || ""}
+          category={categoryKey}
+          selectedItem={selected}
+          language={selected?.language}
+          websitesList={feedList} // هنا نمرر القائمة المرتبة والمقسمة
+          onChangeFeed={(item) => setSelected(item)}
+        />
+      </View>
+    );
+  }
+
+  // الحالة 2: لا يوجد عنصر مختار، ولكن ما زال جاري التحميل الحقيقي (وليس لدينا كاش)
+  if (loading && feedList.length === 0) {
     return (
       <View style={styles.scene}>
         <Loading />
@@ -53,16 +69,12 @@ const GenericNewsRoute = ({ rssFeeds, categoryKey }) => {
     );
   }
 
+  // الحالة 3: انتهى التحميل والقائمة فارغة (أوفلاين بدون كاش، أو لا توجد مصادر)
   return (
     <View style={styles.scene}>
-      <LatestNews
-        website={selected?.name || ""}
-        category={categoryKey}
-        selectedItem={selected}
-        language={selected?.language}
-        websitesList={feedList} // هنا نمرر القائمة المرتبة والمقسمة
-        onChangeFeed={(item) => setSelected(item)}
-      />
+      <Text style={styles.noDataText}>
+        {t("common.noInternet") || "No sources available offline"}
+      </Text>
     </View>
   );
 };
@@ -72,7 +84,7 @@ export default function TabViewExample() {
   const layout = useWindowDimensions();
   const [index, setIndex] = useState(0);
 
-  const { rssFeeds } = useRssFeeds();
+  const { rssFeeds, loading } = useRssFeeds();
 
   const routes = useMemo(
     () => [
@@ -102,20 +114,42 @@ export default function TabViewExample() {
     ({ route }) => {
       switch (route.key) {
         case "news":
-          return <GenericNewsRoute rssFeeds={rssFeeds} categoryKey="news" />;
+          return (
+            <GenericNewsRoute
+              rssFeeds={rssFeeds}
+              categoryKey="news"
+              loading={loading}
+            />
+          );
         case "reviews":
-          return <GenericNewsRoute rssFeeds={rssFeeds} categoryKey="reviews" />;
+          return (
+            <GenericNewsRoute
+              rssFeeds={rssFeeds}
+              categoryKey="reviews"
+              loading={loading}
+            />
+          );
         case "esports":
-          return <GenericNewsRoute rssFeeds={rssFeeds} categoryKey="esports" />;
+          return (
+            <GenericNewsRoute
+              rssFeeds={rssFeeds}
+              categoryKey="esports"
+              loading={loading}
+            />
+          );
         case "hardware":
           return (
-            <GenericNewsRoute rssFeeds={rssFeeds} categoryKey="hardware" />
+            <GenericNewsRoute
+              rssFeeds={rssFeeds}
+              categoryKey="hardware"
+              loading={loading}
+            />
           );
         default:
           return null;
       }
     },
-    [rssFeeds]
+    [rssFeeds, loading]
   );
 
   return (

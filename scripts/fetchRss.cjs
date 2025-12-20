@@ -2,6 +2,8 @@ const xml2js = require("xml2js");
 const crypto = require("crypto");
 const striptags = require("striptags");
 const he = require("he");
+const iconv = require("iconv-lite");
+const jschardet = require("jschardet");
 require("dotenv").config({ path: "E:\\Programing\\GamingZone\\.env" });
 
 const { Client, Databases, Query, ID } = require("node-appwrite");
@@ -141,7 +143,6 @@ async function fetchFeed(url) {
     const { gotScraping } = await import("got-scraping");
     const { CookieJar } = await import("tough-cookie");
 
-    // تفعيل وضع looseMode لتقليل صرامة الكوكيز (قد يساعد في بعض الحالات)
     const cookieJar = new CookieJar(null, { looseMode: true });
 
     const response = await gotScraping({
@@ -152,24 +153,41 @@ async function fetchFeed(url) {
         locales: ["ar", "en-US"],
       },
       maxRedirects: 5,
-      responseType: "buffer",
+      responseType: "buffer", // مهم جداً استقبال البيانات كـ buffer
     });
-    let bodyString = response.body.toString("utf8");
-    if (url.includes("arabhardware") || bodyString.includes("Ø¢")) {
-      try {
-        const fixed = Buffer.from(bodyString, "binary").toString("utf8");
-        // نتأكد أن الإصلاح أنتج نصاً عربياً صالحاً
-        if (fixed.match(/[\u0600-\u06FF]/)) {
-          bodyString = fixed;
-        }
-      } catch (e) {
-        console.warn("Encoding fix failed:", e.message);
-      }
+
+    // --- بداية التعديل: اكتشاف الترميز وإصلاحه ---
+    const buffer = response.body;
+    let bodyString = "";
+
+    // محاولة اكتشاف الترميز
+    const detected = jschardet.detect(buffer);
+    const encoding =
+      detected && detected.encoding ? detected.encoding : "utf-8";
+
+    try {
+      // التحويل باستخدام iconv-lite بناءً على الترميز المكتشف
+      bodyString = iconv.decode(buffer, encoding);
+    } catch (err) {
+      // في حالة الفشل، نعود للوضع الافتراضي
+      bodyString = buffer.toString("utf8");
     }
+
+    // إصلاح يدوي لبعض الحالات الشاذة في ArabHardware إذا ما زال هناك مشكلة
+    if (url.includes("arabhardware") && bodyString.includes("Ø")) {
+      // أحياناً يكون الترميز Double UTF-8، نحاول إصلاحه
+      try {
+        const temp = Buffer.from(bodyString, "binary").toString("utf-8");
+        if (temp.match(/[\u0600-\u06FF]/)) {
+          // التأكد من وجود حروف عربية
+          bodyString = temp;
+        }
+      } catch (e) {}
+    }
+    // --- نهاية التعديل ---
 
     return await parseResponse(bodyString);
   } catch (error) {
-    // التحقق من أنواع الأخطاء التي تستدعي استخدام Puppeteer
     const isRedirectLoop =
       error.message.includes("Redirected") ||
       error.response?.statusCode === 301;
@@ -180,7 +198,6 @@ async function fetchFeed(url) {
       error.message.includes("Unencoded <") ||
       error.message.includes("Non-whitespace before first tag");
 
-    // إضافة التحقق من خطأ النطاق (Cookie Domain)
     const isCookieDomainError = error.message.includes(
       "Cookie not in this host's domain"
     );

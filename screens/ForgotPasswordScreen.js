@@ -67,7 +67,7 @@ function ForgotPasswordScreen({ navigation }) {
         <Text style={styles.title}>{t("auth.forgotPassword.title")}</Text>
         <TextInput
           style={styles.input}
-          placeholder={t("auth.forgotPassword.emailPlaceholder")}
+          placeholder={t("auth.emailPlaceholder")}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -129,7 +129,6 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 5,
     marginBottom: 25,
-    fontSize: 16,
   },
   button: {
     backgroundColor: COLORS.secondary,
@@ -143,7 +142,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "white",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
   },

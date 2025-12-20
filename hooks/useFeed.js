@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Query } from "react-native-appwrite";
 import { databases, client } from "../lib/appwrite";
 import Constants from "expo-constants";
+import NetInfo from "@react-native-community/netinfo";
 
 const APPWRITE_DATABASE_ID =
   Constants?.expoConfig?.extra?.APPWRITE_DATABASE_ID ??
@@ -14,6 +15,7 @@ const ARTICLES_COLLECTION_ID =
 export default function useFeed(category, siteName) {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(Date.now());
 
@@ -39,56 +41,68 @@ export default function useFeed(category, siteName) {
     let mounted = true;
     let unsubscribeFn = null;
 
-    const loadFromCache = async () => {
+    const loadData = async () => {
+      // 1. تحميل الكاش وعرضه فوراً (الأولوية القصوى)
       try {
         const cachedData = await AsyncStorage.getItem(cacheKey);
         if (cachedData && mounted) {
-          setArticles(JSON.parse(cachedData));
+          const parsed = JSON.parse(cachedData);
+          if (parsed && parsed.length > 0) {
+            setArticles(parsed);
+            setLoading(false); // إخفاء الـ Skeleton فوراً لأننا وجدنا بيانات
+          }
         }
       } catch (err) {
         console.error("Cache loading error:", err);
       }
-      // finally {
-      //   // لا نغطي حالة الشبكة هنا — لكن نزيل الـ loading لو لم يتغيّر لاحقاً
-      //   if (mounted) setLoading(false);
-      // }
-    };
 
-    const queries = [
-      Query.orderDesc("pubDate"),
-      Query.equal("category", category),
-      Query.limit(2000), // حد مبدئي للحماية
-    ];
-    if (siteName) queries.push(Query.equal("siteName", siteName));
-
-    const fetchArticles = async () => {
+      // 2. التحقق من الشبكة وجلب البيانات الحديثة (في الخلفية)
       try {
+        if (mounted) setIsFetching(true); // إظهار علامة التحديث الصغيرة إن وجدت
+
+        const netState = await NetInfo.fetch();
+        if (!netState.isConnected) {
+          if (mounted) {
+            setLoading(false); // تأكد من إخفاء التحميل حتى لو لم نجد كاش
+            setIsFetching(false);
+          }
+          return;
+        }
+
+        const queries = [
+          Query.orderDesc("pubDate"),
+          Query.equal("category", category),
+          Query.limit(200),
+        ];
+        if (siteName) queries.push(Query.equal("siteName", siteName));
+
         const response = await databases.listDocuments(
           APPWRITE_DATABASE_ID,
           ARTICLES_COLLECTION_ID,
           queries
         );
+
         if (!mounted) return;
         const data = response.documents || [];
 
-        setArticles(data);
-        try {
-          await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
-        } catch (e) {
-          console.error("Failed to save to cache:", e);
+        if (data.length > 0) {
+          setArticles(data);
+          AsyncStorage.setItem(cacheKey, JSON.stringify(data)).catch(
+            console.error
+          );
         }
       } catch (err) {
-        if (!mounted) return;
-        console.error("Appwrite error:", err);
-        setError(err);
+        console.error("Appwrite fetch error:", err);
+        if (mounted && articles.length === 0) setError(err); // نظهر الخطأ فقط لو القائمة فارغة
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          setIsFetching(false);
+        }
       }
     };
 
-    // تنفيذ التحميل من الكاش سريعاً ثم جلب من الشبكة
-    loadFromCache();
-    fetchArticles();
+    loadData();
 
     // الاشتراك بالـ realtime
     try {
@@ -150,5 +164,5 @@ export default function useFeed(category, siteName) {
     };
   }, [category, siteName, refreshTrigger, cacheKey]);
 
-  return { articles, loading, error, isFetching: loading, refetch };
+  return { articles, loading, error, isFetching, refetch };
 }

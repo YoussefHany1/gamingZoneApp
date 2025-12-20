@@ -50,7 +50,7 @@ function Slideshow({ website, category }) {
                   : require("../assets/image-not-found.webp")
               }
               contentFit="cover"
-              transition={500}
+              // transition={500}
               cachePolicy="memory-disk"
             />
             <LinearGradient

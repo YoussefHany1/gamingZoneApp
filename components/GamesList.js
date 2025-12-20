@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,20 +11,21 @@ import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import SkeletonGameCard from "../skeleton/SkeletonGameCard";
 import COLORS from "../constants/colors";
 import { SERVER_URL } from "../constants/config";
 
-// --- ثوابت القياسات لحساب getItemLayout ---
-// يجب أن تتطابق هذه الأرقام مع الـ Styles بالأسفل
-const CARD_HEIGHT = 290; // الارتفاع الكلي للكارد (مع المارجن)
-const CARD_WIDTH = 180; // العرض الكلي للكارد (مع المارجن)
+const CARD_HEIGHT = 290;
+const CARD_WIDTH = 180;
 
-// --- دوال مساعدة ---
-const fetchGames = async ({ queryKey }) => {
+// دالة جلب البيانات للشبكة فقط (لا تهتم بالكاش هنا)
+const fetchGamesNetwork = async ({ queryKey }) => {
   const [_, endpoint, query] = queryKey;
   const url = endpoint ? `${SERVER_URL}${endpoint}` : `${SERVER_URL}/search`;
   const params = query ? { q: query } : {};
+
+  // جلب البيانات من السيرفر
   const response = await axios.get(url, { params });
   return response.data;
 };
@@ -37,7 +38,6 @@ function getRatingColor(rating) {
   return "#006400";
 }
 
-// --- 2. المكون المنفصل والمحسن (Memoized Component) ---
 const GameCard = React.memo(({ item }) => {
   const navigation = useNavigation();
   const { t } = useTranslation();
@@ -86,50 +86,65 @@ const GameCard = React.memo(({ item }) => {
 export default function GamesList({ endpoint, query, header }) {
   const { t } = useTranslation();
 
+  // 1. حالة محلية للكاش (تظهر فوراً)
+  const [cachedGames, setCachedGames] = useState([]);
+
+  // مفتاح الكاش الفريد
+  const safeEndpoint = (endpoint || "search").replace(/\//g, "_");
+  const safeQuery = (query || "all").replace(/\s/g, "_");
+  const STORAGE_KEY = `GAMES_CACHE_${safeEndpoint}_${safeQuery}`;
+
+  // 2. تحميل الكاش فوراً عند فتح الشاشة
+  useEffect(() => {
+    const loadCache = async () => {
+      try {
+        const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
+        if (jsonValue != null) {
+          setCachedGames(JSON.parse(jsonValue));
+        }
+      } catch (e) {
+        console.error("Failed to load cache", e);
+      }
+    };
+    loadCache();
+  }, [STORAGE_KEY]);
+
+  // 3. React Query يجلب البيانات الجديدة في الخلفية
   const {
-    data: games = [],
+    data: freshGames,
     isLoading,
     error,
+    isSuccess,
   } = useQuery({
     queryKey: ["games", endpoint, query],
-    queryFn: fetchGames,
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 30,
-    enabled: !!endpoint || !!query,
-    retry: 2,
+    queryFn: fetchGamesNetwork,
+    staleTime: 1000 * 60 * 5, // 5 دقائق
+    retry: 1,
   });
 
-  const skeletons = Array.from({ length: 6 }).map((_, index) => ({
-    id: index,
-  }));
+  // 4. تحديث الكاش عند وصول بيانات جديدة
+  useEffect(() => {
+    if (isSuccess && freshGames && freshGames.length > 0) {
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(freshGames)).catch((e) =>
+        console.error(e)
+      );
+    }
+  }, [isSuccess, freshGames, STORAGE_KEY]);
 
-  const errorMessage = error
-    ? error.response?.data?.message ||
-      error.message ||
-      t("games.list.serverError")
-    : null;
+  // دمج البيانات: نعرض الجديد إذا وجد، وإلا نعرض الكاش
+  const gamesToShow =
+    freshGames && freshGames.length > 0 ? freshGames : cachedGames;
+  const isActuallyLoading = isLoading && gamesToShow.length === 0;
 
-  // دالة Render Item تستدعي المكون المحسن
   const renderItem = useCallback(({ item }) => <GameCard item={item} />, []);
 
-  // --- 1. تطبيق getItemLayout ---
-  // نقوم بحساب الأبعاد بناء على هل القائمة أفقية أم شبكة عمودية
   const getItemLayout = useCallback(
     (data, index) => {
       const isHorizontal = !!endpoint;
       const numColumns = query ? 2 : 1;
-
       if (isHorizontal) {
-        // في الحالة الأفقية نحسب بالعرض
-        return {
-          length: CARD_WIDTH,
-          offset: CARD_WIDTH * index,
-          index,
-        };
+        return { length: CARD_WIDTH, offset: CARD_WIDTH * index, index };
       } else {
-        // في حالة الشبكة (Grid) أو القائمة العمودية
-        // ملاحظة: مع numColumns > 1، الحسبة تصبح معقدة قليلاً لأن الـ offset يخص الصف
-        // المعادلة: الارتفاع * (رقم الصف)
         return {
           length: CARD_HEIGHT,
           offset: CARD_HEIGHT * Math.floor(index / numColumns),
@@ -142,9 +157,10 @@ export default function GamesList({ endpoint, query, header }) {
 
   return (
     <View style={styles.container}>
-      {isLoading && (
+      {/* عرض الـ Skeleton فقط إذا لم يكن هناك أي بيانات (لا كاش ولا نت) */}
+      {isActuallyLoading && (
         <FlatList
-          data={skeletons}
+          data={Array.from({ length: 6 }).map((_, i) => ({ id: i }))}
           horizontal={!!endpoint}
           numColumns={query ? 2 : 1}
           key={query ? "skeleton-grid" : "skeleton-list"}
@@ -158,26 +174,32 @@ export default function GamesList({ endpoint, query, header }) {
         />
       )}
 
-      {error && <Text style={styles.error}>{errorMessage}</Text>}
-
-      {!isLoading && !error && games.length === 0 && (query || endpoint) && (
-        <Text style={styles.noResults}>{t("games.list.noResults")}</Text>
+      {/* عرض الخطأ فقط إذا فشل النت والكاش فارغ */}
+      {error && gamesToShow.length === 0 && (
+        <Text style={styles.error}>{t("games.list.serverError")}</Text>
       )}
 
-      {!isLoading && !error && games.length > 0 && (
+      {!isActuallyLoading &&
+        gamesToShow.length === 0 &&
+        (query || endpoint) &&
+        !error && (
+          <Text style={styles.noResults}>{t("games.list.noResults")}</Text>
+        )}
+
+      {gamesToShow.length > 0 && (
         <>
           {header && <Text style={styles.header}>{header}</Text>}
           <FlatList
-            data={games}
+            data={gamesToShow}
             horizontal={!!endpoint}
             numColumns={query ? 2 : 1}
             key={query ? "grid" : "list"}
             keyExtractor={(item) => String(item.id)}
-            renderItem={renderItem} // استخدام الدالة المحسنة
-            getItemLayout={getItemLayout} // تفعيل خاصية حساب الأبعاد
-            initialNumToRender={6} // تحسين إضافي: عدد العناصر المبدئية
-            maxToRenderPerBatch={6} // تحسين إضافي: عدد العناصر في كل دفعة
-            windowSize={5} // تحسين إضافي: تقليل مساحة الذاكرة للعناصر خارج الشاشة
+            renderItem={renderItem}
+            getItemLayout={getItemLayout}
+            initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            windowSize={5}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={[
               styles.listContent,
@@ -203,8 +225,8 @@ const styles = StyleSheet.create({
     margin: 10,
     alignItems: "center",
     justifyContent: "center",
-    height: 270, // 270 height + 20 margin (top/bottom) = 290 Total
-    width: 160, // 160 width + 20 margin (left/right) = 180 Total
+    height: 270,
+    width: 160,
   },
   cover: {
     width: 140,
