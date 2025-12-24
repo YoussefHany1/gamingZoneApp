@@ -22,6 +22,7 @@ import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import COLORS from "../constants/colors";
 import { adUnitId } from "../constants/config";
 import Constants from "expo-constants";
+import CustomPicker from "./CustomPicker";
 
 const CLOUDINARY_CLOUD_NAME =
   Constants?.expoConfig?.extra?.CLOUDINARY_CLOUD_NAME ??
@@ -37,6 +38,8 @@ function ProfileScreen() {
   const [name, setName] = useState("");
   const [imageUri, setImageUri] = useState(null);
   const [dob, setDob] = useState("");
+  const [gender, setGender] = useState("");
+  const [country, setCountry] = useState("");
   const [platform, setPlatform] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -74,6 +77,8 @@ function ProfileScreen() {
             setName(userData.displayName || "");
             setImageUri(userData.photoURL || null);
             setDob(userData.dob || "");
+            setGender(userData.gender || "");
+            setCountry(userData.country || "");
             setPlatform(userData.platform || ""); // <-- تحميل تاريخ الميلاد
           }
         } catch (error) {
@@ -168,6 +173,8 @@ function ProfileScreen() {
         displayName: name,
         photoURL: newPhotoURL,
         dob: dob,
+        gender: gender,
+        country: country,
         platform: platform,
       });
 
@@ -189,7 +196,23 @@ function ProfileScreen() {
       setDob(isoDate);
     }
   };
-
+  const genderOptions = [
+    { label: t("auth.register.male") || "Male", value: "male" },
+    { label: t("auth.register.female") || "Female", value: "female" },
+  ];
+  const platformOptions = [
+    { label: "", value: "" },
+    { label: t("settings.profile.platforms.pc") || "PC", value: "pc" },
+    {
+      label: t("settings.profile.platforms.playstation") || "PlayStation",
+      value: "playstation",
+    },
+    { label: t("settings.profile.platforms.xbox") || "Xbox", value: "xbox" },
+    {
+      label: t("settings.profile.platforms.android") || "Android",
+      value: "android",
+    },
+  ];
   return (
     <SafeAreaView style={styles.container} edges={["right", "left"]}>
       {loading ? (
@@ -210,6 +233,7 @@ function ProfileScreen() {
               {t("settings.profile.changePic")}
             </Text>
           </TouchableOpacity>
+          {/* Name Input */}
           <Text style={styles.label}>{t("settings.profile.nameLabel")}</Text>
           <TextInput
             style={styles.input}
@@ -218,6 +242,7 @@ function ProfileScreen() {
             value={name}
             onChangeText={setName}
           />
+          {/* Date of Birth Input */}
           <Text style={styles.label}>{t("settings.profile.dobLabel")}</Text>
           <TouchableOpacity onPress={() => setShowPicker(true)}>
             <TextInput
@@ -236,35 +261,26 @@ function ProfileScreen() {
               onChange={handleChange}
             />
           )}
+          {/* Gender Input */}
+          <Text style={styles.label}>{t("settings.profile.genderLabel")}</Text>
+          <CustomPicker
+            options={genderOptions}
+            selectedValue={gender}
+            onValueChange={setGender}
+            placeholder={t("settings.profile.genderLabel") || "Select Gender"}
+          />
+          {/* Platform Input */}
           <Text style={styles.label}>
             {t("settings.profile.platformLabel")}
           </Text>
-          <View style={styles.selectWrapper}>
-            <Picker
-              selectedValue={platform}
-              onValueChange={(itemValue, itemIndex) => setPlatform(itemValue)}
-              dropdownIconColor="white" // لون السهم للأندرويد
-              style={styles.picker} // تنسيق البوكس
-              mode="dropdown" // (Android only) يجعلها قائمة منسدلة
-            >
-              <Picker.Item
-                label={t("settings.profile.platforms.pc")}
-                value="pc"
-              />
-              <Picker.Item
-                label={t("settings.profile.platforms.playstation")}
-                value="playstaion"
-              />
-              <Picker.Item
-                label={t("settings.profile.platforms.xbox")}
-                value="xbox"
-              />
-              <Picker.Item
-                label={t("settings.profile.platforms.android")}
-                value="android"
-              />
-            </Picker>
-          </View>
+          <CustomPicker
+            options={platformOptions}
+            selectedValue={platform}
+            onValueChange={setPlatform}
+            placeholder={
+              t("settings.profile.platformLabel") || "Select Platform"
+            }
+          />
           {/* {showAds && (
             <View style={styles.ad}>
               <Text style={styles.adText}>{t("common.ad")}</Text>
@@ -344,7 +360,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignSelf: "center",
     padding: 15,
-    marginBottom: 70,
+    marginTop: 20,
   },
   saveText: {
     color: "#fff",

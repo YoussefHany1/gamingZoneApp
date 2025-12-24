@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   View,
   TextInput,
@@ -12,7 +12,6 @@ import {
 import { Image } from "expo-image";
 import auth from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
-// import { Picker } from "@react-native-picker/picker";
 import {
   GoogleSignin,
   statusCodes,
@@ -24,7 +23,13 @@ import { useTranslation } from "react-i18next";
 import Constants from "expo-constants";
 import COLORS from "../constants/colors";
 import CustomPicker from "../components/CustomPicker";
+import { getLocales } from "expo-localization";
+import countries from "i18n-iso-countries";
+import enLang from "i18n-iso-countries/langs/en.json";
+import arLang from "i18n-iso-countries/langs/ar.json";
 
+countries.registerLocale(enLang);
+countries.registerLocale(arLang);
 const { GOOGLE_WEB_CLIENT_ID } = Constants.expoConfig.extra;
 
 GoogleSignin.configure({
@@ -32,12 +37,32 @@ GoogleSignin.configure({
 });
 
 function SignupScreen({ navigation }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const deviceCountryCode = getLocales()[0]?.regionCode || "";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [country, setCountry] = useState("");
+  const [country, setCountry] = useState(deviceCountryCode);
   const [gender, setGender] = useState("male");
+
+  const countriesList = useMemo(() => {
+    // تحديد اللغة المطلوبة (إذا كانت العربية نستخدم 'ar'، غير ذلك 'en')
+    const langCode = i18n.language.startsWith("ar") ? "ar" : "en";
+
+    // جلب الأسماء كـ Object { "EG": "Egypt", ... }
+    const countriesObj = countries.getNames(langCode, { select: "official" });
+
+    const excludedCountries = ["IL"];
+
+    // تحويلها لمصفوفة { label, value } وترتيبها أبجديًا
+    return Object.entries(countriesObj)
+      .filter(([code]) => !excludedCountries.includes(code))
+      .map(([code, name]) => ({
+        label: name,
+        value: code,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [i18n.language]);
 
   const genderOptions = [
     { label: t("auth.register.male") || "Male", value: "male" },
@@ -114,7 +139,7 @@ function SignupScreen({ navigation }) {
     try {
       await GoogleSignin.hasPlayServices();
       const userInfoResponse = await GoogleSignin.signIn();
-      const idToken = userInfoResponse.idToken;
+      const idToken = userInfoResponse.data?.idToken;
 
       if (!idToken) {
         console.error(
@@ -190,6 +215,15 @@ function SignupScreen({ navigation }) {
               onValueChange={setGender}
               placeholder={
                 t("auth.register.genderPlaceholder") || "Select Gender"
+              }
+            />
+            {/* Country Input */}
+            <CustomPicker
+              options={countriesList}
+              selectedValue={country}
+              onValueChange={setCountry}
+              placeholder={
+                t("auth.register.countryPlaceholder") || "Select Country"
               }
             />
             {/* Password Input */}

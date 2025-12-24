@@ -3,11 +3,11 @@
     "name": "Gaming Zone",
     "slug": "gaming-zone",
     "version": "1.0.2",
-    "icon": "./assets/logo-background.jpg",
+    "icon": "./assets/logo-background.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/logo-background.jpg",
+      "image": "./assets/logo-background.png",
       "resizeMode": "cover",
       "backgroundColor": "#0c1a33"
     },
@@ -22,7 +22,8 @@
       "googleServicesFile": "./google-services.json",
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-4635812020796700~2053599689"
-      }
+      },
+      "runtimeVersion": "1.0.0"
     },
     "notification": {
       "icon": "./assets/icon.png",
@@ -33,7 +34,6 @@
     "web": {
       "favicon": "./assets/icon.png"
     },
-
     "plugins": [
       "expo-localization",
       [
@@ -43,6 +43,14 @@
           "iosAppId": "ca-app-pub-4635812020796700~1466759291"
         }
       ]
-    ]
+    ],
+    "updates": {
+      "url": "https://u.expo.dev/25078fb9-8a54-4056-b988-2ac45be30e52"
+    },
+    "ios": {
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
+    }
   }
 }

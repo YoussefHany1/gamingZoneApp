@@ -7,7 +7,7 @@ import {
   FlatList,
   StyleSheet,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons"; // To show a dropdown arrow
+import { Ionicons } from "@expo/vector-icons";
 import COLORS from "../constants/colors";
 import { SafeAreaView } from "react-native-safe-area-context";
 const CustomPicker = ({
@@ -65,7 +65,21 @@ const CustomPicker = ({
                 <Ionicons name="close" size={24} color="#7eaafcff" />
               </TouchableOpacity>
             </View>
-
+            <TouchableOpacity
+              style={[
+                styles.optionItem,
+                // لو القيمة الحالية null نغير اللون عشان نبين إنه مختار ده
+                selectedValue === null && styles.selectedOption,
+              ]}
+              onPress={() => handleSelect(null)} // هنا بنبعت null
+            >
+              <Text style={[styles.optionText, { color: "#ff6b6b" }]}>
+                None (Clear)
+              </Text>
+              {selectedValue === null && (
+                <Ionicons name="checkmark" size={24} color="#ff6b6b" />
+              )}
+            </TouchableOpacity>
             <FlatList
               data={options}
               keyExtractor={(item) => item.value.toString()}
@@ -103,7 +117,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   pickerButton: {
-    backgroundColor: "rgba(119, 155, 221, 0.2)", // نفس لون ال Inputs في كودك
+    backgroundColor: "rgba(119, 155, 221, 0.2)",
     padding: 15,
     borderRadius: 5,
     flexDirection: "row",

@@ -25,10 +25,10 @@ registerRootComponent(App);
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
   // console.log("📨 Background message received:", remoteMessage?.messageId);
   // console.log("📨 Background message data:", remoteMessage?.data);
-  console.log(
-    "📨 Background message notification:",
-    remoteMessage?.notification
-  );
+  // console.log(
+  //   "📨 Background message notification:",
+  //   remoteMessage?.notification
+  // );
 
   // Handle background notification
   try {
@@ -39,11 +39,11 @@ messaging().setBackgroundMessageHandler(async (remoteMessage) => {
     const body =
       remoteMessage?.notification?.body || remoteMessage?.data?.body || "";
 
-    console.log("📨 Processing background notification:", { title, body });
+    // console.log("📨 Processing background notification:", { title, body });
 
     // The notification will be automatically displayed by the system
     // when the app is in background/quit state
-    console.log("✅ Background notification processed");
+    // console.log("✅ Background notification processed");
   } catch (error) {
     console.error("❌ Error handling background message:", error);
   }

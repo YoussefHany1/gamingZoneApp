@@ -30,7 +30,7 @@
             "signUpButton": "إنشاء حساب",
             "googleSignUp": "سجل باستخدام جوجل",
             "namePlaceholder": "الاسم بالكامل",
-        "countryPlaceholder": "البلد",
+        "countryPlaceholder": "اختر البلد",
                 "genderPlaceholder": "الجنس",
         "male": "ذكر",
         "female": "أنثى",
@@ -140,7 +140,7 @@
             "nostalgiaCorner": "ركن الماضي",
             "searchResults": "نتائج البحث",
             "noResults": "لم يتم العثور على ألعاب.",
-            "serverError": "فشل الاتصال بالخادم. يرجى التأكد من أن الخادم يعمل.",
+            "serverError": "فشل الاتصال بالخادم. يرجى التأكد من أن لديك اتصال إنترنت نشط والمحاولة مرة أخرى.",
             "gameTypes": {
     "1": "محتوى إضافي",
     "2": "توسعة",
@@ -214,6 +214,7 @@
             "nameLabel": "اسمك:",
             "namePlaceholder": "الاسم",
             "dobLabel": "تاريخ ميلادك:",
+            "genderLabel": "جنسك:",
             "dobPlaceholder": "تاريخ الميلاد (سنة-شهر-يوم)",
             "platformLabel": "اختر منصتك:",
             "platforms": {

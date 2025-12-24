@@ -29,7 +29,7 @@
             "title": "Sign Up",
             "signUpButton": "Sign Up",
             "namePlaceholder": "Full Name",
-        "countryPlaceholder": "Country",
+        "countryPlaceholder": "Select Country",
         "genderPlaceholder": "Select Gender",
         "male": "Male",
         "female": "Female",
@@ -140,7 +140,7 @@
             "nostalgiaCorner": "Nostalgia Corner",
             "searchResults": "Search Results",
             "noResults": "No games found.",
-            "serverError": "The connection to the server failed. Please ensure the server is running.",
+            "serverError": "The connection to the server failed. Please ensure you have an active internet connection and try again.",
             "gameTypes": {
     "1": "DLC",
     "2": "Expansion",
@@ -215,7 +215,8 @@
             "namePlaceholder": "Your Name",
             "dobLabel": "Your Birthday date:",
             "dobPlaceholder": "Date of Birth (YYYY-MM-DD)",
-            "platformLabel": "Choose your platform:",
+            "genderLabel": "Select Gender",
+            "platformLabel": "Choose your platform",
             "platforms": {
                 "pc": "PC",
                 "playstation": "Playstation",

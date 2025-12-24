@@ -174,12 +174,32 @@ async function fetchFeed(url) {
     }
 
     // إصلاح يدوي لبعض الحالات الشاذة في ArabHardware إذا ما زال هناك مشكلة
-    if (url.includes("arabhardware") && bodyString.includes("Ø")) {
-      // أحياناً يكون الترميز Double UTF-8، نحاول إصلاحه
+    if (
+      url.includes("arabhardware") &&
+      (bodyString.includes("") || bodyString.includes("ï¿½"))
+    ) {
+      try {
+        console.log(
+          "      ⚠️ Detected encoding issues for ArabHardware, trying windows-1256..."
+        );
+        const redecoded = iconv.decode(buffer, "windows-1256");
+        // تحقق بسيط: إذا ظهرت كلمات عربية شائعة أو اختفت الرموز التالفة
+        if (redecoded.includes("ال") || !redecoded.includes("")) {
+          bodyString = redecoded;
+        }
+      } catch (e) {
+        console.warn("      ⚠️ Failed to force windows-1256:", e.message);
+      }
+    }
+
+    // 4. إصلاح الحالات الشاذة (Double UTF-8 / Mojibake) - الكود القديم
+    if (
+      url.includes("arabhardware") &&
+      (bodyString.includes("Ø") || bodyString.includes("Ã"))
+    ) {
       try {
         const temp = Buffer.from(bodyString, "binary").toString("utf-8");
         if (temp.match(/[\u0600-\u06FF]/)) {
-          // التأكد من وجود حروف عربية
           bodyString = temp;
         }
       } catch (e) {}
@@ -291,7 +311,10 @@ async function fetchWithPuppeteer(url) {
     // بدلاً من response.text() نستخدم buffer() ثم نحوله لـ UTF-8
     // هذا يجبر الكود على قراءة الأحرف العربية بشكل صحيح
     const buffer = await response.buffer();
-    let rawBody = buffer.toString("utf8");
+    let rawBody = iconv.decode(buffer, "utf-8"); // أو استخدام jschardet هنا أيضاً
+    if (url.includes("arabhardware") && rawBody.includes("")) {
+      rawBody = iconv.decode(buffer, "windows-1256");
+    }
 
     if (url.includes("arabhardware") || rawBody.includes("Ø¢")) {
       try {

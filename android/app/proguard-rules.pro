@@ -28,6 +28,10 @@
 -keep class com.swmansion.rnscreens.** { *; }
 -keep class com.swmansion.reanimated.** { *; }
 
+-keep class androidx.fragment.app.** { *; }
+-keep class androidx.activity.** { *; }
+-keep class androidx.lifecycle.** { *; }
+
 # --- React Native SVG ---
 -keep public class com.horcrux.svg.** { *; }
 

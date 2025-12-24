@@ -8,6 +8,7 @@ export default ({ config }) => {
       package: "com.yh.gamingzone",
     },
     extra: {
+      ...config.extra,
       APPWRITE_ENDPOINT: process.env.APPWRITE_ENDPOINT,
       APPWRITE_PROJECT: process.env.APPWRITE_PROJECT,
       APPWRITE_API_KEY: process.env.APPWRITE_API_KEY,

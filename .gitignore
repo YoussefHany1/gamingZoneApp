@@ -45,4 +45,4 @@ firestore.rules
 firebase-*.json
 serviceAccountKey.json
 
-app-release.aab
+android/app/release/app-release.aab

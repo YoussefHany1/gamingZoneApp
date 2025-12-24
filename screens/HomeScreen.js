@@ -11,6 +11,7 @@ import Slideshow from "../components/Slideshow";
 import LatestNews from "../components/LatestNews";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { useEffect, useState } from "react";
+import WeeklySummary from "../components/WeeklySummary";
 import { useTranslation } from "react-i18next";
 import COLORS from "../constants/colors";
 import { adUnitId } from "../constants/config";
@@ -33,6 +34,7 @@ function Home() {
       { type: "slideshow", website: website, category: "news" },
       { type: "news", category: "news", limit: 5, language: currentLang },
       // { type: "ad" },
+      { type: "weekly_summary" },
       { type: "news", category: "reviews", limit: 5, language: currentLang },
       // { type: "ad" },
       { type: "news", category: "esports", limit: 5, language: currentLang },
@@ -57,7 +59,8 @@ function Home() {
             language={currentLang}
           />
         );
-
+      case "weekly_summary":
+        return <WeeklySummary />;
       // case "ad":
       //   if (!showAds) return null;
       //   return (

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   InteractionManager,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Loading from "../Loading";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,7 +29,7 @@ const Notification = () => {
   const { rssFeeds, loading: loadingRss } = useRssFeeds();
   const [expandedCategories, setExpandedCategories] = useState({});
   const [showAds, setShowAds] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     const task = InteractionManager.runAfterInteractions(() => {
@@ -147,11 +148,10 @@ const Notification = () => {
 
     return (
       <View style={styles.categorySection}>
-        {/* نستخدم نفس تصميم الهيدر ولكن بدون أيقونة التوسيع لأنها عنصر واحد */}
         <View style={styles.categoryHeader}>
           <View style={styles.categoryHeaderLeft}>
             <Ionicons
-              name="gift" // أيقونة مناسبة
+              name="gift"
               size={24}
               color="#779bdd"
               style={styles.chevronIcon}
@@ -181,6 +181,32 @@ const Notification = () => {
     const allEnabled = getCategoryToggleValue(category);
     const isIndeterminate = getCategoryToggleIndeterminate(category);
 
+    const arabicSources = sources
+      .filter((s) => s.language === "ar")
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const englishSources = sources
+      .filter((s) => s.language === "en")
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const groups = [];
+    const arGroup = {
+      title: t("news.dropdown.arabicSources"),
+      data: arabicSources,
+    };
+    const enGroup = {
+      title: t("news.dropdown.englishSources"),
+      data: englishSources,
+    };
+    // sort groups based on app language preference
+    const isEnglishApp = i18n.language.startsWith("en");
+    if (isEnglishApp) {
+      if (englishSources.length > 0) groups.push(enGroup);
+      if (arabicSources.length > 0) groups.push(arGroup);
+    } else {
+      if (arabicSources.length > 0) groups.push(arGroup);
+      if (englishSources.length > 0) groups.push(enGroup);
+    }
     return (
       <View key={category} style={styles.categorySection}>
         <TouchableOpacity
@@ -215,32 +241,47 @@ const Notification = () => {
 
         {isExpanded && (
           <View style={styles.sourcesList}>
-            {sources.map((source, index) => {
-              const prefId = NotificationService.getTopicName(
-                category,
-                source.name
-              );
-              const isEnabled = preferences[prefId] || false;
-
-              return (
-                <View key={`${category}-${index}`} style={styles.sourceItem}>
-                  <View style={styles.sourceInfo}>
-                    <Text style={styles.sourceName}>{source.name}</Text>
-                    {source.language && (
-                      <Text style={styles.sourceLanguage}>
-                        {source.language.toUpperCase()}
-                      </Text>
-                    )}
+            {groups.map((group, gIndex) => (
+              <View key={`${category}-group-${gIndex}`}>
+                {/* عرض عنوان المجموعة فقط إذا كان هناك أكثر من مجموعة أو لترتيب الشكل */}
+                {groups.length > 0 && (
+                  <View style={styles.groupHeaderContainer}>
+                    <Text style={styles.groupHeaderText}>{group.title}</Text>
                   </View>
-                  <Switch
-                    value={isEnabled}
-                    onValueChange={() => toggleSource(category, source.name)}
-                    trackColor={{ false: "#3e3e3e", true: "#779bdd" }}
-                    thumbColor={isEnabled ? "#ffffff" : "#f4f3f4"}
-                  />
-                </View>
-              );
-            })}
+                )}
+
+                {group.data.map((source, index) => {
+                  const prefId = NotificationService.getTopicName(
+                    category,
+                    source.name
+                  );
+                  const isEnabled = preferences[prefId] || false;
+
+                  return (
+                    <View
+                      key={`${category}-${index}`}
+                      style={styles.sourceItem}
+                    >
+                      <View style={styles.sourceInfo}>
+                        <Image
+                          source={source.image}
+                          style={styles.sourceIcon}
+                        />
+                        <Text style={styles.sourceName}>{source.name}</Text>
+                      </View>
+                      <Switch
+                        value={isEnabled}
+                        onValueChange={() =>
+                          toggleSource(category, source.name)
+                        }
+                        trackColor={{ false: "#3e3e3e", true: "#779bdd" }}
+                        thumbColor={isEnabled ? "#ffffff" : "#f4f3f4"}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
           </View>
         )}
       </View>
@@ -352,12 +393,24 @@ const styles = StyleSheet.create({
   },
   categorySwitch: {
     transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }],
+    marginLeft: 10,
   },
   indeterminateSwitch: {
     opacity: 0.7,
   },
   sourcesList: {
     paddingVertical: 8,
+  },
+  groupHeaderContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: COLORS.primary,
+  },
+  groupHeaderText: {
+    color: "#aaa",
+    fontSize: 13,
+    fontWeight: "bold",
+    textTransform: "uppercase",
   },
   sourceItem: {
     flexDirection: "row",
@@ -372,6 +425,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
+  },
+  sourceIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 12,
   },
   sourceName: {
     fontSize: 16,
