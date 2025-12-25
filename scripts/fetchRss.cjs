@@ -4,7 +4,7 @@ const striptags = require("striptags");
 const he = require("he");
 const iconv = require("iconv-lite");
 const jschardet = require("jschardet");
-require("dotenv").config({ path: "E:\\Programing\\GamingZone\\.env" });
+require("dotenv").config({ path: "F:\\Programing\\GamingZone\\.env" });
 
 const { Client, Databases, Query, ID } = require("node-appwrite");
 
@@ -192,19 +192,42 @@ async function fetchFeed(url) {
       }
     }
 
-    // 4. إصلاح الحالات الشاذة (Double UTF-8 / Mojibake) - الكود القديم
-    if (
-      url.includes("arabhardware") &&
-      (bodyString.includes("Ø") || bodyString.includes("Ã"))
-    ) {
-      try {
-        const temp = Buffer.from(bodyString, "binary").toString("utf-8");
-        if (temp.match(/[\u0600-\u06FF]/)) {
-          bodyString = temp;
+    // 4. إصلاح الحالات الشاذة (Double UTF-8 / Mojibake)
+    if (url.includes("arabhardware")) {
+      // الحالة 1: إصلاح التشفير المعقد (النمط أکآ...)
+      // هذا يحدث عندما يقرأ النظام نص UTF-8 وكأنه Windows-1256 ثم يعيد تحويله
+      if (bodyString.includes("أکآ") || bodyString.includes("أک")) {
+        try {
+          console.log(
+            "      ⚠️ Detected complex Mojibake for ArabHardware, fixing..."
+          );
+          // الخطوة 1: عكس تفسير Windows-1256 (العودة إلى الرموز الوسيطة مثل Ø)
+          const step1Buffer = iconv.encode(bodyString, "windows-1256");
+          const step1String = step1Buffer.toString("utf-8");
+
+          // الخطوة 2: عكس التفسير الثنائي (العودة إلى النص العربي الأصلي)
+          const step2Buffer = Buffer.from(step1String, "binary");
+          const finalString = step2Buffer.toString("utf-8");
+
+          // التحقق من نجاح العملية بوجود حروف عربية
+          if (finalString.match(/[\u0600-\u06FF]/)) {
+            bodyString = finalString;
+            console.log("      ✅ Complex encoding fixed successfully.");
+          }
+        } catch (e) {
+          console.warn("      ⚠️ Failed to fix complex encoding:", e.message);
         }
-      } catch (e) {}
+      }
+      // الحالة 2: الإصلاح البسيط (النمط Ø أو Ã)
+      else if (bodyString.includes("Ø") || bodyString.includes("Ã")) {
+        try {
+          const temp = Buffer.from(bodyString, "binary").toString("utf-8");
+          if (temp.match(/[\u0600-\u06FF]/)) {
+            bodyString = temp;
+          }
+        } catch (e) {}
+      }
     }
-    // --- نهاية التعديل ---
 
     return await parseResponse(bodyString);
   } catch (error) {
