@@ -32,14 +32,14 @@ function Home() {
   const sectionsData = useMemo(
     () => [
       { type: "slideshow", website: website, category: "news" },
-      { type: "news", category: "news", limit: 5, language: currentLang },
+      { type: "news", category: "news" },
       // { type: "ad" },
       { type: "weekly_summary" },
-      { type: "news", category: "reviews", limit: 5, language: currentLang },
+      { type: "news", category: "reviews" },
       // { type: "ad" },
-      { type: "news", category: "esports", limit: 5, language: currentLang },
+      { type: "news", category: "esports" },
       // { type: "ad" },
-      { type: "news", category: "hardware", limit: 5, language: currentLang },
+      { type: "news", category: "hardware" },
     ],
     []
   );
@@ -54,9 +54,10 @@ function Home() {
         return (
           <LatestNews
             category={item.category}
-            limit={item.limit}
+            limit={5}
             showDropdown={false}
             language={currentLang}
+            showFooter={false}
           />
         );
       case "weekly_summary":

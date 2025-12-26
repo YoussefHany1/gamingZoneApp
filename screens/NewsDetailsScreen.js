@@ -11,6 +11,7 @@ import {
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { intervalToDuration } from "date-fns";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { useEffect, useState } from "react";
 import COLORS from "../constants/colors";
@@ -27,13 +28,52 @@ function NewsDetails({ article, visible, onClose }) {
     "dd MMMM yyyy - hh:mm a",
     { locale: currentLang === "ar" ? ar : undefined }
   );
+
+  // activate ads after the list loads
   useEffect(() => {
-    // activate ads after the list loads
     const task = InteractionManager.runAfterInteractions(() => {
       setShowAds(true);
     });
     return () => task.cancel();
   }, []);
+
+  const dateString = article?.pubDate;
+  let timeAgo = "";
+  if (dateString) {
+    const startDate = new Date(dateString);
+    const endDate = new Date();
+
+    // التأكد من صحة التاريخ
+    if (!isNaN(startDate)) {
+      // حساب المدة الزمنية بالتفصيل
+      const duration = intervalToDuration({
+        start: startDate,
+        end: endDate,
+      });
+
+      const { years, months, days, hours, minutes } = duration;
+
+      // بناء النص بناءً على المدة
+      if (years > 0) {
+        timeAgo = `${years} ${t("news.duration.years")}`; // سنوات
+      } else if (months > 0) {
+        timeAgo = `${months} ${t("news.duration.months")}`; // شهور
+      } else if (days > 0) {
+        timeAgo = `${days} ${t("news.duration.days")}`; // أيام
+      } else if (hours > 0) {
+        // هنا يظهر الشكل المطلوب: 8h 30m
+        // إذا كانت الدقائق 0، سيظهر 8h فقط
+        timeAgo =
+          minutes > 0
+            ? `${hours}${t("news.duration.hours")} ${minutes}${t(
+                "news.duration.minutes"
+              )}`
+            : `${hours}${t("news.duration.hours")}`;
+      } else {
+        timeAgo = `${minutes}${t("news.duration.minutes")}`; // دقائق فقط
+      }
+    }
+  }
 
   return (
     <Modal
@@ -59,7 +99,7 @@ function NewsDetails({ article, visible, onClose }) {
               : require("../assets/image-not-found.webp")
           }
           contentFit="cover"
-          transition={500}
+          // transition={500}
           cachePolicy="memory-disk"
         />
         <View style={styles.content}>
@@ -74,9 +114,9 @@ function NewsDetails({ article, visible, onClose }) {
             />
             <Text style={styles.siteName}>{article.siteName}</Text>
           </View>
-          <Text style={styles.date}>
-            {article?.pubDate ? formattedDate : ""}
-          </Text>
+
+          <Text style={styles.date}>{timeAgo}</Text>
+
           <View style={styles.description}>
             {article.description &&
             article.description !== undefined &&
@@ -187,6 +227,12 @@ const styles = StyleSheet.create({
   date: {
     color: "white",
     marginVertical: 20,
+  },
+  timeAgoText: {
+    fontSize: 12,
+    color: COLORS.secondary, // لون رمادي فاتح
+    marginTop: 5,
+    marginRight: 12,
   },
   description: {
     fontSize: 16,

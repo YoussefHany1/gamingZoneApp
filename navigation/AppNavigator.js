@@ -15,7 +15,7 @@ import HomeScreen from "../screens/HomeScreen";
 import NewsScreen from "../screens/NewsScreen";
 import GamesScreen from "../screens/GamesScreen";
 import SettingsScreen from "../screens/SettingsScreen";
-import GameDetails from "../components/GameDetails";
+import GameDetails from "../screens/GameDetailsScreen";
 import UserGamesScreen from "../screens/UserGamesScreen";
 import NotificationSettings from "../components/Notification";
 import Profile from "../components/Profile";

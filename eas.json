@@ -18,8 +18,7 @@
       "android": {
         "buildType": "app-bundle"
       },
-      "channel": "production",
-      "runtimeVersion": "1.0.0"
+      "channel": "production"
     }
   },
   "submit": {

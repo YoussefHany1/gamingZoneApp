@@ -90,6 +90,10 @@
             "reviews": "مراجعات",
             "esports": "رياضات إلكترونية",
             "hardware": "أجهزة وعتاد"
+        },
+                "seeklySummary":{
+            "readMore": "اقرأ المزيد..",
+            "readLess": "عرض أقل"
         }
     },
     "news": {
@@ -101,6 +105,7 @@
         },
         "latestHeader": "أحدث {{category}}",
         "noArticles": "لا توجد مقالات متاحة في الوقت الحالي.",
+        "endOfList": "نهاية المقالات",
         "details": {
             "readFullArticle": "قراءة المقال كاملاً",
             "noDescription": "لا يوجد وصف متاح الأن"
@@ -111,6 +116,13 @@
             "arabicSources": "مصادر عربية",
             "englishSources": "مصادر إنجليزية",
             "visitWebsite": "زيارة الموقع"
+        },
+        "duration":{
+        "years": "سنة",
+        "months": "شهر",
+        "days": "يوم",
+        "hours": "س",
+        "minutes": "د"
         }
     },
     "games": {

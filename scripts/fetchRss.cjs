@@ -64,6 +64,42 @@ if (admin && process.env.FCM_SERVICE_ACCOUNT) {
 }
 
 // --- HELPERS ---
+// دالة لجلب الصورة من رابط المقال مباشرة
+async function fetchOgImage(url) {
+  try {
+    // نستخدم got-scraping الموجودة بالفعل لديك
+    const { gotScraping } = await import("got-scraping");
+
+    const response = await gotScraping({
+      url,
+      timeout: { request: 15000 }, // وقت قصير لتجنب التعليق
+      headerGeneratorOptions: {
+        devices: ["mobile"], // محاكاة موبايل لصفحة أخف
+        locales: ["en-US"],
+      },
+    });
+
+    const body = response.body;
+    // استخدام Regex بسيط لاستخراج الصورة بدلاً من تحميل مكتبة HTML parser ثقيلة
+    const match =
+      body.match(
+        /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i
+      ) ||
+      body.match(
+        /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i
+      );
+
+    if (match && match[1]) {
+      return match[1];
+    }
+    return null;
+  } catch (error) {
+    console.warn(
+      `      ⚠️ Failed to fetch OG image for ${url}: ${error.message}`
+    );
+    return null;
+  }
+}
 const generateDocId = (item) => {
   if (item.id || item.guid) {
     return crypto
@@ -153,101 +189,103 @@ async function fetchFeed(url) {
         locales: ["ar", "en-US"],
       },
       maxRedirects: 5,
-      responseType: "buffer", // مهم جداً استقبال البيانات كـ buffer
+      responseType: "buffer", // نستقبل البيانات كـ Buffer خام
     });
 
-    // --- بداية التعديل: اكتشاف الترميز وإصلاحه ---
     const buffer = response.body;
     let bodyString = "";
 
-    // محاولة اكتشاف الترميز
-    const detected = jschardet.detect(buffer);
-    const encoding =
-      detected && detected.encoding ? detected.encoding : "utf-8";
+    // 1. الأولوية القصوى: محاولة القراءة كـ UTF-8 مباشرة
+    // ArabHardware يرسل UTF-8 في الغالب، لكن الكشف التلقائي قد يخطئ
+    bodyString = buffer.toString("utf8");
 
-    try {
-      // التحويل باستخدام iconv-lite بناءً على الترميز المكتشف
-      bodyString = iconv.decode(buffer, encoding);
-    } catch (err) {
-      // في حالة الفشل، نعود للوضع الافتراضي
-      bodyString = buffer.toString("utf8");
-    }
+    // التحقق هل النص سليم؟ (هل يحتوي على كلمات عربية شائعة؟)
+    const hasArabic = /[\u0600-\u06FF]/.test(bodyString);
+    const hasCommonWords =
+      bodyString.includes("ال") ||
+      bodyString.includes("من") ||
+      bodyString.includes("في");
 
-    // إصلاح يدوي لبعض الحالات الشاذة في ArabHardware إذا ما زال هناك مشكلة
-    if (
-      url.includes("arabhardware") &&
-      (bodyString.includes("") || bodyString.includes("ï¿½"))
-    ) {
-      try {
-        console.log(
-          "      ⚠️ Detected encoding issues for ArabHardware, trying windows-1256..."
-        );
-        const redecoded = iconv.decode(buffer, "windows-1256");
-        // تحقق بسيط: إذا ظهرت كلمات عربية شائعة أو اختفت الرموز التالفة
-        if (redecoded.includes("ال") || !redecoded.includes("")) {
-          bodyString = redecoded;
-        }
-      } catch (e) {
-        console.warn("      ⚠️ Failed to force windows-1256:", e.message);
-      }
-    }
+    // 2. معالجة حالات التلوث المحددة (Mojibake)
+    // إذا ظهرت الرموز الغريبة التي أرسلتها (أ™آپ...) فهذا يعني أن UTF-8 تم تفسيره كـ Windows-1256
+    // أو أن هناك تداخل في الترميز
+    const looksCorrupted =
+      bodyString.includes("أ™") ||
+      bodyString.includes("أک") ||
+      bodyString.includes("Ø") ||
+      bodyString.includes("Ã");
 
-    // 4. إصلاح الحالات الشاذة (Double UTF-8 / Mojibake)
     if (url.includes("arabhardware")) {
-      // الحالة 1: إصلاح التشفير المعقد (النمط أکآ...)
-      // هذا يحدث عندما يقرأ النظام نص UTF-8 وكأنه Windows-1256 ثم يعيد تحويله
-      if (bodyString.includes("أکآ") || bodyString.includes("أک")) {
-        try {
-          console.log(
-            "      ⚠️ Detected complex Mojibake for ArabHardware, fixing..."
-          );
-          // الخطوة 1: عكس تفسير Windows-1256 (العودة إلى الرموز الوسيطة مثل Ø)
-          const step1Buffer = iconv.encode(bodyString, "windows-1256");
-          const step1String = step1Buffer.toString("utf-8");
+      if (!hasArabic || looksCorrupted) {
+        console.log(
+          "      ⚠️ ArabHardware encoding mismatch detected, attempting repair..."
+        );
 
-          // الخطوة 2: عكس التفسير الثنائي (العودة إلى النص العربي الأصلي)
-          const step2Buffer = Buffer.from(step1String, "binary");
-          const finalString = step2Buffer.toString("utf-8");
+        // محاولة 1: الإصلاح عبر قراءة الـ Buffer كـ Windows-1256
+        // هذا يحل المشكلة إذا كان السيرفر يرسل 1256 لكننا قرأناه كـ UTF8
+        let attempt = iconv.decode(buffer, "windows-1256");
+        if (attempt.includes("ال")) {
+          bodyString = attempt;
+          console.log("      ✅ Fixed using windows-1256 decode.");
+        } else {
+          // محاولة 2: الإصلاح المعقد (Double Encoding Fix)
+          // هذا يحل مشكلة: The post أ™آپأ™إ...
+          try {
+            // نقوم بعكس العملية: نحول النص "الغلط" إلى Buffer ثنائي، ثم نقرؤه مرة أخرى
+            // هذه الخوارزمية تعالج حالة "UTF-8 bytes interpreted as Latin1"
+            const binaryBuffer = Buffer.from(bodyString, "binary");
+            const fixUtf8 = binaryBuffer.toString("utf8");
 
-          // التحقق من نجاح العملية بوجود حروف عربية
-          if (finalString.match(/[\u0600-\u06FF]/)) {
-            bodyString = finalString;
-            console.log("      ✅ Complex encoding fixed successfully.");
+            if (fixUtf8.includes("ال")) {
+              bodyString = fixUtf8;
+              console.log("      ✅ Fixed using Binary->UTF8 reversal.");
+            } else {
+              // محاولة 3: تجربة Windows-1256 -> Binary -> UTF8
+              // لحالات نادرة جداً
+              const text1256 = iconv.decode(buffer, "windows-1256");
+              // أحياناً يكون النص مقروءاً جزئياً لكنه يحتاج لضبط
+              if (text1256.includes("ال")) bodyString = text1256;
+            }
+          } catch (e) {
+            console.warn("      ⚠️ Repair failed, falling back to original.");
           }
-        } catch (e) {
-          console.warn("      ⚠️ Failed to fix complex encoding:", e.message);
         }
       }
-      // الحالة 2: الإصلاح البسيط (النمط Ø أو Ã)
-      else if (bodyString.includes("Ø") || bodyString.includes("Ã")) {
-        try {
-          const temp = Buffer.from(bodyString, "binary").toString("utf-8");
-          if (temp.match(/[\u0600-\u06FF]/)) {
-            bodyString = temp;
-          }
-        } catch (e) {}
+    } else {
+      // لباقي المواقع: نستخدم jschardet فقط إذا لم نجد عربياً في UTF-8
+      if (!hasCommonWords) {
+        const detected = jschardet.detect(buffer);
+        if (detected && detected.encoding && detected.encoding !== "UTF-8") {
+          try {
+            bodyString = iconv.decode(buffer, detected.encoding);
+          } catch (e) {}
+        }
       }
     }
+
+    // تنظيف أخير للنص من الرموز العالقة
+    bodyString = cleanXmlBody(bodyString);
 
     return await parseResponse(bodyString);
   } catch (error) {
     const isRedirectLoop =
       error.message.includes("Redirected") ||
       error.response?.statusCode === 301;
+
     const isBlocked =
       error.response?.statusCode === 403 || error.response?.statusCode === 503;
 
-    const isParsingError =
-      error.message.includes("Unencoded <") ||
-      error.message.includes("Non-whitespace before first tag");
-
-    const isCookieDomainError = error.message.includes(
+    // --- الإضافة الجديدة هنا ---
+    // التحقق من خطأ الكوكيز الخاص باختلاف النطاقات (.net vs .com)
+    const isCookieError = error.message.includes(
       "Cookie not in this host's domain"
     );
 
-    if (isRedirectLoop || isBlocked || isCookieDomainError || isParsingError) {
+    if (isRedirectLoop || isBlocked || isCookieError) {
       console.log(
-        `      ⚠️ Protection or Domain mismatch at ${url}. Switching to Puppeteer...`
+        `      ⚠️ Protection or Domain mismatch (${
+          isCookieError ? "Cookie Error" : "Blocked"
+        }) at ${url}. Switching to Puppeteer...`
       );
       return await fetchWithPuppeteer(url);
     }
@@ -547,6 +585,21 @@ async function processSource(sourceData, summary) {
     else {
       // 1. إضافة الأخبار الجديدة
       for (const item of newItems) {
+        if (!item.thumbnail) {
+          console.log(
+            `      🖼️ Missing thumbnail. Fetching OG Image for: "${item.title.substring(
+              0,
+              20
+            )}..."`
+          );
+          const enrichedImage = await fetchOgImage(item.link);
+          if (enrichedImage) {
+            // قد تحتاج لتمرير رابط الموقع الأساسي (rssUrl) للدالة resolveImageUrl للتأكد من صحة الرابط
+            // لكن غالباً og:image يكون رابطاً كاملاً
+            item.thumbnail = resolveImageUrl(enrichedImage, rssUrl);
+            console.log("      ✅ Image found!");
+          }
+        }
         const payload = {
           title: item.title,
           link: item.link,

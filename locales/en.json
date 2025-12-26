@@ -89,6 +89,10 @@
             "reviews": "Reviews",
             "esports": "Esports",
             "hardware": "Hardware"
+        },
+        "seeklySummary":{
+            "readMore": "Read More..",
+            "readLess": "Read Less"
         }
     },
     "news": {
@@ -100,6 +104,7 @@
         },
         "latestHeader": "Latest {{category}}",
         "noArticles": "No articles available at the moment.",
+        "endOfList": "End of Articles",
         "details": {
             "readFullArticle": "Read the full article",
             "noDescription": "No description available here"
@@ -110,7 +115,14 @@
                         "englishSources": "English Sources",
             "arabicSources": "Arabic Sources",
             "visitWebsite": "Visit Website"
-        }
+        },
+    "duration":{
+        "years": "years",
+        "months": "month",
+        "days": "days",
+        "hours": "h",
+        "minutes": "m"
+    }
     },
     "games": {
         "screen": {

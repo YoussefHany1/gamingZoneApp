@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo } from "react";
+import { useState, useCallback, memo } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { Image } from "expo-image";
 import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import NetInfo from "@react-native-community/netinfo";
 import useFeed from "../hooks/useFeed";
+import { intervalToDuration } from "date-fns";
 import DropdownPicker from "../components/DropdownPicker";
 import SkeletonNewsItem from "../skeleton/SkeletonNewsItem";
 import NewsDetails from "../screens/NewsDetailsScreen";
@@ -28,6 +29,7 @@ function LatestNews({
   onChangeFeed,
   showDropdown,
   websitesList,
+  showFooter = true,
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState(null);
@@ -58,8 +60,45 @@ function LatestNews({
 
   const renderItem = useCallback(
     ({ item, index }) => {
-      const siteLabel = item?.siteName || website || "";
       const shouldShowAd = (index + 1) % 10 === 0;
+
+      const dateString = item?.pubDate;
+      let timeAgo = "";
+      if (dateString) {
+        const startDate = new Date(dateString);
+        const endDate = new Date();
+
+        // التأكد من صحة التاريخ
+        if (!isNaN(startDate)) {
+          // حساب المدة الزمنية بالتفصيل
+          const duration = intervalToDuration({
+            start: startDate,
+            end: endDate,
+          });
+
+          const { years, months, days, hours, minutes } = duration;
+
+          // بناء النص بناءً على المدة
+          if (years > 0) {
+            timeAgo = `${years} ${t("news.duration.years")}`; // سنوات
+          } else if (months > 0) {
+            timeAgo = `${months} ${t("news.duration.months")}`; // شهور
+          } else if (days > 0) {
+            timeAgo = `${days} ${t("news.duration.days")}`; // أيام
+          } else if (hours > 0) {
+            // هنا يظهر الشكل المطلوب: 8h 30m
+            // إذا كانت الدقائق 0، سيظهر 8h فقط
+            timeAgo =
+              minutes > 0
+                ? `${hours}${t("news.duration.hours")} ${minutes}${t(
+                    "news.duration.minutes"
+                  )}`
+                : `${hours}${t("news.duration.hours")}`;
+          } else {
+            timeAgo = `${minutes}${t("news.duration.minutes")}`; // دقائق فقط
+          }
+        }
+      }
       return (
         <View
           style={[
@@ -86,6 +125,7 @@ function LatestNews({
                   {item.description}..
                 </Text>
               ) : null}
+              <Text style={styles.timeAgoText}>{timeAgo}</Text>
             </View>
 
             <View>
@@ -148,6 +188,17 @@ function LatestNews({
     );
   }, [category, t, showDropdown, selectedItem, websitesList, onChangeFeed]);
 
+  const renderFooter = useCallback(() => {
+    if (!showFooter || loading || listData.length === 0) return null;
+    return (
+      <View style={styles.footerContainer}>
+        <Text style={styles.footerText}>
+          {t("news.endOfList") || "End of articles"}
+        </Text>
+      </View>
+    );
+  }, [loading, listData.length, t, showFooter]);
+
   const onRefresh = useCallback(async () => {
     // التحقق من الإنترنت قبل محاولة التحديث
     const state = await NetInfo.fetch();
@@ -196,6 +247,7 @@ function LatestNews({
           item.$id ? `${item.$id}-${index}` : index.toString()
         }
         ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -298,5 +350,22 @@ const styles = StyleSheet.create({
     color: "white",
     textAlign: "center",
     borderRadius: 8,
+  },
+  timeAgoText: {
+    fontSize: 12,
+    color: COLORS.secondary, // لون رمادي فاتح
+    marginTop: 5,
+    marginRight: 12,
+  },
+  footerContainer: {
+    paddingVertical: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  footerText: {
+    color: "#779bdd", // نفس لون النصوص الفرعية أو أبيض
+    fontSize: 14,
+    fontStyle: "italic",
   },
 });

@@ -1,0 +1,30 @@
+name: Generate Weekly Gaming Summary
+
+on:
+  schedule:
+    # يعمل كل يوم جمعة الساعة 2 ظهراً بتوقيت القاهرة (تقريباً 12:00 UTC)
+    - cron: "0 12 * * 5"
+  workflow_dispatch: # يسمح لك بتشغيله يدوياً للتجربة
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install node-appwrite
+
+      - name: Run Summary Script
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
+          APPWRITE_PROJECT: ${{ secrets.APPWRITE_PROJECT }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/generateWeeklySummary.cjs
