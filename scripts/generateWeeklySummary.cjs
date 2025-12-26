@@ -30,10 +30,7 @@ async function generateSummary() {
     const response = await databases.listDocuments(
       DATABASE_ID,
       NEWS_COLLECTION_ID,
-      [
-        sdk.Query.greaterThan("pubDate", sevenDaysAgo), // تأكد أن اسم الحقل صحيح في قاعدة بياناتك
-        sdk.Query.limit(200), // نأخذ أهم 200 خبر مثلاً لتجنب تجاوز حدود الـ Token
-      ]
+      [sdk.Query.greaterThan("pubDate", sevenDaysAgo), sdk.Query.limit(200)]
     );
 
     if (response.documents.length === 0) {
@@ -69,8 +66,8 @@ async function generateSummary() {
                         
                         The JSON structure must be:
                         {
-                            "arabic": "## ملخص الأسبوع ... (Write the summary based on these headlines using Markdown and emojis)",
-                            "english": "## Weekly Recap ... (Write the summary based on these headlines using Markdown and emojis)"
+                            "arabic": "## (عنوان الملخص الأسبوعي)... (Write the summary based on these headlines using Markdown and emojis)",
+                            "english": "## (Weekly Recap Title)... (Write the summary based on these headlines using Markdown and emojis)"
                         }
 
                         The Headlines List:

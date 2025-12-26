@@ -13,8 +13,10 @@ import { Query } from "react-native-appwrite";
 import i18n from "../i18n";
 import COLORS from "../constants/colors";
 import { t } from "i18next";
+import Constants from "expo-constants";
 
-const DATABASE_ID = "6930389a0033ba85bfe1";
+const { APPWRITE_DATABASE_ID } = Constants.expoConfig.extra;
+const DATABASE_ID = APPWRITE_DATABASE_ID;
 const SUMMARIES_COLLECTION_ID = "weekly_summaries";
 
 const WeeklySummary = () => {
@@ -125,7 +127,7 @@ const WeeklySummary = () => {
         </View>
       </Animated.View>
 
-      {/* زر التبديل */}
+      {/* read more button */}
       <TouchableOpacity
         onPress={() => setExpanded(!expanded)}
         style={styles.readMoreButton}
