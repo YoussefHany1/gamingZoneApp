@@ -77,6 +77,13 @@ function GamesScreen() {
   // This allows us to use FlatList instead of ScrollView
   const FEED_DATA = useMemo(
     () => [
+      {
+        id: "header",
+        type: "COMPONENT",
+        component: (
+          <Text style={styles.headerText}>{t("games.screen.header")}</Text>
+        ),
+      },
       { id: "free_games", type: "COMPONENT", component: <FreeGames /> },
       { id: "news", type: "COMPONENT", component: <GamesNews /> },
       // { id: "ad_1", type: "AD" },
@@ -149,26 +156,24 @@ function GamesScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       {/* Search Header */}
-      <View style={styles.headerContainer}>
-        <View style={styles.searchBarContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder={t("games.screen.searchPlaceholder")}
-            placeholderTextColor="#999"
-            value={searchQuery}
-            onChangeText={handleSearchTextChange}
-            onSubmitEditing={handleSubmitSearch}
-            returnKeyType="search"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={handleClearSearch}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="close-circle" size={24} color="#ccc" />
-            </TouchableOpacity>
-          )}
-        </View>
+      <View style={styles.searchBarContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder={t("games.screen.searchPlaceholder")}
+          placeholderTextColor="#999"
+          value={searchQuery}
+          onChangeText={handleSearchTextChange}
+          onSubmitEditing={handleSubmitSearch}
+          returnKeyType="search"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity
+            onPress={handleClearSearch}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close-circle" size={24} color="#ccc" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Main Content: Conditional Rendering */}
@@ -179,17 +184,19 @@ function GamesScreen() {
         </View>
       ) : (
         // Main Feed State (Optimized with FlatList)
-        <FlatList
-          data={FEED_DATA}
-          renderItem={renderFeedItem}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContentContainer}
-          initialNumToRender={3} // Performance optimization
-          windowSize={5} // Performance optimization
-          removeClippedSubviews={true} // Performance optimization
-          keyboardShouldPersistTaps="handled"
-        />
+        <>
+          <FlatList
+            data={FEED_DATA}
+            renderItem={renderFeedItem}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContentContainer}
+            initialNumToRender={3} // Performance optimization
+            windowSize={10} // Performance optimization
+            removeClippedSubviews={true} // Performance optimization
+            keyboardShouldPersistTaps="handled"
+          />
+        </>
       )}
     </SafeAreaView>
   );
@@ -218,9 +225,21 @@ const styles = StyleSheet.create({
     borderColor: COLORS.secondary,
   },
   searchInput: {
+    flex: 1,
     color: "white",
     fontSize: 16,
-    flex: 1,
+  },
+  headerText: {
+    color: "#fff",
+    fontSize: 28,
+    fontWeight: "bold",
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 30,
+    backgroundColor: COLORS.secondary,
+    textAlign: "center",
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   adContainer: {
     alignItems: "center",

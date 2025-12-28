@@ -20,6 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: npm install node-appwrite
+        working-directory: ./backend
 
       - name: Run Summary Script
         env:
@@ -27,4 +28,6 @@ jobs:
           APPWRITE_PROJECT: ${{ secrets.APPWRITE_PROJECT }}
           APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+          working-directory: ./backend
         run: node scripts/generateWeeklySummary.cjs

@@ -5,7 +5,8 @@ import { databases } from "../lib/appwrite";
 import Constants from "expo-constants";
 import NetInfo from "@react-native-community/netinfo";
 
-const { APPWRITE_DATABASE_ID, RSS_COLLECTION_ID } = Constants.expoConfig.extra;
+const { APPWRITE_DATABASE_ID } = Constants.expoConfig.extra;
+const RSS_COLLECTION_ID = "news_sources";
 const CACHE_KEY = "RSS_FEEDS_CACHE";
 
 const useRssFeeds = () => {

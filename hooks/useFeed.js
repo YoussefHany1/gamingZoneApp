@@ -5,12 +5,10 @@ import { databases, client } from "../lib/appwrite";
 import Constants from "expo-constants";
 import NetInfo from "@react-native-community/netinfo";
 
+const ARTICLES_COLLECTION_ID = "articles";
 const APPWRITE_DATABASE_ID =
   Constants?.expoConfig?.extra?.APPWRITE_DATABASE_ID ??
   process.env.APPWRITE_DATABASE_ID;
-const ARTICLES_COLLECTION_ID =
-  Constants?.expoConfig?.extra?.ARTICLES_COLLECTION_ID ??
-  process.env.ARTICLES_COLLECTION_ID;
 
 export default function useFeed(category, siteName) {
   const [articles, setArticles] = useState([]);

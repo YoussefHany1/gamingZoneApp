@@ -180,6 +180,8 @@ function FreeGames() {
         title: doc.title,
         image: doc.image,
         slug: doc.slug,
+        store: doc.store,
+        url: doc.url,
         description: doc.description,
         type: doc.type,
         startDate: doc.startDate,
@@ -202,6 +204,14 @@ function FreeGames() {
   };
 
   const renderGameItem = ({ item }) => {
+    // تحديد أيقونة المتجر بناءً على الحقل store
+    let StoreIcon = null;
+    if (item.store === "steam") {
+      StoreIcon = require("../assets/steam.png");
+    } else {
+      // الافتراضي Epic Games
+      StoreIcon = require("../assets/epic-games.png");
+    }
     return (
       <TouchableOpacity
         style={styles.gameCard}
@@ -212,11 +222,15 @@ function FreeGames() {
               item_name: item.title,
               content_type: "free_game_card",
               game_type: item.type,
+              store: item.store || "epic",
             });
           } catch (error) {
             console.log("Analytics Error:", error);
           }
-          if (item.slug) {
+          // فتح الرابط: نستخدم item.url الجديد إذا وجد، وإلا نستخدم الطريقة القديمة (للتوافق)
+          if (item.url) {
+            Linking.openURL(item.url);
+          } else if (item.slug) {
             Linking.openURL(`https://store.epicgames.com/en-US/p/${item.slug}`);
           }
         }}
@@ -233,9 +247,15 @@ function FreeGames() {
             }
             style={styles.cover}
             contentFit="cover"
-            transition={500}
             cachePolicy="memory-disk"
           />
+          <View style={styles.storeIconBadge}>
+            <Image
+              source={StoreIcon}
+              style={{ width: 20, height: 20 }}
+              contentFit="contain"
+            />
+          </View>
         </View>
 
         <Text style={styles.title} numberOfLines={2}>
@@ -389,5 +409,15 @@ const styles = StyleSheet.create({
   listContent: {
     paddingVertical: 12,
     paddingHorizontal: 5,
+  },
+  storeIconBadge: {
+    position: "absolute",
+    bottom: 5,
+    left: 5,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    borderRadius: 50,
+    padding: 5,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

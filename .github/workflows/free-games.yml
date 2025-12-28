@@ -4,7 +4,7 @@ on:
   schedule:
     # هذا التعبير يعني: عند الدقيقة 0 من كل ساعة
     - cron: "0 * * * *"
-  workflow_dispatch: # للسماح بالتشغيل اليدوي أيضاً
+  workflow_dispatch:
 
 jobs:
   run-hourly-script:
@@ -21,21 +21,19 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-        working-directory: .
+        working-directory: ./backend
 
       - name: Trigger Games Fetch
         env:
-          # تأكد أن السكريبت الجديد يحتاج نفس المتغيرات، وإلا يمكنك حذف ما لا يلزم
           APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT }}
           APPWRITE_PROJECT: ${{ secrets.APPWRITE_PROJECT }}
           APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
           APPWRITE_DATABASE_ID: ${{ secrets.APPWRITE_DATABASE_ID }}
 
-          # إذا كان السكريبت الجديد يحتاج متغيرات بيئة خاصة به، أضفها هنا
           RSS_COLLECTION_ID: "news_sources"
           ARTICLES_COLLECTION_ID: "articles"
           FCM_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-        # 👇👇 قم بتغيير اسم الملف هنا إلى اسم السكريبت الجديد الخاص بك 👇👇
+        working-directory: ./backend
         run: |
           node scripts/fetchFreeGames.cjs
