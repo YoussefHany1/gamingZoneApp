@@ -28,12 +28,10 @@ jobs:
           APPWRITE_PROJECT: ${{ secrets.APPWRITE_PROJECT }}
           APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
           APPWRITE_DATABASE_ID: ${{ secrets.APPWRITE_DATABASE_ID }}
-
           RSS_COLLECTION_ID: "news_sources"
           ARTICLES_COLLECTION_ID: "articles"
-
           FCM_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-          working-directory: ./backend
+        working-directory: ./backend
         run: |
           node scripts/fetchRss.cjs

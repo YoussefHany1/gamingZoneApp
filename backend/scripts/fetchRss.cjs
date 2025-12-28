@@ -173,6 +173,55 @@ const extractThumbnail = (item, baseUrl, isJson = false) => {
   return resolveImageUrl(img, baseUrl);
 };
 
+function fixArabHardwareEncoding(buffer) {
+  // المشكلة: الموقع يرسل UTF-8 لكن يتم قراءته بشكل خاطئ
+  // الحل: نجرب عدة طرق للإصلاح
+
+  try {
+    // الطريقة 1: قراءة مباشرة كـ UTF-8
+    let text = buffer.toString("utf8");
+
+    // التحقق من وجود نص عربي صحيح
+    const hasValidArabic = /[\u0600-\u06FF]{3,}/.test(text);
+
+    if (hasValidArabic) {
+      return text;
+    }
+
+    // الطريقة 2: إصلاح Double Encoding
+    // (UTF-8 bytes تم تفسيرها كـ Latin1/ISO-8859-1)
+    const latinBuffer = Buffer.from(text, "latin1");
+    text = latinBuffer.toString("utf8");
+
+    if (/[\u0600-\u06FF]{3,}/.test(text)) {
+      return text;
+    }
+
+    // الطريقة 3: تجربة Windows-1256
+    text = iconv.decode(buffer, "windows-1256");
+
+    if (/[\u0600-\u06FF]{3,}/.test(text)) {
+      return text;
+    }
+
+    // الطريقة 4: إصلاح متقدم للـ Mojibake
+    // نحول النص المشوه إلى bytes ثم نقرأه مرة أخرى
+    text = buffer.toString("utf8");
+    const reEncoded = Buffer.from(text, "binary");
+    const fixed = reEncoded.toString("utf8");
+
+    if (/[\u0600-\u06FF]{3,}/.test(fixed)) {
+      return fixed;
+    }
+
+    // إذا فشل كل شيء، نرجع النص الأصلي
+    return buffer.toString("utf8");
+  } catch (error) {
+    console.error("Encoding fix error:", error.message);
+    return buffer.toString("utf8");
+  }
+}
+
 // --- FETCHING ---
 async function fetchFeed(url) {
   try {
@@ -189,81 +238,35 @@ async function fetchFeed(url) {
         locales: ["ar", "en-US"],
       },
       maxRedirects: 5,
-      responseType: "buffer", // نستقبل البيانات كـ Buffer خام
+      responseType: "buffer",
     });
 
     const buffer = response.body;
     let bodyString = "";
 
-    // 1. الأولوية القصوى: محاولة القراءة كـ UTF-8 مباشرة
-    // ArabHardware يرسل UTF-8 في الغالب، لكن الكشف التلقائي قد يخطئ
-    bodyString = buffer.toString("utf8");
-
-    // التحقق هل النص سليم؟ (هل يحتوي على كلمات عربية شائعة؟)
-    const hasArabic = /[\u0600-\u06FF]/.test(bodyString);
-    const hasCommonWords =
-      bodyString.includes("ال") ||
-      bodyString.includes("من") ||
-      bodyString.includes("في");
-
-    // 2. معالجة حالات التلوث المحددة (Mojibake)
-    // إذا ظهرت الرموز الغريبة التي أرسلتها (أ™آپ...) فهذا يعني أن UTF-8 تم تفسيره كـ Windows-1256
-    // أو أن هناك تداخل في الترميز
-    const looksCorrupted =
-      bodyString.includes("أ™") ||
-      bodyString.includes("أک") ||
-      bodyString.includes("Ø") ||
-      bodyString.includes("Ã");
-
+    // ✅ معالجة خاصة لموقع ArabHardware
     if (url.includes("arabhardware")) {
-      if (!hasArabic || looksCorrupted) {
-        console.log(
-          "      ⚠️ ArabHardware encoding mismatch detected, attempting repair..."
-        );
-
-        // محاولة 1: الإصلاح عبر قراءة الـ Buffer كـ Windows-1256
-        // هذا يحل المشكلة إذا كان السيرفر يرسل 1256 لكننا قرأناه كـ UTF8
-        let attempt = iconv.decode(buffer, "windows-1256");
-        if (attempt.includes("ال")) {
-          bodyString = attempt;
-          console.log("      ✅ Fixed using windows-1256 decode.");
-        } else {
-          // محاولة 2: الإصلاح المعقد (Double Encoding Fix)
-          // هذا يحل مشكلة: The post أ™آپأ™إ...
-          try {
-            // نقوم بعكس العملية: نحول النص "الغلط" إلى Buffer ثنائي، ثم نقرؤه مرة أخرى
-            // هذه الخوارزمية تعالج حالة "UTF-8 bytes interpreted as Latin1"
-            const binaryBuffer = Buffer.from(bodyString, "binary");
-            const fixUtf8 = binaryBuffer.toString("utf8");
-
-            if (fixUtf8.includes("ال")) {
-              bodyString = fixUtf8;
-              console.log("      ✅ Fixed using Binary->UTF8 reversal.");
-            } else {
-              // محاولة 3: تجربة Windows-1256 -> Binary -> UTF8
-              // لحالات نادرة جداً
-              const text1256 = iconv.decode(buffer, "windows-1256");
-              // أحياناً يكون النص مقروءاً جزئياً لكنه يحتاج لضبط
-              if (text1256.includes("ال")) bodyString = text1256;
-            }
-          } catch (e) {
-            console.warn("      ⚠️ Repair failed, falling back to original.");
-          }
-        }
-      }
+      console.log("      🔧 Applying ArabHardware encoding fix...");
+      bodyString = fixArabHardwareEncoding(buffer);
     } else {
-      // لباقي المواقع: نستخدم jschardet فقط إذا لم نجد عربياً في UTF-8
-      if (!hasCommonWords) {
+      // للمواقع الأخرى: الطريقة العادية
+      bodyString = buffer.toString("utf8");
+
+      const hasArabic = /[\u0600-\u06FF]/.test(bodyString);
+
+      if (!hasArabic) {
         const detected = jschardet.detect(buffer);
         if (detected && detected.encoding && detected.encoding !== "UTF-8") {
           try {
             bodyString = iconv.decode(buffer, detected.encoding);
-          } catch (e) {}
+          } catch (e) {
+            console.warn("Encoding detection failed, using UTF-8");
+          }
         }
       }
     }
 
-    // تنظيف أخير للنص من الرموز العالقة
+    // تنظيف XML
     bodyString = cleanXmlBody(bodyString);
 
     return await parseResponse(bodyString);
@@ -275,18 +278,12 @@ async function fetchFeed(url) {
     const isBlocked =
       error.response?.statusCode === 403 || error.response?.statusCode === 503;
 
-    // --- الإضافة الجديدة هنا ---
-    // التحقق من خطأ الكوكيز الخاص باختلاف النطاقات (.net vs .com)
     const isCookieError = error.message.includes(
       "Cookie not in this host's domain"
     );
 
     if (isRedirectLoop || isBlocked || isCookieError) {
-      console.log(
-        `      ⚠️ Protection or Domain mismatch (${
-          isCookieError ? "Cookie Error" : "Blocked"
-        }) at ${url}. Switching to Puppeteer...`
-      );
+      console.log(`      ⚠️ Switching to Puppeteer for ${url}...`);
       return await fetchWithPuppeteer(url);
     }
 
@@ -339,7 +336,6 @@ async function parseResponse(body) {
 }
 
 // دالة الجلب باستخدام متصفح حقيقي (Puppeteer)
-// دالة الجلب باستخدام متصفح حقيقي (Puppeteer)
 async function fetchWithPuppeteer(url) {
   let browser = null;
   try {
@@ -364,29 +360,26 @@ async function fetchWithPuppeteer(url) {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     );
 
-    const response = await page.goto(url, {
+    await page.goto(url, {
       waitUntil: "networkidle2",
       timeout: 60000,
     });
 
-    // بدلاً من response.text() نستخدم buffer() ثم نحوله لـ UTF-8
-    // هذا يجبر الكود على قراءة الأحرف العربية بشكل صحيح
-    const buffer = await response.buffer();
-    let rawBody = iconv.decode(buffer, "utf-8"); // أو استخدام jschardet هنا أيضاً
-    if (url.includes("arabhardware") && rawBody.includes("")) {
-      rawBody = iconv.decode(buffer, "windows-1256");
+    // جلب المحتوى كـ Buffer
+    const content = await page.content();
+    const buffer = Buffer.from(content, "utf8");
+
+    let bodyString = "";
+
+    // ✅ معالجة خاصة لموقع ArabHardware
+    if (url.includes("arabhardware")) {
+      console.log("      🔧 Applying ArabHardware encoding fix (Puppeteer)...");
+      bodyString = fixArabHardwareEncoding(buffer);
+    } else {
+      bodyString = content;
     }
 
-    if (url.includes("arabhardware") || rawBody.includes("Ø¢")) {
-      try {
-        const fixed = Buffer.from(rawBody, "binary").toString("utf8");
-        if (fixed.match(/[\u0600-\u06FF]/)) {
-          rawBody = fixed;
-        }
-      } catch (e) {}
-    }
-
-    return await parseResponse(rawBody);
+    return await parseResponse(bodyString);
   } catch (error) {
     throw new Error(`Puppeteer failed: ${error.message}`);
   } finally {

@@ -2,9 +2,9 @@ name: Generate Weekly Gaming Summary
 
 on:
   schedule:
-    # يعمل كل يوم جمعة الساعة 2 ظهراً بتوقيت القاهرة (تقريباً 12:00 UTC)
+    # At 12:00 PM every Friday
     - cron: "0 12 * * 5"
-  workflow_dispatch: # يسمح لك بتشغيله يدوياً للتجربة
+  workflow_dispatch:
 
 jobs:
   summarize:
@@ -29,5 +29,5 @@ jobs:
           APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-          working-directory: ./backend
+        working-directory: ./backend
         run: node scripts/generateWeeklySummary.cjs
