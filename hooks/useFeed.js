@@ -5,10 +5,8 @@ import { databases, client } from "../lib/appwrite";
 import Constants from "expo-constants";
 import NetInfo from "@react-native-community/netinfo";
 
+const { APPWRITE_DATABASE_ID } = Constants.expoConfig.extra;
 const ARTICLES_COLLECTION_ID = "articles";
-const APPWRITE_DATABASE_ID =
-  Constants?.expoConfig?.extra?.APPWRITE_DATABASE_ID ??
-  process.env.APPWRITE_DATABASE_ID;
 
 export default function useFeed(category, siteName) {
   const [articles, setArticles] = useState([]);
@@ -30,8 +28,9 @@ export default function useFeed(category, siteName) {
 
   useEffect(() => {
     // إذا لم يوجد تصنيف نرجع فارغ
+    setArticles([]);
+    setLoading(true);
     if (!category) {
-      setArticles([]);
       setLoading(false);
       return;
     }
@@ -82,9 +81,8 @@ export default function useFeed(category, siteName) {
 
         if (!mounted) return;
         const data = response.documents || [];
-
+        setArticles(data);
         if (data.length > 0) {
-          setArticles(data);
           AsyncStorage.setItem(cacheKey, JSON.stringify(data)).catch(
             console.error
           );

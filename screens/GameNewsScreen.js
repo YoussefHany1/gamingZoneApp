@@ -23,7 +23,8 @@ import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
 import { adUnitId } from "../constants/config";
 import Loading from "../Loading";
 
-const { APPWRITE_DATABASE_ID, RSS_COLLECTION_ID } = Constants.expoConfig.extra;
+const { APPWRITE_DATABASE_ID } = Constants.expoConfig.extra;
+const RSS_COLLECTION_ID = "news_sources";
 // --- دالة مساعدة لإنشاء معرفات آمنة ---
 const safeId = (input) => {
   if (!input) return "unknown";
@@ -63,7 +64,6 @@ const NewsSection = ({
   useEffect(() => {
     fetchNews();
   }, [gameName, apiUrl]);
-
   const fetchNews = async () => {
     try {
       const response = await axios.get(API_URL);
@@ -224,6 +224,7 @@ const NewsSection = ({
 function GameNewsScreen({ route, navigation }) {
   const Currentgame = route.params?.gameName || "";
   const apiUrl = route.params?.apiUrl || "";
+  const source = route.params?.source || "";
   const [showAds, setShowAds] = useState(false);
   const { t } = useTranslation();
 
@@ -264,6 +265,12 @@ function GameNewsScreen({ route, navigation }) {
           </View>
         )} */}
         {/* Arabic News Section */}
+        {source && (
+          <TouchableOpacity onPress={() => Linking.openURL(source)}>
+            <Text style={styles.sourceText}>{t("games.gamesNews.source")}</Text>
+          </TouchableOpacity>
+        )}
+
         <NewsSection
           gameName={Currentgame}
           title="الأخبار العربية"
@@ -281,7 +288,7 @@ export default GameNewsScreen;
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    marginBottom: 38,
+    marginVertical: 20,
   },
   categoryHeader: {
     flexDirection: "row",
@@ -341,6 +348,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "gray",
     marginTop: 4,
+  },
+  sourceText: {
+    color: "#779bdd",
+    textAlign: "center",
   },
   ad: {
     alignItems: "center",

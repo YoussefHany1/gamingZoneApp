@@ -16,15 +16,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import YoutubePlayer from "react-native-youtube-iframe";
 import auth from "@react-native-firebase/auth";
-import firestore from "@react-native-firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Loading from "../Loading";
 import { useTranslation } from "react-i18next";
-import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
-import { adUnitId } from "../constants/config";
+// import { BannerAd, BannerAdSize } from "react-native-google-mobile-ads";
+// import { adUnitId } from "../constants/config";
 import COLORS from "../constants/colors";
 import Svg, { Circle, Text as SvgText, Path } from "react-native-svg";
 import { SERVER_URL } from "../constants/config";
+import ListSelectionModal from "../components/ListSelectionModal";
 
 const CACHE_KEY_PREFIX = "GAME_DETAILS_CACHE_";
 
@@ -39,7 +39,6 @@ async function fetchGameById(id) {
     return response.data;
   } catch (error) {
     if (error.response) {
-      // السيرفر رد بكود خطأ (مثل 404 أو 500)
       console.error(
         "Server Error:",
         error.response.status,
@@ -47,7 +46,6 @@ async function fetchGameById(id) {
       );
       throw new Error(`Server fetch failed: ${error.response.status}`);
     } else if (error.request) {
-      // الطلب خرج لكن لم يصل رد (مشكلة شبكة)
       console.error("Network Error:", error.request);
       throw new Error("Network Error");
     } else {
@@ -65,11 +63,9 @@ function GameDetails({ route, navigation }) {
   const [currentId, setCurrentId] = useState(initialGameID);
   const mountedRef = useRef(true);
   const scrollRef = useRef(null);
-
   const [user, setUser] = useState();
-  const [authLoading, setAuthLoading] = useState(true);
-  const [isWanted, setIsWanted] = useState(false);
-  const [isPlayed, setIsPlayed] = useState(false);
+  const [showListModal, setShowListModal] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -79,7 +75,6 @@ function GameDetails({ route, navigation }) {
     };
   }, []);
 
-  // --- 2. useEffect لمراقبة حالة المصادقة ---
   useEffect(() => {
     const subscriber = auth().onAuthStateChanged((u) => {
       setUser(u);
@@ -94,7 +89,6 @@ function GameDetails({ route, navigation }) {
     }
   }, [initialGameID]);
 
-  // --- التعديل هنا: دمج الكاش مع جلب البيانات ---
   useEffect(() => {
     if (!currentId) {
       setError("No game ID provided");
@@ -105,22 +99,18 @@ function GameDetails({ route, navigation }) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    const cacheKey = `${CACHE_KEY_PREFIX}${currentId}`; // مفتاح كاش فريد لكل لعبة
+    const cacheKey = `${CACHE_KEY_PREFIX}${currentId}`;
 
     const loadGameData = async () => {
       let cacheFound = false;
 
-      // 1. محاولة قراءة الكاش
       try {
         const cachedString = await AsyncStorage.getItem(cacheKey);
         if (cachedString && !cancelled) {
           const cachedData = JSON.parse(cachedString);
-
           setGame(cachedData.data);
-          setLoading(false); // عرض البيانات فوراً
+          setLoading(false);
           cacheFound = true;
-
-          // سكرول للأعلى عند عرض الكاش
           setTimeout(() => {
             try {
               scrollRef.current?.scrollTo({ x: 0, y: 0, animated: true });
@@ -131,23 +121,16 @@ function GameDetails({ route, navigation }) {
         console.error("Cache read error:", e);
       }
 
-      // 2. جلب البيانات الحديثة من الشبكة (في الخلفية)
       try {
         const fetchedGame = await fetchGameById(currentId);
-
         if (cancelled || !mountedRef.current) return;
-
         setGame(fetchedGame);
         setLoading(false);
-
-        // 3. تحديث الكاش
         const dataToSave = {
           data: fetchedGame,
           timestamp: Date.now(),
         };
         await AsyncStorage.setItem(cacheKey, JSON.stringify(dataToSave));
-
-        // إذا لم يكن هناك كاش، نقوم بالسكرول الآن
         if (!cacheFound) {
           setTimeout(() => {
             try {
@@ -158,8 +141,6 @@ function GameDetails({ route, navigation }) {
       } catch (err) {
         console.error("fetchGameById error:", err);
         if (cancelled || !mountedRef.current) return;
-
-        // لا نعرض رسالة الخطأ إذا كنا نعرض بالفعل بيانات من الكاش
         if (!cacheFound) {
           setError(err.message || "Failed to load game");
           setGame(null);
@@ -169,63 +150,10 @@ function GameDetails({ route, navigation }) {
     };
 
     loadGameData();
-
     return () => {
       cancelled = true;
     };
-  }, [currentId]); // <-- سيعمل هذا الـ effect عند تغيير currentId
-
-  useEffect(() => {
-    // --- 4. التعديل الأهم: ننتظر انتهاء تحميل المصادقة ---
-    if (authLoading || !user || !currentId) {
-      setIsWanted(false);
-      setIsPlayed(false);
-      return;
-    }
-
-    const gameIdStr = String(currentId);
-
-    // 1. مراقبة قائمة "Want"
-    const wantRef = firestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("wantList")
-      .doc(gameIdStr);
-
-    const unsubWant = wantRef.onSnapshot(
-      (doc) => {
-        if (mountedRef.current) {
-          setIsWanted(doc && doc.exists);
-        }
-      },
-      (error) => {
-        console.error("Firestore (wantList) snapshot error: ", error);
-      }
-    );
-
-    // 2. مراقبة قائمة "Played"
-    const playedRef = firestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("playedList")
-      .doc(gameIdStr);
-
-    const unsubPlayed = playedRef.onSnapshot(
-      (doc) => {
-        if (mountedRef.current) {
-          setIsPlayed(doc && doc.exists);
-        }
-      },
-      (error) => {
-        console.error("Firestore (playedList) snapshot error: ", error);
-      }
-    );
-
-    return () => {
-      unsubWant();
-      unsubPlayed();
-    };
-  }, [currentId, user, authLoading]);
+  }, [currentId]);
 
   function getRatingColor(rating) {
     if (rating <= 2) return "#8B0000";
@@ -246,14 +174,12 @@ function GameDetails({ route, navigation }) {
     10: require("../assets/apple-store.png"),
   };
 
-  // Language Supports
   const languageTypes = [
     { key: "Audio", label: t("games.details.languages.audio") },
     { key: "Subtitles", label: t("games.details.languages.subtitles") },
     { key: "Interface", label: t("games.details.languages.interface") },
   ];
 
-  // How long to beat calc function
   let main, mainExtra, completionist, showHowLongToBeat;
   if (game?.game_time_to_beats) {
     main = game?.game_time_to_beats?.hastily
@@ -268,8 +194,7 @@ function GameDetails({ route, navigation }) {
     showHowLongToBeat = !!(main || mainExtra || completionist);
   }
 
-  // --- دوال جديدة للضغط على الأزرار ---
-  const getGameData = () => {
+  const getGameDataForList = () => {
     if (!game) return null;
     return {
       id: game.id,
@@ -278,93 +203,6 @@ function GameDetails({ route, navigation }) {
       release_date: game.release_dates?.[0]?.human || "N/A",
     };
   };
-
-  const handleWant = async () => {
-    if (authLoading) return;
-
-    if (!user) {
-      Alert.alert(
-        "Login required",
-        "Please log in, to be able to add games to your lists."
-      );
-      return;
-    }
-    if (!game) return;
-
-    const gameIdStr = String(game.id);
-    const gameData = getGameData();
-    const wantRef = firestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("wantList")
-      .doc(gameIdStr);
-    const playedRef = firestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("playedList")
-      .doc(gameIdStr);
-
-    if (isWanted) {
-      await wantRef.delete();
-    } else {
-      await wantRef.set(gameData);
-      if (isPlayed) {
-        await playedRef.delete();
-      }
-    }
-  };
-
-  const handlePlayed = async () => {
-    if (authLoading) return;
-    if (!user) {
-      Alert.alert(
-        "Login required",
-        "Please log in, to be able to add games to your lists."
-      );
-      return;
-    }
-    if (!game) return;
-
-    const gameIdStr = String(game.id);
-    const gameData = getGameData();
-    const wantRef = firestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("wantList")
-      .doc(gameIdStr);
-    const playedRef = firestore()
-      .collection("users")
-      .doc(user.uid)
-      .collection("playedList")
-      .doc(gameIdStr);
-
-    if (isPlayed) {
-      await playedRef.delete();
-    } else {
-      await playedRef.set(gameData);
-      if (isWanted) {
-        await wantRef.delete();
-      }
-    }
-  };
-
-  const isReleased = game?.first_release_date
-    ? game?.first_release_date * 1000 <= Date.now()
-    : true;
-  let images = [];
-  if (!loading && !error && game?.cover?.image_id) {
-    images.push(
-      `https://images.igdb.com/igdb/image/upload/t_720p/${game.cover.image_id}.jpg`
-    );
-  }
-
-  if (!loading && !error && Array.isArray(game?.screenshots)) {
-    const screenshotImages = game.screenshots.map(
-      (shot) =>
-        `https://images.igdb.com/igdb/image/upload/t_720p/${shot.image_id}.jpg`
-    );
-    images.push(...screenshotImages);
-  }
 
   return (
     <SafeAreaView edges={["right", "left"]} style={styles.container}>
@@ -389,7 +227,7 @@ function GameDetails({ route, navigation }) {
 
       {!loading && !error && !game && (
         <View style={{ padding: 20, backgroundColor: COLORS.primary }}>
-          <Text style={{ color: "white", textAlign: "center" }}>
+          <Text style={{ color: COLORS.textLight, textAlign: "center" }}>
             No data to display
           </Text>
         </View>
@@ -401,6 +239,7 @@ function GameDetails({ route, navigation }) {
           style={styles.container}
           showsVerticalScrollIndicator={false}
         >
+          {/* ... (Image and Gradient code remains same) ... */}
           {game.cover?.image_id ? (
             <Image
               style={styles.image}
@@ -432,6 +271,8 @@ function GameDetails({ route, navigation }) {
               end={{ x: 0, y: 0.5 }}
             />
           </View>
+          {/* ... */}
+
           <View style={styles.content}>
             <Text style={styles.title}>{game.name}</Text>
             <Text style={styles.releaseDate}>
@@ -445,12 +286,13 @@ function GameDetails({ route, navigation }) {
                   </Text>
                 ))}
               </View>
-              {/* rating section */}
               {game.total_rating ? (
                 <Text
                   style={[
                     styles.rating,
-                    { backgroundColor: getRatingColor(game.total_rating / 10) },
+                    {
+                      backgroundColor: getRatingColor(game.total_rating / 10),
+                    },
                   ]}
                 >
                   {Math.round(game.total_rating) / 10}
@@ -463,7 +305,7 @@ function GameDetails({ route, navigation }) {
                 </Text>
               )}
             </View>
-            {/* stores section */}
+
             {game.websites && (
               <Text style={styles.storesHeader}>
                 {t("games.details.availableStores")}
@@ -490,41 +332,52 @@ function GameDetails({ route, navigation }) {
                 );
               })}
             </View>
+
             {/* Buttons section */}
-            <View style={styles.playContainer}>
+            <View style={styles.addToList}>
               <TouchableOpacity
-                style={[styles.wantBtn, isWanted && styles.wantBtnActive]}
-                onPress={handleWant}
+                style={{
+                  backgroundColor: COLORS.secondary,
+                  padding: 12,
+                  borderRadius: 8,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flex: 1,
+                }}
+                onPress={() => {
+                  if (!user) {
+                    Alert.alert(
+                      "Login Required",
+                      "Please login to manage your games."
+                    );
+                    return;
+                  }
+                  setShowListModal(true);
+                }}
               >
-                <Text style={styles.wantBtnText}>
-                  <Ionicons
-                    name={
-                      isWanted ? "game-controller" : "game-controller-outline"
-                    }
-                    size={20}
-                    color="white"
-                  />{" "}
-                  {t("games.details.buttons.want")}
+                <Ionicons name="add-circle-outline" size={24} color="white" />
+                <Text
+                  style={{
+                    color: COLORS.textLight,
+                    fontSize: 18,
+                    fontWeight: "600",
+                    marginLeft: 8,
+                  }}
+                >
+                  {t("games.details.addToList") || "Add to List"}
                 </Text>
               </TouchableOpacity>
-              {isReleased && (
-                <TouchableOpacity
-                  style={[styles.playedBtn, isPlayed && styles.playedBtnActive]}
-                  onPress={handlePlayed}
-                >
-                  <Text style={styles.playedBtnText}>
-                    <Ionicons
-                      name={
-                        isPlayed ? "checkmark-done-sharp" : "checkmark-sharp"
-                      }
-                      size={24}
-                      color="white"
-                    />{" "}
-                    {t("games.details.buttons.played")}
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
+
+            {/* تم استبدال المودال القديم بالمكون الجديد هنا */}
+            <ListSelectionModal
+              visible={!!showListModal}
+              onClose={() => setShowListModal(false)}
+              gameId={currentId}
+              gameData={getGameDataForList()}
+            />
+
             {/* About Section */}
             <View>
               <Text style={styles.detailsHeader}>
@@ -652,10 +505,7 @@ function GameDetails({ route, navigation }) {
                       </Text>
                       <Svg height="85" width="85">
                         <Path
-                          d="
-    M 40 4
-    A 36 36 0 0 1 76 40
-  "
+                          d="M 40 4 A 36 36 0 0 1 76 40"
                           stroke={COLORS.secondary}
                           strokeWidth={5}
                           fill="none"
@@ -693,16 +543,12 @@ function GameDetails({ route, navigation }) {
                         style={{ alignSelf: "center" }}
                       >
                         <Path
-                          d="
-      M 40 4
-      A 36 36 0 0 1 40 76
-    "
+                          d="M 40 4 A 36 36 0 0 1 40 76"
                           stroke={COLORS.secondary}
                           strokeWidth={5}
                           fill="none"
                           strokeLinecap="round"
                         />
-
                         <SvgText
                           x={40}
                           y={40}
@@ -765,16 +611,7 @@ function GameDetails({ route, navigation }) {
                 </View>
               </>
             )}
-            {/* <View style={styles.ad}>
-              <Text style={styles.adText}>{t("common.ad")}</Text>
-              <BannerAd
-                unitId={adUnitId}
-                size={BannerAdSize.MEDIUM_RECTANGLE} // حجم مستطيل كبير
-                requestOptions={{
-                  requestNonPersonalizedAdsOnly: true,
-                }}
-              />
-            </View> */}
+
             {/* Game Trailer section */}
             {game.videos && (
               <View style={styles.trailerContainer}>
@@ -950,7 +787,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(81, 105, 150, 0.4)",
+    backgroundColor: COLORS.secondary + "90",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -965,7 +802,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   title: {
-    color: "white",
+    color: COLORS.textLight,
     fontSize: 24,
     fontWeight: "bold",
   },
@@ -984,7 +821,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   platform: {
-    color: "white",
+    color: COLORS.textLight,
     fontSize: 17,
     fontWeight: "500",
     backgroundColor: "rgb(81, 105,150, 0.3)",
@@ -995,7 +832,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   rating: {
-    color: "white",
+    color: COLORS.textLight,
     textAlign: "center",
     borderRadius: 50,
     textAlignVertical: "center",
@@ -1005,7 +842,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   storesHeader: {
-    color: "white",
+    color: COLORS.textLight,
     fontWeight: "600",
     fontSize: 24,
     marginBottom: 10,
@@ -1031,45 +868,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
   },
-  playContainer: {
+  addToList: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     margin: 10,
-    marginTop: 20,
-  },
-  wantBtn: {
-    flex: 1,
-    backgroundColor: COLORS.secondary,
-    borderRadius: 8,
-    marginRight: 10,
-    padding: 8,
-  },
-  wantBtnActive: {
-    backgroundColor: "#FF8C00", // لون برتقالي للإشارة للتفعيل
-  },
-  wantBtnText: {
-    color: "white",
-    textAlign: "center",
-    fontSize: 24,
-    fontWeight: "600",
-  },
-  playedBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: COLORS.secondary,
-    borderRadius: 8,
-    padding: 8,
-  },
-  playedBtnActive: {
-    backgroundColor: "#32CD32", // لون أخضر للإشارة للتفعيل
-    borderColor: "#32CD32",
-  },
-  playedBtnText: {
-    color: "white",
-    textAlign: "center",
-    fontSize: 24,
-    fontWeight: "600",
+    marginTop: 30,
   },
   details: {
     flexDirection: "row",
@@ -1081,7 +885,7 @@ const styles = StyleSheet.create({
     width: "50%",
   },
   detailsHeader: {
-    color: "white",
+    color: COLORS.textLight,
     fontSize: 24,
     fontWeight: "600",
     textDecorationLine: "underline",
@@ -1095,7 +899,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   howLongToBeatTitle: {
-    color: "white",
+    color: COLORS.textLight,
     fontSize: 24,
     // textAlign
     fontWeight: "600",
@@ -1117,7 +921,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   howLongToBeatHeader: {
-    color: "white",
+    color: COLORS.textLight,
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 10,

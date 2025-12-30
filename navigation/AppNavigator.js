@@ -21,6 +21,8 @@ import NotificationSettings from "../components/Notification";
 import Profile from "../components/Profile";
 import LanguageScreen from "../screens/LanguageSelect";
 import GameNewsScreen from "../screens/GameNewsScreen";
+import UserListsScreen from "../screens/UserListsScreen";
+
 const ContactScreen = React.lazy(() => import("../screens/ContactScreen"));
 // Lazy Loaded Screens
 const LoginScreen = React.lazy(() => import("../screens/LoginScreen"));
@@ -104,6 +106,11 @@ function SettingsStack() {
         name="ContactScreen"
         component={ContactScreen}
         options={{ title: t("settings.contact.title") }}
+      />
+      <Stack.Screen
+        name="UserListsScreen"
+        component={UserListsScreen}
+        options={{ title: t("navigation.titles.myLists") }}
       />
     </Stack.Navigator>
   );

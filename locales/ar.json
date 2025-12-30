@@ -3,8 +3,10 @@
         "loading": "جارٍ التحميل..",
         "error": "خطأ",
         "cancel": "الغاء",
-        "ok": "حسناً",
+        "close": "إغلاق",
         "remove": "إزالة",
+        "ok": "حسناً",
+        "create": "إنشاء",
         "saveChanges": "حفظ التغييرات",
         "noData": "لا توجد بيانات لعرضها",
         "imageNotFound": "لم يتم العثور على الصورة",
@@ -78,7 +80,8 @@
         "titles": {
             "notificationSettings": "إعدادات الإشعارات",
             "accountSettings": "إعدادات الحساب",
-            "gamesList": "قائمة ألعابي"
+            "gamesList": "قائمة ألعابي",
+            "myLists": "قوائمي"
         }
     },
     "home": {
@@ -128,7 +131,7 @@
     "games": {
         "screen": {
             "searchPlaceholder": "ابحث عن ألعاب...",
-            "header": "اعثر على مغامرتك القادمة"
+            "header": "ابحث على مغامرتك القادمة"
         },
         "freeGames": {
             "header": "احصل على ألعابك المجانية!",
@@ -141,6 +144,9 @@
             "not": "لعبة مجانية جديدة!",
                         "subscribed": "أنت مشترك في إشعارات الألعاب المجانية.",
                         "unsubscribed": "لقد ألغيت الاشتراك في إشعارات الألعاب المجانية."
+        },
+                "gamesNews":{
+            "source": "المصدر: الموقع الرسمي للعبة"
         },
         "list": {
             "gamesNews": "أخبار الألعاب",
@@ -166,10 +172,7 @@
         },
         "details": {
             "availableStores": "متاح في هذه المتاجر",
-            "buttons": {
-                "want": "أريد لعبها",
-                "played": "لعبتها"
-            },
+                "addToList": "أضف إلى قائمتي",
             "about": "عن اللعبة",
             "genres": "التصنيفات",
             "gameModes": "أطوار اللعب",
@@ -191,7 +194,13 @@
             },
             "trailer": "فيديو تشويقي",
             "series": "سلسلة اللعبة",
-            "similar": "ألعاب مشابهة"
+            "similar": "ألعاب مشابهة",
+                        "listStatus": {
+                            "add": "أضف إلى...",
+                "played": "لعبتها",
+                "playing": "العبها الآن",
+                "wantToPlay": "أريد لعبها"
+            }
         }
     },
     "userLists": {
@@ -204,7 +213,14 @@
         },
         "actions": {
             "confirmDeleteTitle": "تأكيد الحذف",
-            "confirmDeleteMessage": "هل أنت متأكد أنك تريد إزالة \"{{gameName}}\" من قائمتك؟"
+            "confirmDeleteMessage": "هل أنت متأكد أنك تريد إزالة \"{{gameName}}\" من قائمتك؟",
+            "createNewList": "إنشاء قائمة جديدة"
+        },
+        "placeholders": {
+            "newListName": "مثال: أفضل ألعاب قصصية"
+        },
+        "errors": {
+            "couldNotCreateList": "تعذر إنشاء القائمة. يرجى المحاولة مرة أخرى لاحقاً."
         }
     },
     "settings": {
@@ -212,8 +228,7 @@
         "currentLang": "العربية",
         "menu": {
             "notifications": "إعدادات الإشعارات",
-            "wantList": "قائمة العاب أريد لعبها",
-            "playedList": "قائمة ألعاب تم لعبها",
+            "myLists": "قوائمي",
             "changeLanguage": "تغيير اللغة",
             "rateUs": "قيمنا",
             "supportUs": "ادعمنا",

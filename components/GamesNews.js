@@ -19,6 +19,7 @@ const GAMES_DATA = [
     image:
       "https://newzoo.com/wp-content/uploads/api/games/artworks/game--league-of-legends.jpg",
     apiUrl: "https://games-news-api.vercel.app/lol/",
+    source: "https://www.leagueoflegends.com/news/",
   },
   {
     id: "2",
@@ -26,6 +27,7 @@ const GAMES_DATA = [
     image:
       "https://cmsassets.rgpub.io/sanity/images/dsfx7636/news_live/f657721a7eb06acae52a29ad3a951f20c1e5fc60-1920x1080.jpg",
     apiUrl: "https://games-news-api.vercel.app/valorant/",
+    source: "https://playvalorant.com/news/",
   },
   {
     id: "3",
@@ -39,6 +41,7 @@ const GAMES_DATA = [
     image:
       "https://file.booster.gearupportal.com/file/689ef73d36a337f883dbcddeI0uOdssK03.png?fop=imageView/2/w/280/f/webp",
     apiUrl: "https://games-news-api.vercel.app/eafc/",
+    source: "https://www.ea.com/en/games/ea-sports-fc/fc-26/news",
   },
   {
     id: "5",
@@ -46,6 +49,7 @@ const GAMES_DATA = [
     image:
       "https://m.media-amazon.com/images/M/MV5BMDExODM1MjItNDA1Zi00NGQ3LTkwYTctNmFhODhkNjRmNzJkXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg",
     apiUrl: "https://games-news-api.vercel.app/marvelRivals/",
+    source: "https://www.marvelrivals.com/news/",
   },
 ];
 
@@ -54,7 +58,7 @@ const GameCard = React.memo(({ item, onPress }) => {
   return (
     <TouchableOpacity
       style={styles.gameCard}
-      onPress={() => onPress(item.name, item.apiUrl)}
+      onPress={() => onPress(item.name, item.apiUrl, item.source)}
       activeOpacity={0.7} // تحسين تجربة المستخدم البصرية
     >
       <Image
@@ -77,8 +81,8 @@ function GamesNews() {
 
   // 3. تحسين دالة الانتقال باستخدام useCallback
   const handleGamePress = useCallback(
-    (gameName, apiUrl) => {
-      navigation.navigate("GameNewsScreen", { gameName, apiUrl });
+    (gameName, apiUrl, source) => {
+      navigation.navigate("GameNewsScreen", { gameName, apiUrl, source });
     },
     [navigation]
   );

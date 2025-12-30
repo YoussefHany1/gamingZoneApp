@@ -61,15 +61,30 @@ function GameItem({ game, onRemove }) {
 }
 
 function UserGamesScreen({ route, navigation }) {
-  const { collection } = route.params;
+  const { listId, listName } = route.params;
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAds, setShowAds] = useState(false);
   const currentUser = auth().currentUser;
   const mountedRef = useRef(true);
   const { t } = useTranslation();
+
+  const getDisplayName = (originalName) => {
+    // يمكنك تعديل مفاتيح الترجمة هنا حسب الموجود في ملفات اللغة عندك
+    switch (originalName) {
+      case "Playing":
+        return t("games.details.listStatus.playing");
+      case "Played":
+        return t("games.details.listStatus.played");
+      case "Want to Play":
+        return t("games.details.listStatus.wantToPlay");
+      default:
+        return originalName; // لو الاسم مش من القائمة دي، يرجع زي ما هو
+    }
+  };
+
   const CACHE_KEY = currentUser
-    ? `USER_GAMES_${currentUser.uid}_${collection}`
+    ? `USER_GAMES_${currentUser.uid}_LIST_${listId}`
     : null;
   // تفعيل الإعلانات بعد تحميل القائمة
   useEffect(() => {
@@ -117,7 +132,9 @@ function UserGamesScreen({ route, navigation }) {
       const collectionRef = firestore()
         .collection("users")
         .doc(currentUser.uid)
-        .collection(collection);
+        .collection("lists") // الدخول لمجموعة القوائم
+        .doc(listId) // تحديد القائمة المطلوبة
+        .collection("games"); // الدخول للألعاب داخلها
 
       unsubscribe = collectionRef.onSnapshot(
         (querySnapshot) => {
@@ -152,7 +169,7 @@ function UserGamesScreen({ route, navigation }) {
       mountedRef.current = false;
       if (unsubscribe) unsubscribe();
     };
-  }, [currentUser, collection, CACHE_KEY]);
+  }, [currentUser, listId, CACHE_KEY]);
 
   const handleRemoveGame = (gameId, gameName) => {
     if (!currentUser) return;
@@ -177,7 +194,9 @@ function UserGamesScreen({ route, navigation }) {
             const gameRef = firestore()
               .collection("users")
               .doc(currentUser.uid)
-              .collection(collection)
+              .collection("lists")
+              .doc(listId)
+              .collection("games")
               .doc(gameIdStr);
 
             try {
@@ -199,6 +218,9 @@ function UserGamesScreen({ route, navigation }) {
       ]
     );
   };
+  useEffect(() => {
+    navigation.setOptions({ title: getDisplayName(listName) });
+  }, [listName]);
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>

@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: "white",
     backgroundColor: "rgba(0,0,0,0.5)",
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     borderRadius: 6,
   },
   ad: {

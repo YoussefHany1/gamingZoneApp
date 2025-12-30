@@ -3,8 +3,10 @@
         "loading": "Loading...",
         "error": "Error",
         "cancel": "Cancel",
-        "ok": "OK",
+        "close": "Close",
         "remove": "Remove",
+        "ok": "OK",
+        "create": "Create",
         "saveChanges": "Save Changes",
         "noData": "No data to display",
         "imageNotFound": "Image not found",
@@ -77,7 +79,8 @@
         "titles": {
             "notificationSettings": "Notification Settings",
             "accountSettings": "Account Settings",
-            "gamesList": "My Games List"
+            "gamesList": "My Games List",
+            "myLists": "My Lists"
         }
     },
     "home": {
@@ -126,7 +129,7 @@
     },
     "games": {
         "screen": {
-            "searchPlaceholder": "Search for games...",
+            "searchPlaceholder": "Search for Games...",
             "header": "Find Your Next Gaming Adventure"
         },
         "freeGames": {
@@ -140,6 +143,9 @@
             "not": "New Free Game!",
             "subscribed": "You are subscribed to free game notifications.",
             "unsubscribed": "You have unsubscribed from free game notifications."
+        },
+        "gamesNews":{
+            "source": "Source: The game's official website"
         },
         "list": {
                         "gamesNews": "Game News",
@@ -166,10 +172,7 @@
         },
         "details": {
             "availableStores": "Available at these stores",
-            "buttons": {
-                "want": "Want to Play",
-                "played": "Played"
-            },
+                "addToList": "Add to My List",
             "about": "About",
             "genres": "Genres",
             "gameModes": "Game Modes",
@@ -191,7 +194,13 @@
             },
             "trailer": "Game Trailer",
             "series": "Game series",
-            "similar": "Similar Games"
+            "similar": "Similar Games",
+            "listStatus": {
+                "add": "Add to...",
+                "played": "Played",
+                "playing": "Playing",
+                "wantToPlay": "Want to Play"
+            }
         }
     },
     "userLists": {
@@ -204,7 +213,14 @@
         },
         "actions": {
             "confirmDeleteTitle": "Confirm deletion",
-            "confirmDeleteMessage": "Are you sure you want to remove \"{{gameName}}\" from your list?"
+            "confirmDeleteMessage": "Are you sure you want to remove \"{{gameName}}\" from your list?",
+            "createNewList": "Create New List"
+        },
+        "placeholders": {
+            "newListName": "e.g. RPG Favorites"
+        },
+        "errors": {
+            "couldNotCreateList": "Could not create list. Please try again later."
         }
     },
     "settings": {
@@ -212,8 +228,7 @@
         "currentLang": "English",
         "menu": {
             "notifications": "Notification Settings",
-            "wantList": "Want to Play List",
-            "playedList": "Played Games List",
+            "myLists": "My Lists",
             "changeLanguage": "Change Language",
             "rateUs": "Rate Us",
             "contactUs": "Contact Us / Suggestions",

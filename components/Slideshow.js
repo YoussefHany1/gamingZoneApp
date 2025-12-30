@@ -6,7 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import useFeed from "../hooks/useFeed";
 import SkeletonSlideshow from "../skeleton/SkeletonSlideshow";
 import COLORS from "../constants/colors";
-import NewsDetails from "../screens/NewsDetailsScreen"; // 1. استيراد شاشة التفاصيل
+import NewsDetails from "../screens/NewsDetailsScreen";
 
 function Slideshow({ website, category }) {
   const { articles, loading, error } = useFeed(category, website);

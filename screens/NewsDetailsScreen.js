@@ -23,11 +23,6 @@ function NewsDetails({ article, visible, onClose }) {
   const { i18n, t } = useTranslation();
   const [showAds, setShowAds] = useState(false);
   const currentLang = i18n.language;
-  const formattedDate = format(
-    new Date(article?.pubDate),
-    "dd MMMM yyyy - hh:mm a",
-    { locale: currentLang === "ar" ? ar : undefined }
-  );
 
   // activate ads after the list loads
   useEffect(() => {
@@ -38,14 +33,16 @@ function NewsDetails({ article, visible, onClose }) {
   }, []);
 
   const dateString = article?.pubDate;
+  const formattedDate = format(new Date(dateString), "dd MMMM yyyy - hh:mm a", {
+    locale: currentLang === "ar" ? ar : undefined,
+  });
+
   let timeAgo = "";
   if (dateString) {
     const startDate = new Date(dateString);
     const endDate = new Date();
 
-    // التأكد من صحة التاريخ
     if (!isNaN(startDate)) {
-      // حساب المدة الزمنية بالتفصيل
       const duration = intervalToDuration({
         start: startDate,
         end: endDate,
@@ -53,16 +50,14 @@ function NewsDetails({ article, visible, onClose }) {
 
       const { years, months, days, hours, minutes } = duration;
 
-      // بناء النص بناءً على المدة
+      // analyze duration and set timeAgo string
       if (years > 0) {
-        timeAgo = `${years} ${t("news.duration.years")}`; // سنوات
+        timeAgo = `${years} ${t("news.duration.years")}`; // years
       } else if (months > 0) {
-        timeAgo = `${months} ${t("news.duration.months")}`; // شهور
+        timeAgo = `${months} ${t("news.duration.months")}`; // months
       } else if (days > 0) {
-        timeAgo = `${days} ${t("news.duration.days")}`; // أيام
+        timeAgo = `${days} ${t("news.duration.days")}`; // days
       } else if (hours > 0) {
-        // هنا يظهر الشكل المطلوب: 8h 30m
-        // إذا كانت الدقائق 0، سيظهر 8h فقط
         timeAgo =
           minutes > 0
             ? `${hours}${t("news.duration.hours")} ${minutes}${t(
@@ -70,11 +65,10 @@ function NewsDetails({ article, visible, onClose }) {
               )}`
             : `${hours}${t("news.duration.hours")}`;
       } else {
-        timeAgo = `${minutes}${t("news.duration.minutes")}`; // دقائق فقط
+        timeAgo = `${minutes}${t("news.duration.minutes")}`;
       }
     }
   }
-
   return (
     <Modal
       animationType="slide"
@@ -99,23 +93,28 @@ function NewsDetails({ article, visible, onClose }) {
               : require("../assets/image-not-found.webp")
           }
           contentFit="cover"
-          // transition={500}
           cachePolicy="memory-disk"
         />
         <View style={styles.content}>
           <Text style={styles.title}>{article.title}</Text>
           <View style={styles.site}>
-            <Image
-              style={styles.siteImage}
-              source={article.siteImage}
-              contentFit="cover"
-              transition={500}
-              cachePolicy="memory-disk"
-            />
-            <Text style={styles.siteName}>{article.siteName}</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <Image
+                style={styles.siteImage}
+                source={article.siteImage}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
+              <Text style={styles.siteName}>{article.siteName}</Text>
+            </View>
+            <Text style={styles.date}>{timeAgo}</Text>
           </View>
-
-          <Text style={styles.date}>{timeAgo}</Text>
+          <Text style={styles.date}>{formattedDate}</Text>
 
           <View style={styles.description}>
             {article.description &&
@@ -185,17 +184,18 @@ const styles = StyleSheet.create({
   site: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 15,
   },
   siteImage: {
     width: 40,
     height: 40,
     borderRadius: 50,
-    marginHorizontal: 15,
-    marginTop: 20,
+    marginRight: 10,
   },
   siteName: {
     color: "white",
-    marginTop: 20,
+    fontSize: 16,
   },
   backButton: {
     width: 40,

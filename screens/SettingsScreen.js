@@ -87,41 +87,20 @@ function SettingsScreen() {
             </View>
           </TouchableOpacity>
 
+          {/* Lists Screen */}
           <TouchableOpacity
             style={styles.categoryHeader}
-            onPress={() =>
-              navigation.navigate("UserGamesScreen", { collection: "wantList" })
-            }
+            onPress={() => navigation.navigate("UserListsScreen")}
           >
             <View style={styles.categoryHeaderLeft}>
               <Ionicons
-                name="game-controller"
+                name="list"
                 size={20}
                 color="#779bdd"
                 style={styles.chevronIcon}
               />
               <Text style={styles.categoryTitle}>
-                {t("settings.menu.wantList")}
-              </Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.categoryHeader}
-            onPress={() =>
-              navigation.navigate("UserGamesScreen", {
-                collection: "playedList",
-              })
-            }
-          >
-            <View style={styles.categoryHeaderLeft}>
-              <Ionicons
-                name="checkmark-done-sharp"
-                size={20}
-                color="#779bdd"
-                style={styles.chevronIcon}
-              />
-              <Text style={styles.categoryTitle}>
-                {t("settings.menu.playedList")}
+                {t("settings.menu.myLists")}
               </Text>
             </View>
           </TouchableOpacity>
