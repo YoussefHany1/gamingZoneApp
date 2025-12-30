@@ -173,53 +173,99 @@ const extractThumbnail = (item, baseUrl, isJson = false) => {
   return resolveImageUrl(img, baseUrl);
 };
 
+// 1️⃣ تعريف الثوابت خارج الدالة (مرة واحدة في الذاكرة)
+const CP1252_MAP = {
+  "\u20AC": "\x80",
+  "\u201A": "\x82",
+  "\u0192": "\x83",
+  "\u201E": "\x84",
+  "\u2026": "\x85",
+  "\u2020": "\x86",
+  "\u2021": "\x87",
+  "\u02C6": "\x88",
+  "\u2030": "\x89",
+  "\u0160": "\x8A",
+  "\u2039": "\x8B",
+  "\u0152": "\x8C",
+  "\u017D": "\x8E",
+  "\u2018": "\x91",
+  "\u2019": "\x92",
+  "\u201C": "\x93",
+  "\u201D": "\x94",
+  "\u2022": "\x95",
+  "\u2013": "\x96",
+  "\u2014": "\x97",
+  "\u02DC": "\x98",
+  "\u2122": "\x99",
+  "\u0161": "\x9A",
+  "\u203A": "\x9B",
+  "\u0153": "\x9C",
+  "\u017E": "\x9E",
+  "\u0178": "\x9F",
+};
+// إنشاء Regex مرة واحدة يحتوي كل الرموز أعلاه
+const CP1252_REGEX = new RegExp(`[${Object.keys(CP1252_MAP).join("")}]`, "g");
+const ARABIC_REGEX = /[\u0600-\u06FF]/g;
+const COMMON_WORDS_REGEX =
+  /(أفضل|الألعاب|المعالجات|إنتل|نفيديا|بطاقة|تجربة|أداء|سعر|مراجعة|خبر|تسريب|حصري|الجديد|نسخة|إطلاق|رسمياً|عرب|هاردوير|موقع|تقنية)/g;
+
 function fixArabHardwareEncoding(buffer) {
-  // المشكلة: الموقع يرسل UTF-8 لكن يتم قراءته بشكل خاطئ
-  // الحل: نجرب عدة طرق للإصلاح
+  const utf8Str = buffer.toString("utf8");
 
-  try {
-    // الطريقة 1: قراءة مباشرة كـ UTF-8
-    let text = buffer.toString("utf8");
+  // 2️⃣ تعريف استراتيجيات فك التشفير كدوال (Lazy Evaluation)
+  const strategies = [
+    { type: "UTF-8", fn: () => utf8Str },
+    { type: "Win-1256", fn: () => iconv.decode(buffer, "windows-1256") },
+    {
+      type: "Fix-D",
+      fn: () => {
+        // استبدال سريع باستخدام الـ Map
+        const latinStr = utf8Str.replace(
+          CP1252_REGEX,
+          (char) => CP1252_MAP[char]
+        );
+        return Buffer.from(latinStr, "latin1").toString("utf8");
+      },
+    },
+  ];
 
-    // التحقق من وجود نص عربي صحيح
-    const hasValidArabic = /[\u0600-\u06FF]{3,}/.test(text);
+  // 3️⃣ البحث عن الأفضل مباشرة (بدون تخزين مصفوفة كبيرة)
+  let bestResult = { text: utf8Str, score: -Infinity, type: "None" };
 
-    if (hasValidArabic) {
-      return text;
+  console.log("      🧪 --- Decoding Analysis (Optimized) ---");
+
+  strategies.forEach(({ type, fn }) => {
+    let text = "";
+    try {
+      text = fn();
+    } catch (e) {
+      return;
+    } // تخطي الاستراتيجية الفاشلة
+
+    // حساب النقاط
+    const arabicCount = (text.match(ARABIC_REGEX) || []).length;
+    const commonCount = (text.match(COMMON_WORDS_REGEX) || []).length;
+    // علامة الخطأ  في UTF-8 هي \uFFFD
+    const errorCount = (text.match(/\uFFFD/g) || []).length;
+
+    // المعادلة
+    const score = arabicCount + commonCount * 100 - errorCount * 50;
+
+    // طباعة مختصرة
+    const snippet = text.replace(/\s+/g, " ").substring(0, 40);
+    console.log(
+      `      🔸 [${type}] Score: ${score} | Snippet: "${snippet}..."`
+    );
+
+    if (score > bestResult.score) {
+      bestResult = { text, score, type };
     }
+  });
 
-    // الطريقة 2: إصلاح Double Encoding
-    // (UTF-8 bytes تم تفسيرها كـ Latin1/ISO-8859-1)
-    const latinBuffer = Buffer.from(text, "latin1");
-    text = latinBuffer.toString("utf8");
-
-    if (/[\u0600-\u06FF]{3,}/.test(text)) {
-      return text;
-    }
-
-    // الطريقة 3: تجربة Windows-1256
-    text = iconv.decode(buffer, "windows-1256");
-
-    if (/[\u0600-\u06FF]{3,}/.test(text)) {
-      return text;
-    }
-
-    // الطريقة 4: إصلاح متقدم للـ Mojibake
-    // نحول النص المشوه إلى bytes ثم نقرأه مرة أخرى
-    text = buffer.toString("utf8");
-    const reEncoded = Buffer.from(text, "binary");
-    const fixed = reEncoded.toString("utf8");
-
-    if (/[\u0600-\u06FF]{3,}/.test(fixed)) {
-      return fixed;
-    }
-
-    // إذا فشل كل شيء، نرجع النص الأصلي
-    return buffer.toString("utf8");
-  } catch (error) {
-    console.error("Encoding fix error:", error.message);
-    return buffer.toString("utf8");
-  }
+  console.log(
+    `      ✅ Winner: ${bestResult.type} (Score: ${bestResult.score})`
+  );
+  return bestResult.text;
 }
 
 // --- FETCHING ---
@@ -341,8 +387,9 @@ async function fetchWithPuppeteer(url) {
   try {
     const puppeteer = require("puppeteer");
 
+    // إضافة إعدادات إضافية لتخطي الحماية البسيطة
     browser = await puppeteer.launch({
-      headless: true,
+      headless: "new", // استخدم الوضع الجديد
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -351,32 +398,56 @@ async function fetchWithPuppeteer(url) {
         "--no-first-run",
         "--no-zygote",
         "--disable-gpu",
+        "--window-size=1920,1080", // محاكاة حجم شاشة حقيقي
       ],
     });
 
     const page = await browser.newPage();
 
+    // User-Agent حديث جداً لتجنب الحظر
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     );
 
-    await page.goto(url, {
-      waitUntil: "networkidle2",
+    // إضافة headers إضافية
+    await page.setExtraHTTPHeaders({
+      "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    });
+
+    // الانتقال للصفحة والاحتفاظ بالاستجابة (response)
+    const response = await page.goto(url, {
+      waitUntil: "domcontentloaded", // networkidle2 قد يعلق أحياناً مع الإعلانات
       timeout: 60000,
     });
 
-    // جلب المحتوى كـ Buffer
-    const content = await page.content();
-    const buffer = Buffer.from(content, "utf8");
+    if (!response) {
+      throw new Error("Puppeteer: No response received");
+    }
+
+    // ✅ التغيير الجوهري هنا:
+    // نأخذ الـ Buffer الخام من الاستجابة مباشرة بدلاً من HTML الصفحة
+    const buffer = await response.buffer();
+
+    // للتأكد من أننا لم نستلم صفحة حظر (مثل Cloudflare)
+    // عادة صفحات الحظر تكون HTML، بينما الـ RSS يبدأ بـ <?xml أو <rss
+    const initialCheck = buffer.toString("utf8").trim().substring(0, 50);
+    console.log(
+      `      🔍 Received data starts with: ${initialCheck.replace(
+        /\n/g,
+        ""
+      )}...`
+    );
 
     let bodyString = "";
 
     // ✅ معالجة خاصة لموقع ArabHardware
     if (url.includes("arabhardware")) {
-      console.log("      🔧 Applying ArabHardware encoding fix (Puppeteer)...");
+      console.log("      🔧 Applying ArabHardware encoding fix (Puppeteer)...");
       bodyString = fixArabHardwareEncoding(buffer);
     } else {
-      bodyString = content;
+      bodyString = buffer.toString("utf8");
     }
 
     return await parseResponse(bodyString);
